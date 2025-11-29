@@ -1,0 +1,20 @@
+{
+    "keep": {
+        "days": true,
+        "amount": 14
+    },
+    "auditLog": "/Users/junior/Documents/k/Documents/Junior/Projects/new-emr/logs/.ec77bb955c119b7bd6b22c237c73858a2fd923c8-audit.json",
+    "files": [
+        {
+            "date": 1764228108381,
+            "name": "/Users/junior/Documents/k/Documents/Junior/Projects/new-emr/logs/mcp-puppeteer-2025-11-27.log",
+            "hash": "92a64afda9f6956a9c312711277c9c35084675fc115e7d8e3bfcc2c24f4dfdba"
+        },
+        {
+            "date": 1764316718463,
+            "name": "/Users/junior/Documents/k/Documents/Junior/Projects/new-emr/logs/mcp-puppeteer-2025-11-28.log",
+            "hash": "625c1f0f234f05ebea8a5d6095a5424c776232ccf09edb75f29038313b7879a1"
+        }
+    ],
+    "hashType": "sha256"
+}
