@@ -1,11 +1,21 @@
-'use client'
+import { useQuery } from '@tanstack/react-query'
+import { api } from '@/lib/api'
 
-import type { Consultation } from '@/lib/mock/consultations'
-import { mockConsultations } from '@/lib/mock/consultations'
+export interface Consultation {
+  id: string
+  patientId: string
+  status: 'draft' | 'in_progress' | 'completed'
+  startedAt: Date
+  completedAt?: Date
+}
 
-export function useConsultations() {
-  return {
-    consultations: mockConsultations as Consultation[],
-    loading: false,
-  }
+export function useConsultations(patientId?: string) {
+  return useQuery({
+    queryKey: ['consultations', patientId],
+    queryFn: async () => {
+      const params = patientId ? `?patientId=${patientId}` : ''
+      const { data } = await api.get<Consultation[]>(`/consultations${params}`)
+      return data
+    }
+  })
 }

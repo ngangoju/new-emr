@@ -15,10 +15,38 @@ import {
 import { Clock, User, Phone, Bell } from 'lucide-react'
 import toast from 'react-hot-toast'
 
+import { useQueryClient } from '@tanstack/react-query'
+import { useSocketEvent } from '@/hooks/useSocket'
+import { useState } from 'react'
+import { Wifi, WifiOff } from 'lucide-react'
+
 export function QueueBoard() {
   const { data: queue = [], isLoading } = useQueueAPI()
   const callNextMutation = useCallNextPatient()
   const updateStatusMutation = useUpdateQueueStatus()
+  const queryClient = useQueryClient()
+  const [isConnected, setIsConnected] = useState(false)
+
+  // Socket.io Integration
+  useSocketEvent('connect', () => {
+    setIsConnected(true)
+  })
+
+  useSocketEvent('disconnect', () => {
+    setIsConnected(false)
+  })
+
+  useSocketEvent('queue:update', () => {
+    queryClient.invalidateQueries({ queryKey: ['queue'] })
+    toast('Queue updated', {
+      icon: '🔄',
+      style: {
+        borderRadius: '10px',
+        background: '#333',
+        color: '#fff',
+      },
+    })
+  })
 
   const callNext = () => {
     callNextMutation.mutate(undefined, {
@@ -70,7 +98,18 @@ export function QueueBoard() {
 
   if (!queue || queue.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 text-center">
+      <div className="flex flex-col items-center justify-center py-12 text-center relative">
+        <div className="absolute top-0 right-0 p-2">
+          {isConnected ? (
+            <Badge variant="outline" className="text-xs text-success border-success/20 bg-success/5 gap-1">
+              <Wifi className="h-3 w-3" /> Live
+            </Badge>
+          ) : (
+            <Badge variant="outline" className="text-xs text-muted-foreground gap-1">
+              <WifiOff className="h-3 w-3" /> Offline
+            </Badge>
+          )}
+        </div>
         <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted mb-4">
           <User className="h-8 w-8 text-muted-foreground" />
         </div>
@@ -83,7 +122,19 @@ export function QueueBoard() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 relative">
+      <div className="absolute -top-10 right-0">
+        {isConnected ? (
+          <Badge variant="outline" className="text-xs text-success border-success/20 bg-success/5 gap-1">
+            <Wifi className="h-3 w-3" /> Live Updates
+          </Badge>
+        ) : (
+          <Badge variant="outline" className="text-xs text-muted-foreground gap-1">
+            <WifiOff className="h-3 w-3" /> Offline
+          </Badge>
+        )}
+      </div>
+
       <div className="rounded-lg border">
         <Table>
           <TableHeader>

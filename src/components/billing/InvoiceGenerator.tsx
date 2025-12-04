@@ -23,12 +23,11 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Plus, Trash2, Save, CreditCard } from 'lucide-react'
 import { PaymentMethodsSelect } from './PaymentMethodsSelect'
 import { TariffSearchCombobox } from './TariffSearchCombobox'
-import { mockPatients } from '@/lib/mock/patients'
 import { mockTariffs } from '@/lib/mock/tariffs'
-import type { Patient, Insurance } from '@/types/patient'
 import type { Tariff } from '@/types/billing'
 import type { PaymentMethod } from '@/types/billing'
 import { useCreatePayment } from '@/hooks/usePayments'
@@ -41,10 +40,19 @@ interface InvoiceItem {
   total: number
 }
 
+// TODO: Replace with actual patient data from API
+const defaultPatient = {
+  id: 'temp',
+  fullName: 'Select Patient',
+  insurance: {
+    copayPercentage: 20
+  }
+}
+
 export function InvoiceGenerator({ trigger }: { trigger: React.ReactNode }) {
   const [open, setOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<'patient' | 'services' | 'summary' | 'payment'>('services')
-  const [patient, setPatient] = useState<Patient>(mockPatients[0]!)
+  const [patient] = useState(defaultPatient)
   const [items, setItems] = useState<InvoiceItem[]>([])
   const [discount, setDiscount] = useState(0)
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash')
@@ -116,18 +124,9 @@ export function InvoiceGenerator({ trigger }: { trigger: React.ReactNode }) {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>Patient</Label>
-                <select 
-                  value={patient.id}
-                  onChange={(e) => {
-                    const p = mockPatients.find(p => p.id === e.target.value)
-                    if (p) setPatient(p)
-                  }}
-                  className="w-full p-2 border rounded-md"
-                >
-                  {mockPatients.map((p) => (
-                    <option key={p.id} value={p.id}>{p.fullName}</option>
-                  ))}
-                </select>
+                <p className="text-sm text-muted-foreground mt-2">
+                  TODO: Integrate with patient search API
+                </p>
               </div>
               <div>
                 <Label>Insurance Copay</Label>
@@ -210,8 +209,7 @@ export function InvoiceGenerator({ trigger }: { trigger: React.ReactNode }) {
               </CardContent>
             </Card>
           </TabsContent>
-          {activeTab === 'payment' && (
-            <div className="space-y-4">
+          <TabsContent value="payment" className="space-y-4">
             <div>
               <Label>Payment Method</Label>
               <PaymentMethodsSelect 
@@ -239,7 +237,7 @@ export function InvoiceGenerator({ trigger }: { trigger: React.ReactNode }) {
               </Button>
             </div>
           </TabsContent>
-        </div>
+        </Tabs>
         <DialogFooter>
           <Button type="button" variant="outline" onClick={() => setOpen(false)}>
             Cancel

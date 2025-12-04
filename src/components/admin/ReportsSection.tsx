@@ -20,10 +20,22 @@ import {
 } from 'recharts'
 
 export function ReportsSection() {
-  const { reports } = useReports()
+  const { reports, loading } = useReports()
 
   const handleExport = (type: string) => {
     alert(`Export ${type} report as CSV/PDF (mock implementation)`)
+  }
+
+  if (loading || !reports.financial || !reports.patient || !reports.usage) {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardContent className="p-6">
+            <div className="h-96 animate-pulse bg-muted rounded" />
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
   return (

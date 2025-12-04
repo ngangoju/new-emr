@@ -20,9 +20,9 @@ import {
 const navItems = [
   { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { title: "Patients", href: "/dashboard/doctor/patients", icon: Users },
-  { title: "Consultations", href: "/dashboard/consultations", icon: Stethoscope },
-  { title: "Schedule", href: "/dashboard/schedule", icon: CalendarDays },
-  { title: "Records", href: "/dashboard/records", icon: FileText },
+  { title: "Consultations", href: "/dashboard/doctor/consultations", icon: Stethoscope },
+  { title: "Schedule", href: "/dashboard/doctor/schedule", icon: CalendarDays },
+  { title: "Records", href: "/dashboard/doctor/records", icon: FileText },
   { title: "Billing", href: "/dashboard/billing", icon: DollarSign },
   { title: "Pharmacy", href: "/dashboard/pharmacy", icon: Pill },
   { title: "Lab", href: "/dashboard/lab", icon: Microscope },

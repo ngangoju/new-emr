@@ -1,7 +1,6 @@
-'use client'
-
 import { useMemo } from 'react'
-import { mockUsers } from '@/lib/mock/admin'
+import { useQuery } from '@tanstack/react-query'
+import { api } from '@/lib/api'
 import type { User } from '@/types/admin'
 
 interface UseUsersFilters {
@@ -22,14 +21,20 @@ interface UseUsersResult {
 }
 
 export function useUsers(filters: UseUsersFilters = {}): UseUsersResult {
-  const allUsers = useMemo(() => [...mockUsers], [])
+  const { data: users = [], isLoading } = useQuery({
+    queryKey: ['users'],
+    queryFn: async () => {
+      const { data } = await api.get<User[]>('/users')
+      return data
+    }
+  })
 
   const filteredUsers = useMemo(() => {
-    let data = [...allUsers]
+    let data = [...users]
     if (filters.search) {
       const query = filters.search.toLowerCase()
-      data = data.filter(user => 
-        user.name.toLowerCase().includes(query) || 
+      data = data.filter(user =>
+        user.name.toLowerCase().includes(query) ||
         user.email.toLowerCase().includes(query)
       )
     }
@@ -40,22 +45,22 @@ export function useUsers(filters: UseUsersFilters = {}): UseUsersResult {
       data = data.filter(user => user.status === filters.status)
     }
     return data
-  }, [allUsers, filters])
+  }, [users, filters])
 
   const stats = useMemo(() => {
-    const active = allUsers.filter(user => user.status === 'active').length
-    const inactive = allUsers.filter(user => user.status !== 'active').length
+    const active = users.filter(user => user.status === 'active').length
+    const inactive = users.filter(user => user.status !== 'active').length
     return {
-      total: allUsers.length,
+      total: users.length,
       active,
       inactive,
     }
-  }, [allUsers])
+  }, [users])
 
   return {
-    users: allUsers,
+    users,
     filteredUsers,
     stats,
-    loading: false,
+    loading: isLoading,
   }
 }

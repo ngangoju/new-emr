@@ -12,7 +12,7 @@ export default function AdminDashboard() {
         title="Admin Dashboard"
         description="System overview with key metrics, comprehensive user management, and interactive reports & analytics."
       />
-      <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 space-y-8 xl:space-y-0 xl:space-x-8">
+      <div className="w-full mb-8">
         <SystemStats />
       </div>
       <section className="space-y-6">

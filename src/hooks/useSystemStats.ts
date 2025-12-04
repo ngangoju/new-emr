@@ -1,19 +1,23 @@
-'use client'
-
-import { useMemo } from 'react'
-import { getSystemStats } from '@/lib/mock/admin'
+import { useQuery } from '@tanstack/react-query'
+import { api } from '@/lib/api'
 import type { SystemMetric } from '@/types/admin'
 
 export interface UseSystemStatsResult {
-  stats: SystemMetric
+  stats: SystemMetric | undefined
   loading: boolean
 }
 
 export function useSystemStats(): UseSystemStatsResult {
-  const stats = useMemo(() => getSystemStats(), [])
+  const { data: stats, isLoading } = useQuery({
+    queryKey: ['admin-stats'],
+    queryFn: async () => {
+      const { data } = await api.get<SystemMetric>('/dashboard/admin-stats')
+      return data
+    }
+  })
 
   return {
     stats,
-    loading: false,
+    loading: isLoading,
   }
 }

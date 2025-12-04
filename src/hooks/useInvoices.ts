@@ -1,7 +1,5 @@
-'use client'
-
-import { useMemo } from 'react'
-import { mockInvoices } from '@/lib/mock/billing'
+import { useQuery } from '@tanstack/react-query'
+import { api } from '@/lib/api'
 import type { Invoice } from '@/types/billing'
 
 interface UseInvoicesFilters {
@@ -10,37 +8,35 @@ interface UseInvoicesFilters {
 }
 
 export function useInvoices(filters: UseInvoicesFilters = {}) {
-  const invoices = useMemo(() => {
-    let data = [...mockInvoices].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
-    if (filters.status) {
-      data = data.filter((inv) => inv.status === filters.status)
-    }
-    if (filters.patientId) {
-      data = data.filter((inv) => inv.patientId === filters.patientId)
-    }
-    return data
-  }, [filters])
+  const { data: invoices = [], isLoading } = useQuery({
+    queryKey: ['invoices', filters],
+    queryFn: async () => {
+      const params = new URLSearchParams()
+      if (filters.status) params.append('status', filters.status)
+      if (filters.patientId) params.append('patientId', filters.patientId)
 
-  const pending = useMemo(
-    () => invoices.filter((inv) => inv.status === 'pending'),
-    [invoices]
-  )
+      const queryString = params.toString()
+      const url = `/invoices${queryString ? `?${queryString}` : ''}`
 
-  const stats = useMemo(() => {
-    const paidInvoices = mockInvoices.filter((inv) => inv.status === 'paid')
-    const totalRevenue = paidInvoices.reduce((sum, inv) => sum + inv.total, 0)
-    const pendingAmount = pending.reduce((sum, inv) => sum + inv.patientDue, 0)
-    return {
-      pendingCount: pending.length,
-      totalRevenue,
-      pendingAmount,
+      const { data } = await api.get<Invoice[]>(url)
+      return data
     }
-  }, [pending])
+  })
+
+  const pending = invoices.filter((inv) => inv.status === 'pending')
+
+  const stats = {
+    pendingCount: pending.length,
+    totalRevenue: invoices
+      .filter((inv) => inv.status === 'paid')
+      .reduce((sum, inv) => sum + inv.total, 0),
+    pendingAmount: pending.reduce((sum, inv) => sum + inv.patientDue, 0),
+  }
 
   return {
     invoices,
     pending,
     stats,
-    loading: false,
+    loading: isLoading,
   }
 }

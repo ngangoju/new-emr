@@ -48,7 +48,15 @@ api.interceptors.response.use(
         }
 
         // Global Error Handling
-        const errorMessage = error.response?.data?.message || 'An unexpected error occurred';
+        let errorMessage = error.response?.data?.message || 'An unexpected error occurred';
+
+        // Append validation errors if present
+        if (error.response?.data?.errors && Array.isArray(error.response.data.errors)) {
+            const validationErrors = error.response.data.errors.join(', ');
+            if (validationErrors) {
+                errorMessage = `${errorMessage}: ${validationErrors}`;
+            }
+        }
 
         // Don't show toast for 401s as they are handled by refresh logic or redirect
         // Don't show toast for 404s if they are expected (handled by component)

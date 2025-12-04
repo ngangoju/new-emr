@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -23,21 +23,32 @@ import {
   Edit
 } from 'lucide-react'
 
-import { usePatient, usePatientVitals } from '@/hooks/api/usePatients'
+import { usePatient, usePatientVitals, useUpdatePatient } from '@/hooks/api/usePatients'
 import { useConsultations } from '@/hooks/api/useConsultations'
 import { format } from 'date-fns'
 import { EmptyState } from '@/components/ui/empty-state'
 import { formatDate, formatDateTime } from '@/lib/utils/date'
 import { formatAddress, formatShortAddress } from '@/lib/utils/address'
+import { useState } from 'react'
+import toast from 'react-hot-toast'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 export default function PatientDetailPage() {
   const params = useParams()
+  const router = useRouter()
   const id = params.id as string
+
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [editFormData, setEditFormData] = useState<any>({})
 
   // Fetch real patient data
   const { data: patient, isLoading: patientLoading } = usePatient(id)
   const { data: vitals, isLoading: vitalsLoading } = usePatientVitals(id)
   const { data: consultationsData, isLoading: consultationsLoading } = useConsultations({ patientId: id })
+  const updatePatientMutation = useUpdatePatient()
 
   const consultations = consultationsData || []
 
@@ -79,6 +90,39 @@ export default function PatientDetailPage() {
   const allergies = getAllergies()
   const conditions = getConditions()
 
+  const handleEditProfile = () => {
+    setEditFormData({
+      firstName: patient.firstName,
+      lastName: patient.lastName,
+      nationalId: patient.nationalId || '',
+      dateOfBirth: patient.dateOfBirth,
+      gender: patient.gender,
+      phone: patient.phone,
+      email: patient.email || '',
+      address: patient.address || '',
+    })
+    setIsEditDialogOpen(true)
+  }
+
+  const handleUpdateProfile = () => {
+    updatePatientMutation.mutate(
+      { id, data: editFormData },
+      {
+        onSuccess: () => {
+          toast.success('Profile updated successfully!')
+          setIsEditDialogOpen(false)
+        },
+        onError: (error: any) => {
+          toast.error(error?.response?.data?.message || 'Failed to update profile')
+        }
+      }
+    )
+  }
+
+  const handleNewConsultation = () => {
+    router.push(`/dashboard/doctor/consultations/new?patientId=${id}`)
+  }
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Patient Header */}
@@ -105,16 +149,117 @@ export default function PatientDetailPage() {
           </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline">
+          <Button variant="outline" onClick={handleEditProfile}>
             <Edit className="h-4 w-4 mr-2" />
             Edit Profile
           </Button>
-          <Button>
+          <Button onClick={handleNewConsultation}>
             <FileText className="h-4 w-4 mr-2" />
             New Consultation
           </Button>
         </div>
       </div>
+
+      {/* Edit Profile Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Patient Profile</DialogTitle>
+            <DialogDescription>
+              Update basic information for {patient.firstName} {patient.lastName}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="firstName">First Name</Label>
+                <Input
+                  id="firstName"
+                  value={editFormData.firstName || ''}
+                  onChange={(e) => setEditFormData({ ...editFormData, firstName: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="lastName">Last Name</Label>
+                <Input
+                  id="lastName"
+                  value={editFormData.lastName || ''}
+                  onChange={(e) => setEditFormData({ ...editFormData, lastName: e.target.value })}
+                />
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="nationalId">National ID</Label>
+              <Input
+                id="nationalId"
+                value={editFormData.nationalId || ''}
+                onChange={(e) => setEditFormData({ ...editFormData, nationalId: e.target.value })}
+              />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="dateOfBirth">Date of Birth</Label>
+                <Input
+                  id="dateOfBirth"
+                  type="date"
+                  value={editFormData.dateOfBirth || ''}
+                  onChange={(e) => setEditFormData({ ...editFormData, dateOfBirth: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="gender">Gender</Label>
+                <Select 
+                  value={editFormData.gender || ''} 
+                  onValueChange={(value) => setEditFormData({ ...editFormData, gender: value })}
+                >
+                  <SelectTrigger id="gender">
+                    <SelectValue placeholder="Select gender" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="MALE">Male</SelectItem>
+                    <SelectItem value="FEMALE">Female</SelectItem>
+                    <SelectItem value="OTHER">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="phone">Phone</Label>
+              <Input
+                id="phone"
+                value={editFormData.phone || ''}
+                onChange={(e) => setEditFormData({ ...editFormData, phone: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                value={editFormData.email || ''}
+                onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="address">Address</Label>
+              <Input
+                id="address"
+                value={editFormData.address || ''}
+                onChange={(e) => setEditFormData({ ...editFormData, address: e.target.value })}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleUpdateProfile} disabled={updatePatientMutation.isPending}>
+              {updatePatientMutation.isPending ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Main Content Tabs */}
       <Tabs defaultValue="overview" className="space-y-4">

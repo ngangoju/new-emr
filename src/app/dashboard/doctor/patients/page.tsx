@@ -46,7 +46,7 @@ import {
   Mail,
   MapPin
 } from 'lucide-react'
-import { usePatients, useCreatePatient, type Patient } from '@/hooks/api/usePatients'
+import { usePatients, useCreatePatient, useUpdatePatient, type Patient } from '@/hooks/api/usePatients'
 import toast from 'react-hot-toast'
 import { useDebounce } from '@/hooks/useDebounce'
 import { useForm } from 'react-hook-form'
@@ -67,6 +67,8 @@ export default function PatientsPage() {
   const [filterGender, setFilterGender] = useState('all')
   const [filterInsurance, setFilterInsurance] = useState('all')
   const [isRegisterDialogOpen, setIsRegisterDialogOpen] = useState(false)
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null)
 
   // React Hook Form with Zod validation
   const form = useForm<PatientRegistrationInput>({
@@ -75,7 +77,7 @@ export default function PatientsPage() {
       firstName: '',
       lastName: '',
       dateOfBirth: '',
-      gender: 'Male',
+      gender: 'MALE',
       phone: '',
       email: '',
       address: '',
@@ -94,6 +96,12 @@ export default function PatientsPage() {
   })
 
   const createPatientMutation = useCreatePatient()
+  const updatePatientMutation = useUpdatePatient()
+
+  // Edit form
+  const editForm = useForm<PatientRegistrationInput>({
+    resolver: zodResolver(patientRegistrationSchema),
+  })
 
   const patients = patientsData?.data || []
 
@@ -123,6 +131,51 @@ export default function PatientsPage() {
         toast.error(error?.response?.data?.message || 'Failed to register patient')
       }
     })
+  }
+
+  const handleEditPatient = (patient: Patient) => {
+    setSelectedPatient(patient)
+    editForm.reset({
+      firstName: patient.firstName,
+      lastName: patient.lastName,
+      dateOfBirth: patient.dateOfBirth,
+      gender: (patient.gender as "MALE" | "FEMALE" | "OTHER") || 'MALE',
+      phone: patient.phone,
+      email: patient.email || '',
+      address: patient.address || '',
+      nationalId: patient.nationalId || '',
+      insurance: patient.insurance?.provider || patient.insurance || '',
+      insuranceCard: patient.insuranceCard || '',
+      allergies: Array.isArray(patient.allergies) ? patient.allergies.join(', ') : '',
+      emergencyContact: patient.emergencyContact || '',
+    })
+    setIsEditDialogOpen(true)
+  }
+
+  const handleUpdatePatient = (data: PatientRegistrationInput) => {
+    if (!selectedPatient) return
+
+    const payload: any = {
+      ...data,
+      allergies: data.allergies 
+        ? data.allergies.split(',').map(a => a.trim()).filter(Boolean)
+        : [],
+    }
+
+    updatePatientMutation.mutate(
+      { id: selectedPatient.id, data: payload },
+      {
+        onSuccess: () => {
+          toast.success('Patient updated successfully!')
+          setIsEditDialogOpen(false)
+          setSelectedPatient(null)
+          editForm.reset()
+        },
+        onError: (error: any) => {
+          toast.error(error?.response?.data?.message || 'Failed to update patient')
+        }
+      }
+    )
   }
 
   return (
@@ -262,9 +315,9 @@ export default function PatientsPage() {
                                   </SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
-                                  <SelectItem value="Male">Male</SelectItem>
-                                  <SelectItem value="Female">Female</SelectItem>
-                                  <SelectItem value="Other">Other</SelectItem>
+                                  <SelectItem value="MALE">Male</SelectItem>
+                                  <SelectItem value="FEMALE">Female</SelectItem>
+                                  <SelectItem value="OTHER">Other</SelectItem>
                                 </SelectContent>
                               </Select>
                               <FormMessage />
@@ -389,6 +442,41 @@ export default function PatientsPage() {
                           <UserPlus className="h-4 w-4 mr-2" />
                           {createPatientMutation.isPending ? 'Registering...' : 'Register Patient'}
                         </Button>
+                      </DialogFooter>
+                    </form>
+                  </Form>
+                </DialogContent>
+              </Dialog>
+
+              {/* Edit Patient Dialog */}
+              <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle className="text-2xl font-heading">Edit Patient</DialogTitle>
+                    <DialogDescription>
+                      Update patient information for {selectedPatient?.firstName} {selectedPatient?.lastName}
+                    </DialogDescription>
+                  </DialogHeader>
+                  
+                  <Form {...editForm}>
+                    <form onSubmit={editForm.handleSubmit(handleUpdatePatient)} className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FormField control={editForm.control} name="firstName" render={({ field }) => (<FormItem><FormLabel>First Name *</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                        <FormField control={editForm.control} name="lastName" render={({ field }) => (<FormItem><FormLabel>Last Name *</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                        <FormField control={editForm.control} name="nationalId" render={({ field }) => (<FormItem><FormLabel>National ID</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                        <FormField control={editForm.control} name="dateOfBirth" render={({ field }) => (<FormItem><FormLabel>Date of Birth *</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                        <FormField control={editForm.control} name="gender" render={({ field }) => (<FormItem><FormLabel>Gender *</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="MALE">Male</SelectItem><SelectItem value="FEMALE">Female</SelectItem><SelectItem value="OTHER">Other</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
+                        <FormField control={editForm.control} name="phone" render={({ field }) => (<FormItem><FormLabel>Phone *</FormLabel><FormControl><Input type="tel" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                        <FormField control={editForm.control} name="email" render={({ field }) => (<FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                        <FormField control={editForm.control} name="address" render={({ field }) => (<FormItem className="md:col-span-2"><FormLabel>Address</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                        <FormField control={editForm.control} name="insurance" render={({ field }) => (<FormItem><FormLabel>Insurance</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="MMI">MMI</SelectItem><SelectItem value="RAMA">RAMA</SelectItem><SelectItem value="Private">Private</SelectItem><SelectItem value="None">None</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
+                        <FormField control={editForm.control} name="insuranceCard" render={({ field }) => (<FormItem><FormLabel>Insurance Card</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                        <FormField control={editForm.control} name="allergies" render={({ field }) => (<FormItem className="md:col-span-2"><FormLabel>Allergies</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                        <FormField control={editForm.control} name="emergencyContact" render={({ field }) => (<FormItem className="md:col-span-2"><FormLabel>Emergency Contact</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                      </div>
+                      <DialogFooter>
+                        <Button variant="outline" type="button" onClick={() => setIsEditDialogOpen(false)}>Cancel</Button>
+                        <Button type="submit" disabled={updatePatientMutation.isPending}><Edit className="h-4 w-4 mr-2" />{updatePatientMutation.isPending ? 'Updating...' : 'Update Patient'}</Button>
                       </DialogFooter>
                     </form>
                   </Form>
@@ -523,7 +611,13 @@ export default function PatientsPage() {
                           <Button variant="ghost" size="sm" title="View Medical Records">
                             <FileText className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="sm" title="Edit Patient">
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            title="Edit Patient" 
+                            className="hidden sm:inline-flex"
+                            onClick={() => handleEditPatient(patient)}
+                          >
                             <Edit className="h-4 w-4" />
                           </Button>
                         </div>

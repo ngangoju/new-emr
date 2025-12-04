@@ -30,7 +30,8 @@ export const metadata: Metadata = {
 
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { QueryProvider } from "@/components/providers/query-provider";
-import { Toaster } from "react-hot-toast";
+import { ToasterProvider } from "@/components/providers/toaster-provider";
+import { ErrorBoundary } from "@/components/error-boundary";
 
 export default function RootLayout({
   children,
@@ -44,25 +45,17 @@ export default function RootLayout({
         className={`${inter.variable} ${outfit.variable} ${mono.variable} font-sans antialiased`}
       >
         <QueryProvider>
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="system"
-            enableSystem
-            disableTransitionOnChange
-          >
-            {children}
-            <Toaster 
-              position="top-right"
-              toastOptions={{
-                duration: 4000,
-                style: {
-                  background: 'hsl(var(--card))',
-                  color: 'hsl(var(--card-foreground))',
-                  border: '1px solid hsl(var(--border))',
-                },
-              }}
-            />
-          </ThemeProvider>
+          <ErrorBoundary>
+            <ThemeProvider
+              attribute="class"
+              defaultTheme="system"
+              enableSystem
+              disableTransitionOnChange
+            >
+              {children}
+              <ToasterProvider />
+            </ThemeProvider>
+          </ErrorBoundary>
         </QueryProvider>
       </body>
     </html>

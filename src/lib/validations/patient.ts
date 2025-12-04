@@ -9,7 +9,7 @@ export const patientRegistrationSchema = z.object({
         const today = new Date()
         return dob < today
     }, 'Date of birth must be in the past'),
-    gender: z.enum(['Male', 'Female', 'Other'], { message: 'Gender is required' }),
+    gender: z.enum(['MALE', 'FEMALE', 'OTHER'], { message: 'Gender is required' }),
     phone: z.string()
         .min(10, 'Phone number must be at least 10 characters')
         .regex(/^[\d\s\-+()]*$/, 'Invalid phone number format'),

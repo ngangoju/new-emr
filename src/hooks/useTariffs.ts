@@ -1,39 +1,28 @@
-'use client'
-
-import { useState, useEffect, useCallback } from 'react'
-import { mockTariffs } from '@/lib/mock/tariffs'
+import { useQuery } from '@tanstack/react-query'
+import { api } from '@/lib/api'
 import type { Tariff } from '@/types/billing'
 
 interface UseTariffsOptions {
   search?: string
+  category?: string
 }
 
-export function useTariffs({ search }: UseTariffsOptions = {}) {
-  const [data, setData] = useState<Tariff[]>([])
-  const [loading, setLoading] = useState(false)
+export function useTariffs({ search, category }: UseTariffsOptions = {}) {
+  return useQuery({
+    queryKey: ['tariffs', search, category],
+    queryFn: async () => {
+      let url = '/api/billing/tariffs'
 
-  useEffect(() => {
-    setLoading(true)
-    const timer = setTimeout(() => {
-      if (!search?.trim()) {
-        setData(mockTariffs)
-      } else {
-        const lowerSearch = search.toLowerCase()
-        const filtered = mockTariffs.filter(
-          (tariff) =>
-            tariff.name.toLowerCase().includes(lowerSearch) ||
-            tariff.category.toLowerCase().includes(lowerSearch)
-        )
-        setData(filtered)
+      if (search) {
+        url = `/api/billing/tariffs/search?searchTerm=${encodeURIComponent(search)}`
+      } else if (category) {
+        url = `/api/billing/tariffs/category/${category}`
       }
-      setLoading(false)
-    }, 300)
-    return () => clearTimeout(timer)
-  }, [search])
 
-  const refetch = useCallback(() => {
-    // Trigger effect
-  }, [])
-
-  return { data, loading, refetch }
+      const { data } = await api.get<Tariff[]>(url)
+      return data
+    },
+    // Add a small delay to debounce search
+    enabled: !search || search.length >= 2
+  })
 }
