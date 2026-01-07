@@ -208,7 +208,7 @@ Follow Up: ${data.followUp || 'N/A'}
                     control={form.control}
                     name="patientId"
                     render={({ field }) => (
-                      <FormItem className="space-y-4">
+                      <FormItem className="space-y-4" id="patient-search-item">
                         <FormLabel>Search Patient *</FormLabel>
                         <div className="relative">
                           <Input 

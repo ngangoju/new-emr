@@ -1,11 +1,50 @@
 export interface User {
   id: string;
+  username: string;
   name: string;
   email: string;
-  role: 'admin' | 'doctor' | 'nurse' | 'receptionist' | 'pharmacist' | 'lab' | 'billing';
+  role: 'admin' | 'doctor' | 'nurse' | 'receptionist' | 'pharmacist' | 'lab' | 'billing' | 'user';
   status: 'active' | 'inactive' | 'suspended';
-  lastLogin: string;
+  profilePictureUrl?: string;
+  lastLogin?: string;
   createdAt: string;
+}
+
+export interface UserProfile {
+  id: string;
+  userId: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phoneNumber?: string;
+  profilePictureUrl?: string;
+  bio?: string;
+  role: string;
+  status: string;
+}
+
+export interface UserSettings {
+  userId: string;
+  theme: 'light' | 'dark';
+  sidebarCollapsed: boolean;
+  language: 'en' | 'fr' | 'rw';
+  timezone: string;
+  twoFactorEnabled: boolean;
+  shareUsageData: boolean;
+}
+
+export interface NotificationPreferences {
+  userId: string;
+  emailNotifications: boolean;
+  desktopNotifications: boolean;
+  smsNotifications: boolean;
+  pushNotifications: boolean;
+}
+
+export interface UpdatePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
 }
 
 export interface SystemMetric {

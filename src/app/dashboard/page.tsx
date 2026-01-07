@@ -26,31 +26,38 @@ import {
 } from 'lucide-react'
 import { useDashboardStats, useTodayAppointments, useRecentPatients } from '@/hooks/api/useDashboard'
 
+import { useRouter } from 'next/navigation'
+import { useRole } from '@/hooks/useRole'
+
 export default function DoctorDashboard() {
+  const router = useRouter()
+  const { role, isLoading: roleLoading, hasPermission } = useRole()
+  
   // Fetch real data from backend
   const { data: stats, isLoading: statsLoading } = useDashboardStats()
   const { data: upcomingAppointments = [], isLoading: appointmentsLoading } = useTodayAppointments()
   const { data: recentPatients = [], isLoading: patientsLoading } = useRecentPatients()
-  
-  const [userRole, setUserRole] = React.useState('Doctor')
 
   React.useEffect(() => {
-    const item = localStorage.getItem('user')
-    if (item) {
-      try {
-        const user = JSON.parse(item)
-        if (user.role) {
-          // Capitalize first letter
-          setUserRole(user.role.charAt(0).toUpperCase() + user.role.slice(1).toLowerCase())
-        }
-      } catch (e) {
-        // ignore
+    if (!roleLoading && role) {
+      if (role === 'RECEPTIONIST' || role === 'RECEIPTION' || role === 'CUSTOMER-CARE') {
+        router.push('/dashboard/reception')
+      } else if (role === 'STORE') {
+        router.push('/dashboard/pharmacy')
+      } else if (role === 'LABORANTIN' || role === 'RADIOLOGIST') {
+        router.push('/dashboard/lab')
+      } else if (role === 'BILLING_OFFICER' || role === 'CASHIER' || role === 'DAF' || role === 'COO') {
+        router.push('/dashboard/billing')
+      } else if (role === 'MANAGER' || role === 'HUMAN-RESOURCE') {
+        router.push('/dashboard/admin')
       }
     }
-  }, [])
+  }, [role, roleLoading, router])
+
+  const userRole = role ? (role.charAt(0).toUpperCase() + role.slice(1).toLowerCase()) : 'Doctor'
 
   // Show loading skeleton if data is loading
-  if (statsLoading || appointmentsLoading || patientsLoading) {
+  if (roleLoading || statsLoading || appointmentsLoading || patientsLoading) {
     return (
       <div className="space-y-8 animate-fade-in">
         <header className="space-y-1">
@@ -294,9 +301,11 @@ export default function DoctorDashboard() {
                   <Badge variant="outline" className="bg-success/10 text-success border-success/20">
                     {patient.status}
                   </Badge>
-                  <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100 transition-opacity">
-                    <FileText className="h-4 w-4" />
-                  </Button>
+                  {hasPermission('CAN_VIEW_MEDICAL_RECORDS') && (
+                    <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100 transition-opacity">
+                      <FileText className="h-4 w-4" />
+                    </Button>
+                  )}
                 </div>
               </div>
             ))
@@ -320,18 +329,22 @@ export default function DoctorDashboard() {
             </div>
           </div>
           <div className="flex space-x-2">
-            <Button variant="outline" asChild>
-              <Link href="/dashboard/doctor/patients">
-                <Users className="h-4 w-4 mr-2" />
-                New Patient
-              </Link>
-            </Button>
-            <Button asChild>
-              <Link href="/dashboard/doctor/consultations/new">
-                <FileText className="h-4 w-4 mr-2" />
-                New Consultation
-              </Link>
-            </Button>
+            {hasPermission('CAN_REGISTER_PATIENT') && (
+              <Button variant="outline" asChild>
+                <Link href="/dashboard/doctor/patients">
+                  <Users className="h-4 w-4 mr-2" />
+                  New Patient
+                </Link>
+              </Button>
+            )}
+            {hasPermission('CAN_PRESCRIBE') && (
+              <Button asChild>
+                <Link href="/dashboard/doctor/consultations/new">
+                  <FileText className="h-4 w-4 mr-2" />
+                  New Consultation
+                </Link>
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>

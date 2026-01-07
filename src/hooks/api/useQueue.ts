@@ -56,8 +56,17 @@ export function useUpdateQueueStatus() {
 
     return useMutation({
         mutationFn: async ({ id, status }: { id: string; status: string }) => {
-            const { data } = await api.put<QueueItem>(`/queue/${id}/status`, { status });
-            return data;
+            let response;
+            if (status === 'IN_PROGRESS') {
+                response = await api.post<QueueItem>(`/queue/${id}/start`);
+            } else if (status === 'COMPLETED') {
+                response = await api.post<QueueItem>(`/queue/${id}/complete`);
+            } else if (status === 'NO_SHOW') {
+                response = await api.post<QueueItem>(`/queue/${id}/no-show`);
+            } else {
+                throw new Error(`Unsupported status transition to: ${status}`);
+            }
+            return response.data;
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['queue'] });

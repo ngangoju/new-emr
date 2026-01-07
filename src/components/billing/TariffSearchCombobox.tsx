@@ -29,7 +29,7 @@ export function TariffSearchCombobox({ value, onSelect }: TariffSearchComboboxPr
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
 
-  const { data: tariffs, loading } = useTariffs({ search })
+  const { data: tariffs = [], isLoading } = useTariffs({ search })
 
   const selectedTariff = tariffs.find((tariff) => tariff.id === value)
 

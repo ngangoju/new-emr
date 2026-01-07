@@ -1,6 +1,12 @@
 'use client'
 
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription
+import React from 'react'
+
+export function DispenseDialog({ trigger }: { trigger: React.ReactNode }) {
+  return (
+    <>
+      {trigger}
+      {/* TODO: Implement full Dispense Dialog */}
+    </>
+  )
+}
