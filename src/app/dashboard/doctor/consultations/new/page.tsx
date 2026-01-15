@@ -39,7 +39,7 @@ const STEPS = [
   { id: 6, name: 'Review & Submit', icon: Eye, fields: [] },
 ]
 
-import { usePatients, type Patient } from '@/hooks/api/usePatients'
+import { usePatients, usePatient, type Patient } from '@/hooks/api/usePatients'
 import { useCreateConsultation } from '@/hooks/api/useConsultations'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
@@ -87,8 +87,10 @@ export default function NewConsultationPage() {
     limit: 5 
   })
   
+  // Reliably fetch selected patient data
+  const { data: selectedPatient, isLoading: isLoadingPatient } = usePatient(selectedPatientId)
+  
   const patients = patientsData?.data || []
-  const selectedPatient = patients.find((p: Patient) => p.id === selectedPatientId) || (patientsData?.data || []).find((p: Patient) => p.id === selectedPatientId)
 
   const createConsultationMutation = useCreateConsultation()
 
@@ -247,32 +249,48 @@ Follow Up: ${data.followUp || 'N/A'}
                         {field.value && (
                           <Card className="bg-primary/5 border-primary/20">
                             <CardContent className="pt-6">
-                              <div className="grid grid-cols-2 gap-4 text-sm">
-                                <div>
-                                  <span className="text-muted-foreground">Name:</span>
-                                  <p className="font-medium">{selectedPatient?.firstName} {selectedPatient?.lastName}</p>
+                              {isLoadingPatient ? (
+                                <div className="p-4 text-center text-sm text-muted-foreground animate-pulse">
+                                  Loading patient details...
                                 </div>
-                                <div>
-                                  <span className="text-muted-foreground">Phone:</span>
-                                  <p className="font-medium">{selectedPatient?.phone}</p>
+                              ) : selectedPatient ? (
+                                <>
+                                  <div className="grid grid-cols-2 gap-4 text-sm">
+                                    <div>
+                                      <span className="text-muted-foreground">Name:</span>
+                                      <p className="font-medium">{selectedPatient.firstName} {selectedPatient.lastName}</p>
+                                    </div>
+                                    <div>
+                                      <span className="text-muted-foreground">Phone:</span>
+                                      <p className="font-medium">{selectedPatient.phone || 'N/A'}</p>
+                                    </div>
+                                    <div>
+                                      <span className="text-muted-foreground">Gender:</span>
+                                      <p className="font-medium capitalize">{selectedPatient.gender?.toLowerCase() || 'N/A'}</p>
+                                    </div>
+                                    <div>
+                                      <span className="text-muted-foreground">ID:</span>
+                                      <p className="font-medium text-xs font-mono">{selectedPatient.id}</p>
+                                    </div>
+                                  </div>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    className="mt-4 text-destructive hover:text-destructive"
+                                    onClick={() => {
+                                      field.onChange('')
+                                      setPatientSearch('')
+                                    }}
+                                    type="button"
+                                  >
+                                    Change Patient
+                                  </Button>
+                                </>
+                              ) : (
+                                <div className="p-4 text-center text-sm text-destructive">
+                                  Failed to load patient information. Please try re-selecting.
                                 </div>
-                                <div>
-                                  <span className="text-muted-foreground">Gender:</span>
-                                  <p className="font-medium">{selectedPatient?.gender}</p>
-                                </div>
-                              </div>
-                              <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                className="mt-4 text-destructive hover:text-destructive"
-                                onClick={() => {
-                                  field.onChange('')
-                                  setPatientSearch('')
-                                }}
-                                type="button"
-                              >
-                                Change Patient
-                              </Button>
+                              )}
                             </CardContent>
                           </Card>
                         )}

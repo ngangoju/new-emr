@@ -117,7 +117,7 @@ export function UserManagementTable() {
                     {user.status}
                   </Badge>
                 </TableCell>
-                <TableCell>{new Date(user.lastLogin).toLocaleDateString()}</TableCell>
+                <TableCell>{user.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : 'Never'}</TableCell>
                 <TableCell>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>

@@ -45,3 +45,23 @@ export interface Inventory {
   supplier: string;
   minStockLevel: number;
 }
+
+// Extended type for UI display with nested medication details
+export interface InventoryItem {
+  medication: {
+    id: string;
+    name: string;
+    genericName: string;
+    strength: string;
+    form: string;
+    category: string;
+  };
+  batches: {
+    id: string;
+    medicationId: string;
+    batchNumber: string;
+    expiryDate: string;
+    quantity: number;
+  }[];
+  lowStockThreshold: number;
+}
