@@ -54,6 +54,7 @@ export function Header() {
  
   const isDarkMode = useUIStore((state) => state.isDarkMode)
   const toggleDarkMode = useUIStore((state) => state.toggleDarkMode)
+  const toggleSidebar = useUIStore((state) => state.toggleSidebar)
  
   const handleLogout = () => {
     localStorage.removeItem('accessToken')
@@ -91,7 +92,7 @@ export function Header() {
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-14 items-center">
-        <Button variant="ghost" size="sm" className="mr-4 hidden md:flex animate-scale-in">
+        <Button variant="ghost" size="sm" className="mr-4 hidden md:flex animate-scale-in" onClick={toggleSidebar}>
           <Menu className="h-5 w-5" />
           <span className="sr-only">Toggle sidebar</span>
         </Button>
