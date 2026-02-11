@@ -21,6 +21,7 @@ import {
 } from "lucide-react"
 
 import { UserRole } from "@/lib/utils/auth"
+import { useUIStore } from "@/lib/stores/uiStore"
 
 interface NavItem {
   title: string
@@ -96,6 +97,7 @@ export function Sidebar({ className }: { className?: string }) {
   const [mounted, setMounted] = useState(false)
   const pathname = usePathname()
   const router = useRouter()
+  const sidebarCollapsed = useUIStore((state) => state.sidebarCollapsed)
 
   useEffect(() => {
     setMounted(true)
@@ -117,19 +119,31 @@ export function Sidebar({ className }: { className?: string }) {
     : navItems.filter(item => !item.roles || item.roles.includes('DOCTOR'))
 
   return (
-    <div className={cn("flex flex-col h-full w-64 border-r bg-card p-4 shadow-sm animate-slide-in-right", className)}>
+    <div className={cn(
+      "flex flex-col h-full border-r bg-card p-4 shadow-sm animate-slide-in-right transition-all duration-300",
+      sidebarCollapsed ? "w-20" : "w-64",
+      className
+    )}>
       {/* Logo */}
-      <div className="mb-8 p-3 rounded-xl bg-gradient-to-r from-primary/10 to-accent/10 border">
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 bg-gradient-to-r from-primary to-primary/80 rounded-xl flex items-center justify-center shadow-lg">
+      <div className={cn(
+        "mb-8 p-3 rounded-xl bg-gradient-to-r from-primary/10 to-accent/10 border transition-all duration-300",
+        sidebarCollapsed && "p-2"
+      )}>
+        <div className={cn(
+          "flex items-center",
+          sidebarCollapsed ? "justify-center" : "space-x-3"
+        )}>
+          <div className="w-10 h-10 bg-gradient-to-r from-primary to-primary/80 rounded-xl flex items-center justify-center shadow-lg shrink-0">
             <Stethoscope className="h-6 w-6 text-primary-foreground" />
           </div>
-          <div>
-            <h1 className="font-heading text-xl font-bold text-foreground leading-tight">EMR</h1>
-            <p className="text-[10px] text-muted-foreground font-bold tracking-wider uppercase">
-              {userRole} PORTAL
-            </p>
-          </div>
+          {!sidebarCollapsed && (
+            <div>
+              <h1 className="font-heading text-xl font-bold text-foreground leading-tight">EMR</h1>
+              <p className="text-[10px] text-muted-foreground font-bold tracking-wider uppercase">
+                {userRole} PORTAL
+              </p>
+            </div>
+          )}
         </div>
       </div>
 
@@ -147,17 +161,19 @@ export function Sidebar({ className }: { className?: string }) {
               key={item.href}
               href={item.href}
               className={cn(
-                "group flex items-center space-x-3 rounded-lg p-3 text-sm font-medium transition-all",
+                "group flex items-center rounded-lg p-3 text-sm font-medium transition-all",
+                sidebarCollapsed ? "justify-center" : "space-x-3",
                 isActive 
                   ? "bg-primary text-primary-foreground shadow-md" 
                   : "hover:bg-accent hover:text-accent-foreground"
               )}
+              title={sidebarCollapsed ? item.title : undefined}
             >
               <item.icon className={cn(
                 "h-5 w-5 shrink-0",
                 isActive ? "opacity-100" : "opacity-80 group-hover:opacity-100"
               )} />
-              <span>{item.title}</span>
+              {!sidebarCollapsed && <span>{item.title}</span>}
             </Link>
           )
         })}
@@ -168,11 +184,15 @@ export function Sidebar({ className }: { className?: string }) {
         <Button 
           variant="ghost" 
           size="sm" 
-          className="w-full justify-start text-muted-foreground hover:text-foreground"
+          className={cn(
+            "w-full text-muted-foreground hover:text-foreground",
+            sidebarCollapsed ? "justify-center px-0" : "justify-start"
+          )}
           onClick={() => router.push('/dashboard/settings')}
+          title={sidebarCollapsed ? "Settings" : undefined}
         >
-          <Settings className="mr-2 h-4 w-4" />
-          Settings
+          <Settings className={cn("h-4 w-4", !sidebarCollapsed && "mr-2")} />
+          {!sidebarCollapsed && "Settings"}
         </Button>
       </div>
     </div>

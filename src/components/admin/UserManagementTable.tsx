@@ -42,7 +42,7 @@ export function UserManagementTable() {
   const filters = { search, role: roleFilter, status: statusFilter }
   const { filteredUsers } = useUsers(filters)
 
-  const roles = ['admin', 'doctor', 'nurse', 'receptionist', 'pharmacist', 'lab', 'billing']
+  const roles = ['admin', 'doctor', 'nurse', 'receptionist', 'cashier', 'lab_tech', 'pharmacist', 'auditor', 'billing']
   const statuses = ['active', 'inactive', 'suspended']
 
   const handleEdit = (user: User) => {
@@ -175,7 +175,13 @@ export function UserManagementTable() {
                 <SelectContent>
                   <SelectItem value="admin">Admin</SelectItem>
                   <SelectItem value="doctor">Doctor</SelectItem>
-                  {/* more */}
+                  <SelectItem value="nurse">Nurse</SelectItem>
+                  <SelectItem value="receptionist">Receptionist</SelectItem>
+                  <SelectItem value="cashier">Cashier</SelectItem>
+                  <SelectItem value="lab_tech">Lab Tech</SelectItem>
+                  <SelectItem value="pharmacist">Pharmacist</SelectItem>
+                  <SelectItem value="auditor">Auditor</SelectItem>
+                  <SelectItem value="billing">Billing</SelectItem>
                 </SelectContent>
               </Select>
             </div>

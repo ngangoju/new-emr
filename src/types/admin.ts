@@ -3,7 +3,7 @@ export interface User {
   username: string;
   name: string;
   email: string;
-  role: 'admin' | 'doctor' | 'nurse' | 'receptionist' | 'pharmacist' | 'lab' | 'billing' | 'user';
+  role: 'admin' | 'doctor' | 'nurse' | 'receptionist' | 'cashier' | 'lab_tech' | 'pharmacist' | 'auditor' | 'billing' | 'user';
   status: 'active' | 'inactive' | 'suspended';
   profilePictureUrl?: string;
   lastLogin?: string;
