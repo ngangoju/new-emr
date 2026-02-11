@@ -5,7 +5,6 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   ResponsiveContainer,
 } from 'recharts'
 import {
@@ -14,31 +13,41 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-
-const chartData = [
-  { day: 'Mon', revenue: 2400 },
-  { day: 'Tue', revenue: 1398 },
-  { day: 'Wed', revenue: 9800 },
-  { day: 'Thu', revenue: 3908 },
-  { day: 'Fri', revenue: 4800 },
-  { day: 'Sat', revenue: 3800 },
-  { day: 'Sun', revenue: 4300 },
-]
+import { useReports } from '@/hooks/useReports'
 
 export function ReportCharts() {
+  const { reports, loading } = useReports()
+  const data = reports.financial?.data || []
+
+  if (loading) {
+    return (
+      <Card className="col-span-full">
+        <CardHeader>
+          <CardTitle>Financial Reports</CardTitle>
+        </CardHeader>
+        <CardContent className="h-[300px] flex items-center justify-center text-muted-foreground">
+          Loading charts...
+        </CardContent>
+      </Card>
+    )
+  }
+
   return (
     <Card className="col-span-full">
       <CardHeader>
-        <CardTitle>Revenue - Last 7 Days</CardTitle>
+        <CardTitle>{reports.financial?.title || 'Revenue'}</CardTitle>
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={300}>
-          <BarChart data={chartData}>
+          <BarChart data={data}>
             <CartesianGrid vertical={false} strokeOpacity={0.3} />
-            <XAxis dataKey="day" tickLine={false} axisLine={false} />
+            <XAxis dataKey="label" tickLine={false} axisLine={false} />
             <YAxis tickLine={false} axisLine={false} />
-            <Tooltip />
-            <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+            <Tooltip 
+              formatter={(value: any) => [`RWF ${(Number(value) || 0).toLocaleString()}`, 'Revenue']}
+              cursor={{ fill: 'transparent' }}
+            />
+            <Bar dataKey="value" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </CardContent>

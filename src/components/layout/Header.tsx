@@ -23,8 +23,10 @@ export function Header() {
     name: 'User',
     role: 'user' 
   })
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
+    setMounted(true)
     const item = localStorage.getItem('user')
     if (item) {
       try {
@@ -62,6 +64,30 @@ export function Header() {
     router.push('/login')
     router.refresh()
   }
+  if (!mounted) {
+    return (
+      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="container flex h-14 items-center">
+          <div className="flex flex-1 items-center space-x-2 md:justify-end">
+            <div className="relative flex-1 flex md:w-80">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input type="search" placeholder="Search..." className="pl-10 pr-4 h-9 w-full" disabled />
+            </div>
+            <Button variant="ghost" size="sm" className="h-9 w-9 rounded-full" disabled>
+              <Bell className="h-5 w-5" />
+            </Button>
+            <Button variant="ghost" size="sm" className="h-9 w-9 rounded-full" disabled>
+              <Sun className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" className="relative h-9 w-9 rounded-full" disabled>
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-muted-foreground">?</div>
+            </Button>
+          </div>
+        </div>
+      </header>
+    )
+  }
+
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-14 items-center">
@@ -137,11 +163,11 @@ export function Header() {
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="cursor-pointer">
+              <DropdownMenuItem className="cursor-pointer" onClick={() => router.push('/dashboard/profile')}>
                 <User className="mr-2 h-4 w-4" />
                 Profile
               </DropdownMenuItem>
-              <DropdownMenuItem className="cursor-pointer">
+              <DropdownMenuItem className="cursor-pointer" onClick={() => router.push('/dashboard/settings')}>
                 <Settings className="mr-2 h-4 w-4" />
                 Settings
               </DropdownMenuItem>

@@ -178,8 +178,7 @@ export function InvoiceGenerator({ trigger }: { trigger: React.ReactNode }) {
               </TableBody>
             </Table>
           </TabsContent>
-          {activeTab === 'summary' && (
-            <div className="space-y-2">
+          <TabsContent value="summary" className="space-y-4">
             <Card>
               <CardHeader>
                 <CardTitle>Invoice Summary</CardTitle>

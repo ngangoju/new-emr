@@ -60,8 +60,10 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form'
+import { useRole } from '@/hooks/useRole'
 
 export default function PatientsPage() {
+  const { role, hasPermission } = useRole()
   const [searchQuery, setSearchQuery] = useState('')
   const debouncedQuery = useDebounce(searchQuery, 500)
   const [filterGender, setFilterGender] = useState('all')
@@ -227,226 +229,228 @@ export default function PatientsPage() {
                 </SelectContent>
               </Select>
 
-              {/* Register New Patient Button */}
-              <Dialog open={isRegisterDialogOpen} onOpenChange={setIsRegisterDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button className="h-11 bg-primary hover:bg-primary/90">
-                    <UserPlus className="h-4 w-4 mr-2" />
-                    Register Patient
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-                  <DialogHeader>
-                    <DialogTitle className="text-2xl font-heading">Register New Patient</DialogTitle>
-                    <DialogDescription>
-                      Fill in the patient's information to create a new record
-                    </DialogDescription>
-                  </DialogHeader>
-                  
-                  <Form {...form}>
-                    <form onSubmit={form.handleSubmit(handleRegisterPatient)} className="space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <FormField
-                          control={form.control}
-                          name="firstName"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>First Name *</FormLabel>
-                              <FormControl>
-                                <Input placeholder="John" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        
-                        <FormField
-                          control={form.control}
-                          name="lastName"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Last Name *</FormLabel>
-                              <FormControl>
-                                <Input placeholder="Doe" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        
-                        <FormField
-                          control={form.control}
-                          name="nationalId"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>National ID</FormLabel>
-                              <FormControl>
-                                <Input placeholder="1199780012345" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        <FormField
-                          control={form.control}
-                          name="dateOfBirth"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Date of Birth *</FormLabel>
-                              <FormControl>
-                                <Input type="date" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        <FormField
-                          control={form.control}
-                          name="gender"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Gender *</FormLabel>
-                              <Select onValueChange={field.onChange} defaultValue={field.value}>
+              {/* Register New Patient Button - Receptionists, Doctors, Admins only */}
+              {hasPermission('CAN_REGISTER_PATIENT') && (
+                <Dialog open={isRegisterDialogOpen} onOpenChange={setIsRegisterDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button className="h-11 bg-primary hover:bg-primary/90">
+                      <UserPlus className="h-4 w-4 mr-2" />
+                      Register Patient
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle className="text-2xl font-heading">Register New Patient</DialogTitle>
+                      <DialogDescription>
+                        Fill in the patient's information to create a new record
+                      </DialogDescription>
+                    </DialogHeader>
+                    
+                    <Form {...form}>
+                      <form onSubmit={form.handleSubmit(handleRegisterPatient)} className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <FormField
+                            control={form.control}
+                            name="firstName"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>First Name *</FormLabel>
                                 <FormControl>
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="Select gender" />
-                                  </SelectTrigger>
+                                  <Input placeholder="John" {...field} />
                                 </FormControl>
-                                <SelectContent>
-                                  <SelectItem value="MALE">Male</SelectItem>
-                                  <SelectItem value="FEMALE">Female</SelectItem>
-                                  <SelectItem value="OTHER">Other</SelectItem>
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        <FormField
-                          control={form.control}
-                          name="phone"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Phone Number *</FormLabel>
-                              <FormControl>
-                                <Input type="tel" placeholder="+250 788 123 456" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        <FormField
-                          control={form.control}
-                          name="email"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Email</FormLabel>
-                              <FormControl>
-                                <Input type="email" placeholder="patient@email.com" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        <FormField
-                          control={form.control}
-                          name="address"
-                          render={({ field }) => (
-                            <FormItem className="md:col-span-2">
-                              <FormLabel>Address</FormLabel>
-                              <FormControl>
-                                <Input placeholder="Kigali, Gasabo District" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        <FormField
-                          control={form.control}
-                          name="insurance"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Insurance</FormLabel>
-                              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          
+                          <FormField
+                            control={form.control}
+                            name="lastName"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Last Name *</FormLabel>
                                 <FormControl>
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="Select insurance" />
-                                  </SelectTrigger>
+                                  <Input placeholder="Doe" {...field} />
                                 </FormControl>
-                                <SelectContent>
-                                  <SelectItem value="MMI">MMI</SelectItem>
-                                  <SelectItem value="RAMA">RAMA</SelectItem>
-                                  <SelectItem value="Private">Private</SelectItem>
-                                  <SelectItem value="None">None</SelectItem>
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          
+                          <FormField
+                            control={form.control}
+                            name="nationalId"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>National ID</FormLabel>
+                                <FormControl>
+                                  <Input placeholder="1199780012345" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
 
-                        <FormField
-                          control={form.control}
-                          name="insuranceCard"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Insurance Card Number</FormLabel>
-                              <FormControl>
-                                <Input placeholder="123456789" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
+                          <FormField
+                            control={form.control}
+                            name="dateOfBirth"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Date of Birth *</FormLabel>
+                                <FormControl>
+                                  <Input type="date" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
 
-                        <FormField
-                          control={form.control}
-                          name="allergies"
-                          render={({ field }) => (
-                            <FormItem className="md:col-span-2">
-                              <FormLabel>Known Allergies</FormLabel>
-                              <FormControl>
-                                <Input placeholder="e.g., Penicillin, Peanuts" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
+                          <FormField
+                            control={form.control}
+                            name="gender"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Gender *</FormLabel>
+                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                  <FormControl>
+                                    <SelectTrigger>
+                                      <SelectValue placeholder="Select gender" />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                    <SelectItem value="MALE">Male</SelectItem>
+                                    <SelectItem value="FEMALE">Female</SelectItem>
+                                    <SelectItem value="OTHER">Other</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
 
-                        <FormField
-                          control={form.control}
-                          name="emergencyContact"
-                          render={({ field }) => (
-                            <FormItem className="md:col-span-2">
-                              <FormLabel>Emergency Contact</FormLabel>
-                              <FormControl>
-                                <Input placeholder="Name - Phone Number" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
+                          <FormField
+                            control={form.control}
+                            name="phone"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Phone Number *</FormLabel>
+                                <FormControl>
+                                  <Input type="tel" placeholder="+250 788 123 456" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
 
-                      <DialogFooter>
-                        <Button variant="outline" type="button" onClick={() => setIsRegisterDialogOpen(false)}>
-                          Cancel
-                        </Button>
-                        <Button type="submit" disabled={createPatientMutation.isPending}>
-                          <UserPlus className="h-4 w-4 mr-2" />
-                          {createPatientMutation.isPending ? 'Registering...' : 'Register Patient'}
-                        </Button>
-                      </DialogFooter>
-                    </form>
-                  </Form>
-                </DialogContent>
-              </Dialog>
+                          <FormField
+                            control={form.control}
+                            name="email"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Email</FormLabel>
+                                <FormControl>
+                                  <Input type="email" placeholder="patient@email.com" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={form.control}
+                            name="address"
+                            render={({ field }) => (
+                              <FormItem className="md:col-span-2">
+                                <FormLabel>Address</FormLabel>
+                                <FormControl>
+                                  <Input placeholder="Kigali, Gasabo District" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={form.control}
+                            name="insurance"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Insurance</FormLabel>
+                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                  <FormControl>
+                                    <SelectTrigger>
+                                      <SelectValue placeholder="Select insurance" />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                    <SelectItem value="MMI">MMI</SelectItem>
+                                    <SelectItem value="RAMA">RAMA</SelectItem>
+                                    <SelectItem value="Private">Private</SelectItem>
+                                    <SelectItem value="None">None</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={form.control}
+                            name="insuranceCard"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Insurance Card Number</FormLabel>
+                                <FormControl>
+                                  <Input placeholder="123456789" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={form.control}
+                            name="allergies"
+                            render={({ field }) => (
+                              <FormItem className="md:col-span-2">
+                                <FormLabel>Known Allergies</FormLabel>
+                                <FormControl>
+                                  <Input placeholder="e.g., Penicillin, Peanuts" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={form.control}
+                            name="emergencyContact"
+                            render={({ field }) => (
+                              <FormItem className="md:col-span-2">
+                                <FormLabel>Emergency Contact</FormLabel>
+                                <FormControl>
+                                  <Input placeholder="Name - Phone Number" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+
+                        <DialogFooter>
+                          <Button variant="outline" type="button" onClick={() => setIsRegisterDialogOpen(false)}>
+                            Cancel
+                          </Button>
+                          <Button type="submit" disabled={createPatientMutation.isPending}>
+                            <UserPlus className="h-4 w-4 mr-2" />
+                            {createPatientMutation.isPending ? 'Registering...' : 'Register Patient'}
+                          </Button>
+                        </DialogFooter>
+                      </form>
+                    </Form>
+                  </DialogContent>
+                </Dialog>
+              )}
 
               {/* Edit Patient Dialog */}
               <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
@@ -601,25 +605,29 @@ export default function PatientsPage() {
                           {patient.status}
                         </Badge>
                       </TableCell>
-                      <TableCell>
+                       <TableCell>
                         <div className="flex justify-end space-x-2">
                           <Link href={`/dashboard/doctor/patients/${patient.id}`}>
                             <Button variant="ghost" size="sm" title="View Details">
                               <Eye className="h-4 w-4" />
                             </Button>
                           </Link>
-                          <Button variant="ghost" size="sm" title="View Medical Records">
-                            <FileText className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            title="Edit Patient" 
-                            className="hidden sm:inline-flex"
-                            onClick={() => handleEditPatient(patient)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
+                          {hasPermission('CAN_VIEW_MEDICAL_RECORDS') && (
+                            <Button variant="ghost" size="sm" title="View Medical Records">
+                              <FileText className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {hasPermission('CAN_REGISTER_PATIENT') && (
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              title="Edit Patient" 
+                              className="hidden sm:inline-flex"
+                              onClick={() => handleEditPatient(patient)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>

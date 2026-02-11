@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { cn } from "@/lib/utils"
 import Link from "next/link"
+import { usePathname, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import {
   LayoutDashboard,
@@ -15,37 +16,105 @@ import {
   Microscope,
   UserCog,
   Settings,
+  ClipboardList,
+  UserPlus,
 } from "lucide-react"
 
-const navItems = [
-  { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { title: "Patients", href: "/dashboard/doctor/patients", icon: Users },
-  { title: "Consultations", href: "/dashboard/doctor/consultations", icon: Stethoscope },
-  { title: "Schedule", href: "/dashboard/doctor/schedule", icon: CalendarDays },
-  { title: "Records", href: "/dashboard/doctor/records", icon: FileText },
-  { title: "Billing", href: "/dashboard/billing", icon: DollarSign },
-  { title: "Pharmacy", href: "/dashboard/pharmacy", icon: Pill },
-  { title: "Lab", href: "/dashboard/lab", icon: Microscope },
-  { title: "Admin", href: "/dashboard/admin", icon: UserCog },
+import { UserRole } from "@/lib/utils/auth"
+
+interface NavItem {
+  title: string
+  href: string
+  icon: any
+  roles?: UserRole[]
+}
+
+const navItems: NavItem[] = [
+  { 
+    title: "Dashboard", 
+    href: "/dashboard", 
+    icon: LayoutDashboard 
+  },
+  { 
+    title: "Reception", 
+    href: "/dashboard/reception", 
+    icon: UserPlus,
+    roles: ['ADMIN', 'RECEIPTION', 'RECEPTIONIST', 'CUSTOMER-CARE']
+  },
+  { 
+    title: "Patients", 
+    href: "/dashboard/doctor/patients", 
+    icon: Users,
+    roles: ['ADMIN', 'DOCTOR', 'NURSE', 'RECEIPTION', 'RECEPTIONIST', 'CUSTOMER-CARE', 'CHIEF-NURSE', 'CLINICAL-DIRECTOR']
+  },
+  { 
+    title: "Consultations", 
+    href: "/dashboard/doctor/consultations", 
+    icon: Stethoscope,
+    roles: ['ADMIN', 'DOCTOR', 'NURSE', 'CHIEF-NURSE', 'CLINICAL-DIRECTOR']
+  },
+  { 
+    title: "Schedule", 
+    href: "/dashboard/doctor/schedule", 
+    icon: CalendarDays,
+    roles: ['ADMIN', 'DOCTOR', 'NURSE', 'CHIEF-NURSE', 'CLINICAL-DIRECTOR', 'RECEIPTION', 'RECEPTIONIST']
+  },
+  { 
+    title: "Lab Results", 
+    href: "/dashboard/lab", 
+    icon: Microscope,
+    roles: ['ADMIN', 'LABORANTIN', 'LAB_TECH', 'DOCTOR', 'NURSE', 'CLINICAL-DIRECTOR', 'RADIOLOGIST']
+  },
+  { 
+    title: "Pharmacy", 
+    href: "/dashboard/pharmacy", 
+    icon: Pill,
+    roles: ['ADMIN', 'STORE', 'PHARMACIST', 'DOCTOR', 'CLINICAL-DIRECTOR']
+  },
+  { 
+    title: "Billing", 
+    href: "/dashboard/billing", 
+    icon: DollarSign,
+    roles: ['ADMIN', 'BILLING_OFFICER', 'CASHIER', 'DAF', 'COO']
+  },
+  { 
+    title: "Medical Records", 
+    href: "/dashboard/doctor/records", 
+    icon: FileText,
+    roles: ['ADMIN', 'DOCTOR', 'NURSE', 'CHIEF-NURSE', 'CLINICAL-DIRECTOR']
+  },
+  { 
+    title: "Admin", 
+    href: "/dashboard/admin", 
+    icon: UserCog,
+    roles: ['ADMIN', 'MANAGER', 'DAF', 'COO', 'HUMAN-RESOURCE']
+  },
 ]
 
 export function Sidebar({ className }: { className?: string }) {
-  const [userRole, setUserRole] = useState('Doctor')
+  const [userRole, setUserRole] = useState<UserRole>('DOCTOR')
+  const [mounted, setMounted] = useState(false)
+  const pathname = usePathname()
+  const router = useRouter()
 
   useEffect(() => {
+    setMounted(true)
     const item = localStorage.getItem('user')
     if (item) {
       try {
         const user = JSON.parse(item)
         if (user.role) {
-          // Capitalize first letter
-          setUserRole(user.role.charAt(0).toUpperCase() + user.role.slice(1).toLowerCase())
+          setUserRole(user.role.toUpperCase() as UserRole)
         }
       } catch (e) {
         // ignore
       }
     }
   }, [])
+
+  const filteredNavItems = mounted 
+    ? navItems.filter(item => !item.roles || item.roles.includes(userRole))
+    : navItems.filter(item => !item.roles || item.roles.includes('DOCTOR'))
 
   return (
     <div className={cn("flex flex-col h-full w-64 border-r bg-card p-4 shadow-sm animate-slide-in-right", className)}>
@@ -57,28 +126,51 @@ export function Sidebar({ className }: { className?: string }) {
           </div>
           <div>
             <h1 className="font-heading text-xl font-bold text-foreground leading-tight">EMR</h1>
-            <p className="text-xs text-muted-foreground font-medium">{userRole} Portal</p>
+            <p className="text-[10px] text-muted-foreground font-bold tracking-wider uppercase">
+              {userRole} PORTAL
+            </p>
           </div>
         </div>
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 space-y-1">
-        {navItems.map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            className="group flex items-center space-x-3 rounded-lg p-3 text-sm font-medium transition-all hover:bg-accent hover:text-accent-foreground"
-          >
-            <item.icon className="h-5 w-5 shrink-0 opacity-80 group-hover:opacity-100" />
-            <span>{item.title}</span>
-          </Link>
-        ))}
+      <nav className="flex-1 space-y-1 overflow-y-auto pr-2 custom-scrollbar">
+        {filteredNavItems.map((item) => {
+          const currentPath = pathname?.replace(/\/$/, '') || ''
+          const itemPath = item.href.replace(/\/$/, '')
+          
+          const isActive = itemPath === '/dashboard' 
+            ? currentPath === '/dashboard'
+            : currentPath === itemPath || currentPath.startsWith(itemPath + '/')
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={cn(
+                "group flex items-center space-x-3 rounded-lg p-3 text-sm font-medium transition-all",
+                isActive 
+                  ? "bg-primary text-primary-foreground shadow-md" 
+                  : "hover:bg-accent hover:text-accent-foreground"
+              )}
+            >
+              <item.icon className={cn(
+                "h-5 w-5 shrink-0",
+                isActive ? "opacity-100" : "opacity-80 group-hover:opacity-100"
+              )} />
+              <span>{item.title}</span>
+            </Link>
+          )
+        })}
       </nav>
 
       {/* Footer */}
-      <div className="mt-auto p-4 pt-8 border-t">
-        <Button variant="ghost" size="sm" className="w-full justify-start">
+      <div className="mt-auto p-4 pt-4 border-t space-y-2">
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          className="w-full justify-start text-muted-foreground hover:text-foreground"
+          onClick={() => router.push('/dashboard/settings')}
+        >
           <Settings className="mr-2 h-4 w-4" />
           Settings
         </Button>

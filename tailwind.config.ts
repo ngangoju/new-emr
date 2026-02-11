@@ -8,7 +8,7 @@ const config = {
     './components/**/*.{ts,tsx}',
     './app/**/*.{ts,tsx}',
     './src/**/*.{ts,tsx}',
-	],
+  ],
   prefix: "",
   theme: {
     container: {
@@ -20,77 +20,97 @@ const config = {
     },
     extend: {
       colors: {
-        border: "hsl(var(--border))",
-        input: "hsl(var(--input))",
-        ring: "hsl(var(--ring))",
-        background: "hsl(var(--background))",
-        foreground: "hsl(var(--foreground))",
+        // Core semantic colors - using CSS variables directly
+        border: "var(--border)",
+        input: "var(--input)",
+        ring: "var(--ring)",
+        background: "var(--background)",
+        foreground: "var(--foreground)",
+
+        // Primary - Emerald Green (#3ABF72)
         primary: {
-          50: "hsl(207 90% 97%)",
-          100: "hsl(207 85% 92%)",
-          200: "hsl(207 77% 84%)",
-          300: "hsl(207 71% 72%)",
-          400: "hsl(207 67% 58%)",
-          500: "hsl(207 73% 43%)",
-          600: "hsl(207 76% 36%)",
-          700: "hsl(207 77% 29%)",
-          800: "hsl(207 78% 23%)",
-          900: "hsl(207 79% 18%)",
-          DEFAULT: "hsl(var(--primary))",
-          foreground: "hsl(var(--primary-foreground))",
+          50: "#E7F9EE",
+          100: "#CFF2DD",
+          200: "#9FE6BA",
+          300: "#6FDA98",
+          400: "#3ABF72",   // Emerald Green
+          500: "#34AC67",
+          600: "#2E995B",
+          700: "#237344",
+          800: "#174C2E",
+          900: "#0C2617",
+          DEFAULT: "var(--primary)",
+          foreground: "var(--primary-foreground)",
         },
+
+        // Secondary - Sky Blue (#00ADEF)
         secondary: {
-          DEFAULT: "hsl(var(--secondary))",
-          foreground: "hsl(var(--secondary-foreground))",
+          DEFAULT: "var(--secondary)",
+          foreground: "var(--secondary-foreground)",
         },
+
+        // Destructive - Lava Red (#D32F2F)
         destructive: {
-          DEFAULT: "hsl(var(--destructive))",
-          foreground: "hsl(var(--destructive-foreground))",
+          DEFAULT: "var(--destructive)",
+          foreground: "var(--destructive-foreground)",
         },
+
         muted: {
-          DEFAULT: "hsl(var(--muted))",
-          foreground: "hsl(var(--muted-foreground))",
+          DEFAULT: "var(--muted)",
+          foreground: "var(--muted-foreground)",
         },
+
+        // Accent - Sky Blue for highlights
         accent: {
-          light: "hsl(262 83% 94%)",
-          DEFAULT: "hsl(var(--accent))",
-          dark: "hsl(262 83% 48%)",
-          foreground: "hsl(var(--accent-foreground))",
+          light: "#E6F7FD",
+          DEFAULT: "var(--accent)",
+          dark: "#008ABF",
+          foreground: "var(--accent-foreground)",
         },
+
         popover: {
-          DEFAULT: "hsl(var(--popover))",
-          foreground: "hsl(var(--popover-foreground))",
+          DEFAULT: "var(--popover)",
+          foreground: "var(--popover-foreground)",
         },
+
         card: {
-          DEFAULT: "hsl(var(--card))",
-          foreground: "hsl(var(--card-foreground))",
+          DEFAULT: "var(--card)",
+          foreground: "var(--card-foreground)",
         },
+
+        // Success - Growth Green (#0C6030)
         success: {
-          light: "hsl(142 76% 92%)",
-          DEFAULT: "hsl(142 71% 45%)",
-          dark: "hsl(142 76% 36%)",
+          light: "#E8F5EE",
+          DEFAULT: "#0C6030",   // Growth Green
+          dark: "#094824",
         },
+
+        // Warning - Amber (healthcare-safe)
         warning: {
-          light: "hsl(38 92% 90%)",
-          DEFAULT: "hsl(38 92% 50%)",
-          dark: "hsl(38 92% 36%)",
+          light: "#FFF8E6",
+          DEFAULT: "#F59E0B",
+          dark: "#B45309",
         },
+
+        // Danger - Lava Red (#D32F2F)
         danger: {
-          light: "hsl(0 93% 94%)",
-          DEFAULT: "hsl(0 84% 60%)",
-          dark: "hsl(0 73% 41%)",
+          light: "#FDEAEA",
+          DEFAULT: "#D32F2F",   // Lava Red
+          dark: "#9A2222",
         },
+
+        // Gray scale based on Deep Grey (#343A40)
         gray: {
-          50: "hsl(210 40% 98%)",
-          100: "hsl(214 32% 94%)",
-          200: "hsl(213 27% 84%)",
-          300: "hsl(211 23% 69%)",
-          400: "hsl(211 20% 53%)",
-          500: "hsl(211 24% 43%)",
-          600: "hsl(211 30% 33%)",
-          700: "hsl(211 34% 23%)",
-          800: "hsl(211 40% 16%)",
-          900: "hsl(211 44% 11%)",
+          50: "#F8F9FA",
+          100: "#F1F3F5",
+          200: "#E9ECEF",
+          300: "#DEE2E6",
+          400: "#CED4DA",
+          500: "#ADB5BD",
+          600: "#6C757D",
+          700: "#495057",
+          800: "#343A40",   // Deep Grey
+          900: "#212529",
         },
       },
       borderRadius: {

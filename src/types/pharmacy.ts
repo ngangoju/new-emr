@@ -1,42 +1,67 @@
-export interface Medication {
-  id: string;
-  name: string;
-  genericName: string;
-  strength: string;
-  form: string;
+export interface PharmacyDashboardStats {
+  totalInventoryValue: number;
+  totalMedicationsInStock: number;
+  lowStockCount: number;
+  expiringCount: number;
+  todayDispensingCount: number;
+  todayDispensingRevenue: number;
+  weekDispensingCount: number;
+  weekDispensingRevenue: number;
+}
+
+export interface InventorySummary {
+  medicationName: string;
+  totalQuantity: number;
+  totalValue: number;
+  lowStockCount: number;
+  expiringCount: number;
   category: string;
 }
 
-export interface Batch {
+export interface StockAlert {
+  lowStockCount: number;
+  expiringCount: number;
+  lowStockItems: any[]; // Define more specifically if needed
+  expiringItems: any[];
+}
+
+export interface Medication {
+  id: string;
+  brandName: string;
+  genericName: string;
+  code: string;
+  category: string;
+  strength: string;
+  form: string;
+}
+
+export interface Inventory {
   id: string;
   medicationId: string;
-  batchNumber: string;
-  expiryDate: string;
   quantity: number;
-  manufacturedDate?: string;
-  costPrice?: number;
+  unitPrice: number;
+  batchNumber: string;
+  expiresAt: string;
+  supplier: string;
+  minStockLevel: number;
 }
 
+// Extended type for UI display with nested medication details
 export interface InventoryItem {
-  medication: Medication;
-  batches: Batch[];
+  medication: {
+    id: string;
+    name: string;
+    genericName: string;
+    strength: string;
+    form: string;
+    category: string;
+  };
+  batches: {
+    id: string;
+    medicationId: string;
+    batchNumber: string;
+    expiryDate: string;
+    quantity: number;
+  }[];
   lowStockThreshold: number;
-}
-
-export interface PrescriptionMedication {
-  medicationId: string;
-  dosage: string;
-  frequency: string;
-  durationDays: number;
-  instructions: string;
-}
-
-export interface PharmacyPrescription {
-  id: string;
-  consultationId: string;
-  patientId: string;
-  patientName: string;
-  createdAt: string;
-  medications: PrescriptionMedication[];
-  status: 'pending' | 'dispensed' | 'partial';
 }

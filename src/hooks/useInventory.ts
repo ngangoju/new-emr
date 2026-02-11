@@ -1,9 +1,33 @@
-'use client'
+import { useQuery } from '@tanstack/react-query';
+import { api } from '@/lib/api';
+import { PharmacyDashboardStats, InventorySummary, StockAlert } from '@/types/pharmacy';
 
-import type { InventoryItem } from '@/types/pharmacy'
-import { mockInventory } from '@/lib/mock/pharmacy'
+export function usePharmacyDashboard() {
+  return useQuery({
+    queryKey: ['pharmacy', 'dashboard'],
+    queryFn: async () => {
+      const { data } = await api.get<PharmacyDashboardStats>('/inventory/dashboard');
+      return data;
+    },
+  });
+}
 
-export function useInventory() {
-  const inventory = mockInventory as InventoryItem[]
+export function useInventorySummary() {
+  return useQuery({
+    queryKey: ['inventory', 'summary'],
+    queryFn: async () => {
+      const { data } = await api.get<InventorySummary[]>('/inventory/summary');
+      return data;
+    },
+  });
+}
 
-  const totals
+export function useStockAlerts() {
+  return useQuery({
+    queryKey: ['inventory', 'alerts'],
+    queryFn: async () => {
+      const { data } = await api.get<StockAlert>('/inventory/alerts');
+      return data;
+    },
+  });
+}

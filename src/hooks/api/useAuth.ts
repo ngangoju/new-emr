@@ -7,6 +7,7 @@ export interface User {
     username: string;
     email: string;
     role?: string;
+    permissions?: string[];
     active?: boolean;
 }
 
@@ -44,13 +45,15 @@ export function useLogin() {
 
             // Backend only returns userId, create minimal user object
             // The actual user data will be fetched by useMe hook after redirect
-            // Extract role from token
             let userRole = 'USER';
+            let userPermissions: string[] = [];
             try {
                 const payload = JSON.parse(atob(data.accessToken.split('.')[1]));
                 if (payload.roles && payload.roles.length > 0) {
-                    // Remove ROLE_ prefix if present
                     userRole = payload.roles[0].replace('ROLE_', '');
+                }
+                if (payload.permissions) {
+                    userPermissions = payload.permissions;
                 }
             } catch (e) {
                 console.error('Failed to parse token payload', e);
@@ -61,6 +64,7 @@ export function useLogin() {
                 username: payload.username || '',
                 email: payload.email || '',
                 role: userRole,
+                permissions: userPermissions,
                 active: true
             } as User;
         },
