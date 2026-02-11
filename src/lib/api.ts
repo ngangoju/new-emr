@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 export const api = axios.create({
-    baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080',
+    baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8888',
     withCredentials: false,
 });
 
@@ -27,7 +27,7 @@ api.interceptors.response.use(
             if (refreshToken) {
                 try {
                     const { data } = await axios.post(
-                        (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080') + '/auth/refresh',
+                        (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8888') + '/auth/refresh',
                         {},
                         { headers: { Authorization: `Bearer ${refreshToken}` } }
                     );
