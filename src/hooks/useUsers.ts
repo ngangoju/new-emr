@@ -1,7 +1,8 @@
 import { useMemo } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { api } from '@/lib/api'
-import type { User } from '@/types/admin'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { apiRequest } from '@/lib/api'
+import { getUserRole } from '@/lib/utils/auth'
+import type { User, CreateUserInput, UpdateUserInput } from '@/types/admin'
 
 interface UseUsersFilters {
   search?: string
@@ -20,11 +21,21 @@ interface UseUsersResult {
   loading: boolean
 }
 
-export function useUsers(filters: UseUsersFilters = {}): UseUsersResult {
+interface UseUsersOptions {
+  enabled?: boolean
+}
+
+export function useUsers(filters: UseUsersFilters = {}, options: UseUsersOptions = {}): UseUsersResult {
+  const role = getUserRole()
+  const usersEndpointAllowedRoles = new Set(['ADMIN', 'DOCTOR', 'NURSE', 'RECEPTIONIST', 'RECEIPTION', 'CLINICAL-DIRECTOR', 'MANAGER', 'HUMAN-RESOURCE'])
+  const canReadUsers = !!role && usersEndpointAllowedRoles.has(role)
+  const { enabled = true } = options
+
   const { data: users = [], isLoading } = useQuery({
     queryKey: ['users'],
+    enabled: enabled && canReadUsers,
     queryFn: async () => {
-      const { data } = await api.get<User[]>('/users')
+      const { data } = await apiRequest<User[]>('GET', '/users')
       return data
     }
   })
@@ -63,4 +74,36 @@ export function useUsers(filters: UseUsersFilters = {}): UseUsersResult {
     stats,
     loading: isLoading,
   }
+}
+
+export function useCreateUser() {
+  const queryClient = useQueryClient()
+
+  const { mutateAsync: createUser, isPending: isCreating } = useMutation({
+    mutationFn: async (input: CreateUserInput) => {
+      const { data } = await apiRequest<User>('POST', '/users', input)
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] })
+    },
+  })
+
+  return { createUser, isCreating }
+}
+
+export function useUpdateUser() {
+  const queryClient = useQueryClient()
+
+  const { mutateAsync: updateUser, isPending: isUpdating } = useMutation({
+    mutationFn: async ({ id, input }: { id: string; input: UpdateUserInput }) => {
+      const { data } = await apiRequest<User>('PUT', `/users/${id}`, input)
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] })
+    },
+  })
+
+  return { updateUser, isUpdating }
 }

@@ -28,9 +28,16 @@ export interface RecentPatient {
 // ... interfaces ...
 
 
-export function useDashboardStats() {
+type DashboardQueryOptions = {
+    enabled?: boolean;
+};
+
+export function useDashboardStats(options: DashboardQueryOptions = {}) {
+    const { enabled = true } = options;
+
     return useQuery({
         queryKey: ['dashboard', 'stats'],
+        enabled,
         queryFn: async () => {
             const { data } = await api.get<DashboardStats>('/dashboard/stats');
             return data;
@@ -38,9 +45,12 @@ export function useDashboardStats() {
     });
 }
 
-export function useTodayAppointments() {
+export function useTodayAppointments(options: DashboardQueryOptions = {}) {
+    const { enabled = true } = options;
+
     return useQuery({
         queryKey: ['dashboard', 'appointments'],
+        enabled,
         queryFn: async () => {
             const { data } = await api.get<{ appointments: Appointment[] }>('/dashboard/appointments');
             return data.appointments || [];
@@ -48,9 +58,12 @@ export function useTodayAppointments() {
     });
 }
 
-export function useRecentPatients() {
+export function useRecentPatients(options: DashboardQueryOptions = {}) {
+    const { enabled = true } = options;
+
     return useQuery({
         queryKey: ['dashboard', 'recent-patients'],
+        enabled,
         queryFn: async () => {
             const { data } = await api.get<RecentPatient[]>('/dashboard/recent-patients');
             return data;

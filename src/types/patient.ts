@@ -23,6 +23,7 @@ export interface Patient {
   photoUrl?: string;
   address: Address;
   insurance: Insurance;
+  insuranceInfo?: string; // JSON string for backend
   allergies: string[];
   bloodGroup?: string;
   emergencyContact: {

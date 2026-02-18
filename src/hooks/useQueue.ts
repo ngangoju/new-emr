@@ -1,141 +1,115 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { api } from '@/lib/api'
+import toast from 'react-hot-toast'
 
-export interface QueueItem {
-  id: number
-  queueNumber: number
+export interface QueueEntry {
+  id: string
   patientId: string
+  appointmentId?: string
+  doctorId: string
+  queueNumber: number
+  priority: number // 1: Routine, 2: Priority, 3: Urgent, 4: Emergency
+  status: 'WAITING' | 'CALLED' | 'IN_PROGRESS' | 'COMPLETED' | 'NO_SHOW'
+  checkedInAt: string
+  calledAt?: string
+  completedAt?: string
+  notes?: string
+  createdAt: string
+  updatedAt: string
+  // Enriched fields
   patientName: string
+  doctorName: string
+  waitTimeMinutes: number
   phoneNumber?: string
-  consultationType: string
-  status: 'waiting' | 'called' | 'in-consultation' | 'completed'
-  joinedAt: Date
-  calledAt?: Date
-  servedAt?: Date
+  consultationType?: string
 }
 
-const initialQueue: QueueItem[] = [
-  {
-    id: 1,
-    queueNumber: 1,
-    patientId: 'PT-2024-101',
-    patientName: 'Alice Johnson',
-    phoneNumber: '+250 788 123 456',
-    consultationType: 'Follow-up',
-    status: 'in-consultation',
-    joinedAt: new Date(Date.now() - 30 * 60 * 1000), // 30 min ago
-    calledAt: new Date(Date.now() - 25 * 60 * 1000),
-  },
-  {
-    id: 2,
-    queueNumber: 2,
-    patientId: 'PT-2024-102',
-    patientName: 'Robert Smith',
-    phoneNumber: '+250 788 234 567',
-    consultationType: 'New Patient',
-    status: 'waiting',
-    joinedAt: new Date(Date.now() - 15 * 60 * 1000), // 15 min ago
-  },
-  {
-    id: 3,
-    queueNumber: 3,
-    patientId: 'PT-2024-103',
-    patientName: 'Emma Wilson',
-    phoneNumber: '+250 788 345 678',
-    consultationType: 'Checkup',
-    status: 'waiting',
-    joinedAt: new Date(Date.now() - 8 * 60 * 1000), // 8 min ago
-  },
-  {
-    id: 4,
-    queueNumber: 4,
-    patientId: 'PT-2024-104',
-    patientName: 'Michael Brown',
-    consultationType: 'Emergency',
-    status: 'waiting',
-    joinedAt: new Date(Date.now() - 3 * 60 * 1000), // 3 min ago
-  },
-]
+export interface CreateQueueEntry {
+  patientId: string
+  appointmentId?: string
+  doctorId?: string
+  priority?: number | string
+  consultationType?: string
+  notes?: string
+}
 
-export function useQueue() {
-  const [queue, setQueue] = useState<QueueItem[]>(initialQueue)
+export function useQueue(options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: ['queue', 'active'],
+    queryFn: async () => {
+      const { data } = await api.get<QueueEntry[]>('/queue/active')
+      return data
+    },
+    refetchInterval: 30000,
+    enabled: options?.enabled ?? true,
+  })
+}
 
-  // Simulate real-time updates every 10 seconds
-  useEffect(() => {
-    const interval = setInterval(() => {
-      // In a real app, this would listen to WebSocket updates
-      // For now, we'll just update timestamps to show elapsed time
-      setQueue((prev) => [...prev])
-    }, 10000)
-
-    return () => clearInterval(interval)
-  }, [])
-
-  const callNext = useCallback(() => {
-    setQueue((prev) => {
-      const updated = [...prev]
-      const waitingIndex = updated.findIndex((q) => q.status === 'waiting')
-
-      if (waitingIndex > -1) {
-        updated[waitingIndex] = {
-          ...updated[waitingIndex],
-          status: 'called',
-          calledAt: new Date(),
-        }
+export function useQueueStats() {
+  return useQuery({
+    queryKey: ['queue', 'stats'],
+    queryFn: async () => {
+      const [waiting, seen] = await Promise.all([
+        api.get<number>('/queue/waiting/count'),
+        api.get<number>('/queue/seen/count')
+      ])
+      return {
+        waitingCount: waiting.data,
+        seenTodayCount: seen.data
       }
+    },
+    refetchInterval: 10000
+  })
+}
 
-      return updated
-    })
-  }, [])
+export function useAddToQueue() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (dto: CreateQueueEntry) => {
+      const { data } = await api.post<QueueEntry>('/queue', dto)
+      return data
+    },
+    onSuccess: () => {
+      toast.success('Patient checked in')
+      queryClient.invalidateQueries({ queryKey: ['queue'] })
+    }
+  })
+}
 
-  const markAsServed = useCallback((patientId: number) => {
-    setQueue((prev) => {
-      return prev.map((item) => {
-        if (item.id === patientId) {
-          return {
-            ...item,
-            status: 'in-consultation',
-            servedAt: new Date(),
-          }
-        }
-        return item
-      })
-    })
-  }, [])
+export function useCallNextPatient() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async () => {
+      const { data } = await api.post<QueueEntry>('/queue/call-next')
+      return data;
+    },
+    onSuccess: (data) => {
+      toast.success(`Calling: ${data.patientName}`)
+      queryClient.invalidateQueries({ queryKey: ['queue'] })
+    }
+  })
+}
 
-  const markAsCompleted = useCallback((patientId: number) => {
-    setQueue((prev) => {
-      return prev.map((item) => {
-        if (item.id === patientId) {
-          return {
-            ...item,
-            status: 'completed',
-          }
-        }
-        return item
-      })
-    })
-  }, [])
-
-  const addToQueue = useCallback((patient: Omit<QueueItem, 'id' | 'queueNumber' | 'status'>) => {
-    setQueue((prev) => {
-      const maxQueueNumber = Math.max(...prev.map(q => q.queueNumber), 0)
-      const newItem: QueueItem = {
-        ...patient,
-        id: Date.now(),
-        queueNumber: maxQueueNumber + 1,
-        status: 'waiting',
+export function useUpdateQueueStatus() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      let response;
+      if (status === 'IN_PROGRESS') {
+        response = await api.post<QueueEntry>(`/queue/${id}/start`)
+      } else if (status === 'COMPLETED') {
+        response = await api.post<QueueEntry>(`/queue/${id}/complete`)
+      } else if (status === 'NO_SHOW') {
+        response = await api.post<QueueEntry>(`/queue/${id}/no-show`)
+      } else {
+        throw new Error(`Unsupported status: ${status}`)
       }
-      return [...prev, newItem]
-    })
-  }, [])
-
-  return {
-    queue,
-    callNext,
-    markAsServed,
-    markAsCompleted,
-    addToQueue,
-  }
+      return response.data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['queue'] })
+    }
+  })
 }

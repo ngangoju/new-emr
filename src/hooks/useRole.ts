@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { UserRole, ROLE_PERMISSIONS } from '@/lib/utils/auth'
+import { UserRole, getSessionUser, getUserRole, isAuthInitialized, onAuthInitialized, AUTH_EVENTS } from '@/lib/utils/auth'
+import { FRONTEND_FEATURE_POLICY } from '@/lib/authz/policy'
 
 export function useRole() {
     const [role, setRole] = useState<UserRole | null>(null)
@@ -10,30 +11,47 @@ export function useRole() {
 
     useEffect(() => {
         const checkRole = () => {
-            const item = localStorage.getItem('user')
-            if (item) {
-                try {
-                    const user = JSON.parse(item)
-                    if (user.role) {
-                        setRole(user.role.toUpperCase() as UserRole)
-                    }
-                    if (user.permissions) {
-                        setPermissions(user.permissions)
-                    }
-                } catch (e) {
-                    console.error('Failed to parse user from localStorage', e)
-                }
+            const role = getUserRole()
+            if (role) {
+                setRole(role)
+            }
+
+            const user = getSessionUser()
+            if (user && user.permissions) {
+                setPermissions(user.permissions)
             }
             setIsLoading(false)
         }
 
-        checkRole()
+        // If auth is already initialized, check immediately
+        if (isAuthInitialized()) {
+            checkRole()
+        } else {
+            // Wait for auth to be initialized
+            const unsubscribe = onAuthInitialized(() => {
+                checkRole()
+            })
+            return unsubscribe
+        }
+
         // Listen for storage changes (in case of login/logout in other tabs)
         window.addEventListener('storage', checkRole)
-        return () => window.removeEventListener('storage', checkRole)
+
+        // Listen for session cleared events
+        const handleSessionCleared = () => {
+            setRole(null)
+            setPermissions([])
+            setIsLoading(false)
+        }
+        window.addEventListener(AUTH_EVENTS.SESSION_CLEARED, handleSessionCleared)
+
+        return () => {
+            window.removeEventListener('storage', checkRole)
+            window.removeEventListener(AUTH_EVENTS.SESSION_CLEARED, handleSessionCleared)
+        }
     }, [])
 
-    const hasPermission = (permission: string | keyof typeof ROLE_PERMISSIONS) => {
+    const hasPermission = (permission: string | keyof typeof FRONTEND_FEATURE_POLICY) => {
         if (!role) return false
 
         // 1. Check backend permissions array (from JWT)
@@ -51,8 +69,8 @@ export function useRole() {
         }
 
         // 2. Fallback to local role-based permissions (for backward compatibility)
-        if (permission in ROLE_PERMISSIONS) {
-            return ROLE_PERMISSIONS[permission as keyof typeof ROLE_PERMISSIONS].includes(role as any)
+        if (permission in FRONTEND_FEATURE_POLICY) {
+            return FRONTEND_FEATURE_POLICY[permission as keyof typeof FRONTEND_FEATURE_POLICY].includes(role)
         }
 
         return false;

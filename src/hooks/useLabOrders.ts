@@ -1,6 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import toast from 'react-hot-toast'
 import { api } from '@/lib/api'
 import type { LabOrder, LabResult } from '@/types/lab'
+import type { LabResultFinalizeRequest, LabResultSubmissionResponse } from '@/types/lab'
 
 export function useLabOrders() {
   const { data: pending = [], isLoading: loadingPending } = useQuery({
@@ -54,18 +56,34 @@ export function useLabResult(orderId: string) {
 export function useUploadResult() {
   const queryClient = useQueryClient()
 
-  const { mutate: uploadResult, isPending } = useMutation({
-    mutationFn: async ({ orderId, result }: { orderId: string; result: LabResult }) => {
-      const { data } = await api.post(`/lab-orders/${orderId}/results`, result)
+  const { mutateAsync: uploadResult, isPending } = useMutation({
+    mutationFn: async ({
+      orderId,
+      result,
+      markAsFinal,
+    }: {
+      orderId: string
+      result: LabResult
+      markAsFinal: boolean
+    }) => {
+      const payload: LabResultFinalizeRequest = {
+        result,
+        markAsFinal,
+      }
+
+      const { data } = await api.post<LabResultSubmissionResponse>(
+        `/lab-orders/${orderId}/results/submit`,
+        payload,
+      )
       return data
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       // Invalidate and refetch lab orders
       queryClient.invalidateQueries({ queryKey: ['lab-orders'] })
+      toast.success(variables.markAsFinal ? 'Lab result finalized and approved.' : 'Lab result submitted.')
     },
     onError: (error) => {
       console.error('Failed to upload result:', error)
-      alert('Failed to upload results. Please try again.')
     }
   })
 

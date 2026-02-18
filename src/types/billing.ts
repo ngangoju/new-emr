@@ -2,10 +2,15 @@ import type { Patient } from './patient'
 
 export interface Tariff {
   id: string
-  name: string
-  category: 'consultation' | 'lab' | 'imaging' | 'procedure' | 'medication' | 'other'
-  price: number
-  unit: 'each' | 'per_test' | 'per_kg' | 'per_ml'
+  serviceName: string
+  category: string
+  billingCode?: string
+  basePrice: number
+  rssbMmiPrice?: number
+  privatePrice?: number
+  mutuellePrice?: number
+  insurancePrices?: string // JSON string
+  active: boolean
   description?: string
 }
 
@@ -21,6 +26,8 @@ export interface InvoiceItem {
 export interface Invoice {
   id: string
   patientId: string
+  doctorId?: string
+  doctorName?: string
   patient: Patient
   consultationId?: string
   labOrderId?: string
@@ -30,9 +37,14 @@ export interface Invoice {
   insuranceCopayPercentage: number
   insuranceDue: number
   patientDue: number
+  discountAmount?: number
+  discountReason?: string
+  discountApprovedBy?: string
   total: number
   taxes?: number
-  status: 'pending' | 'partial' | 'paid' | 'cancelled'
+  status: 'pending' | 'partial' | 'paid' | 'cancelled' | 'DRAFT' | 'ISSUED' | 'VOID'
+  paymentStatus?: 'UNPAID' | 'PARTIAL' | 'PAID' | 'OVERPAID'
+  invoiceNumber?: string
   payments: Payment[]
   createdAt: Date
   updatedAt: Date
@@ -41,27 +53,70 @@ export interface Invoice {
 export interface Payment {
   id: string
   invoiceId: string
-  method: 'cash' | 'card' | 'mobile_money' | 'insurance'
+  paymentMethod: 'CASH' | 'MOBILE_MONEY' | 'CARD' | 'INSURANCE' | 'BANK_TRANSFER'
   amount: number
-  reference?: string
+  transactionId?: string
+  paidBy?: string
+  receiptNumber?: string
+  status?: string
   paidAt: Date
   notes?: string
 }
 
-export type PaymentMethod = Payment['method']
+export interface CreateInvoiceItemInput {
+  billing_code?: string;
+  quantity: number;
+  unit_price: number;
+  description: string;
+  tariffId?: string;
+}
 
 export interface CreateInvoiceInput {
   patientId: string
-  consultationId?: string
+  consultId?: string
+  doctorId?: string
   labOrderId?: string
-  items: Omit<InvoiceItem, 'id' | 'tariff' | 'total'>[]
+  items: CreateInvoiceItemInput[]
   discount?: number
 }
 
 export interface CreatePaymentInput {
   invoiceId: string
-  method: PaymentMethod
+  paymentMethod: PaymentMethod
   amount: number
-  reference?: string
+  transactionId?: string
+  paidBy?: string
+  receiptNumber?: string
   notes?: string
+}
+
+export type PaymentMethod = Payment['paymentMethod']
+
+export interface CashCloseSummary {
+  id: string
+  cashierId: string
+  cashierName: string
+  shiftDate: string
+  totalCollected: number
+  byMethod: {
+    cash: number
+    card: number
+    momo: number
+    bankTransfer: number
+  }
+  invoiceCount: number
+  closedAt: string
+  closedBy: string
+}
+
+export interface CreateCashCloseInput {
+  cashierId?: string
+  shiftDate: string
+  force?: boolean
+}
+
+export interface CashCloseHistoryFilters {
+  cashierId?: string
+  fromDate?: string
+  toDate?: string
 }

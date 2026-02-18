@@ -28,33 +28,39 @@ import { useDashboardStats, useTodayAppointments, useRecentPatients } from '@/ho
 
 import { useRouter } from 'next/navigation'
 import { useRole } from '@/hooks/useRole'
+import { getRoleDefaultDashboardRoute } from '@/lib/authz/policy'
+import { Spinner } from '@/components/ui/spinner'
 
 export default function DoctorDashboard() {
   const router = useRouter()
   const { role, isLoading: roleLoading, hasPermission } = useRole()
-  
-  // Fetch real data from backend
-  const { data: stats, isLoading: statsLoading } = useDashboardStats()
-  const { data: upcomingAppointments = [], isLoading: appointmentsLoading } = useTodayAppointments()
-  const { data: recentPatients = [], isLoading: patientsLoading } = useRecentPatients()
+
+  const dashboardApiRoles = new Set(['ADMIN', 'DOCTOR', 'NURSE', 'RECEPTIONIST'])
+  const canLoadDashboardApis = !roleLoading && !!role && dashboardApiRoles.has(role)
+
+  // Fetch role-scoped dashboard data only for roles allowed by backend dashboard endpoints
+  const { data: stats, isLoading: statsLoading } = useDashboardStats({ enabled: canLoadDashboardApis })
+  const { data: upcomingAppointments = [], isLoading: appointmentsLoading } = useTodayAppointments({ enabled: canLoadDashboardApis })
+  const { data: recentPatients = [], isLoading: patientsLoading } = useRecentPatients({ enabled: canLoadDashboardApis })
+
+  const defaultDashboardRoute = role ? getRoleDefaultDashboardRoute(role) : '/dashboard'
+  const isRedirectingToRoleDashboard = !roleLoading && !!role && defaultDashboardRoute !== '/dashboard'
 
   React.useEffect(() => {
-    if (!roleLoading && role) {
-      if (role === 'RECEPTIONIST' || role === 'RECEIPTION' || role === 'CUSTOMER-CARE') {
-        router.push('/dashboard/reception')
-      } else if (role === 'STORE') {
-        router.push('/dashboard/pharmacy')
-      } else if (role === 'LABORANTIN' || role === 'RADIOLOGIST') {
-        router.push('/dashboard/lab')
-      } else if (role === 'BILLING_OFFICER' || role === 'CASHIER' || role === 'DAF' || role === 'COO') {
-        router.push('/dashboard/billing')
-      } else if (role === 'MANAGER' || role === 'HUMAN-RESOURCE') {
-        router.push('/dashboard/admin')
-      }
+    if (isRedirectingToRoleDashboard) {
+      router.replace(defaultDashboardRoute)
     }
-  }, [role, roleLoading, router])
+  }, [defaultDashboardRoute, isRedirectingToRoleDashboard, router])
 
   const userRole = role ? (role.charAt(0).toUpperCase() + role.slice(1).toLowerCase()) : 'Doctor'
+
+  if (isRedirectingToRoleDashboard) {
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center">
+        <Spinner />
+      </div>
+    )
+  }
 
   // Show loading skeleton if data is loading
   if (roleLoading || statsLoading || appointmentsLoading || patientsLoading) {

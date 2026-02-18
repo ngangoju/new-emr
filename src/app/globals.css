@@ -41,172 +41,77 @@
 
 /* ============================================
    KALISIMBI SUMMIT - Color System
-   ============================================
-   Brand Colors:
-   - Growth Green:   #0C6030 (Navigation & Brand)
-   - Emerald Green:  #3ABF72 (Primary Actions & CTAs)
-   - Sky Blue:       #00ADEF (Secondary Highlights & Active States)
-   - Deep Grey:      #343A40 (Text, Icons, Borders)
-   - Lava Red:       #D32F2F (Alerts, Errors, Destructive Actions)
-   - Volcanic Ash:   #F4F4F4 (Backgrounds & Containers)
    ============================================ */
 
 :root {
   --radius: 8px;
-  /* Base radius: 8px */
-
-  /* Core Layout Colors */
   --background: #F4F4F4;
-  /* Volcanic Ash - App background */
   --foreground: #343A40;
-  /* Deep Grey - Primary text */
-
-  /* Card & Popover */
   --card: #FFFFFF;
-  /* White - Card backgrounds for contrast */
   --card-foreground: #343A40;
-  /* Deep Grey */
   --popover: #FFFFFF;
-  /* White */
   --popover-foreground: #343A40;
-  /* Deep Grey */
-
-  /* Primary - Emerald Green (Actions & CTAs) */
   --primary: #3ABF72;
-  /* Emerald Green */
   --primary-foreground: #FFFFFF;
-  /* White */
-
-  /* Secondary - Sky Blue (Highlights & Active States) */
   --secondary: #00ADEF;
-  /* Sky Blue */
   --secondary-foreground: #FFFFFF;
-  /* White */
-
-  /* Muted - Subtle backgrounds */
   --muted: #E8E8E8;
-  /* Lighter Volcanic Ash */
   --muted-foreground: #6C757D;
-  /* Softer Deep Grey */
-
-  /* Accent - Sky Blue for interactive highlights */
   --accent: #00ADEF;
-  /* Sky Blue */
   --accent-foreground: #FFFFFF;
-  /* White */
-
-  /* Destructive - Lava Red (Errors & Alerts) */
   --destructive: #D32F2F;
-  /* Lava Red */
   --destructive-foreground: #FFFFFF;
-  /* White */
-
-  /* Borders & Inputs */
   --border: #DEE2E6;
-  /* Light border derived from Deep Grey */
   --input: #DEE2E6;
-  /* Input borders */
   --ring: #3ABF72;
-  /* Emerald Green for focus rings */
-
-  /* Chart Colors - Healthcare-safe palette */
   --chart-1: #0C6030;
-  /* Growth Green */
   --chart-2: #3ABF72;
-  /* Emerald Green */
   --chart-3: #00ADEF;
-  /* Sky Blue */
   --chart-4: #6C757D;
-  /* Muted Grey */
   --chart-5: #17A2B8;
-  /* Teal accent */
-
-  /* Sidebar - Growth Green Navigation Base */
   --sidebar: #0C6030;
-  /* Growth Green */
   --sidebar-foreground: #FFFFFF;
-  /* White text on green */
   --sidebar-primary: #FFFFFF;
-  /* White for active items */
   --sidebar-primary-foreground: #0C6030;
-  /* Growth Green */
   --sidebar-accent: rgba(255, 255, 255, 0.15);
-  /* Subtle white overlay */
   --sidebar-accent-foreground: #FFFFFF;
   --sidebar-border: rgba(255, 255, 255, 0.2);
   --sidebar-ring: #00ADEF;
-  /* Sky Blue */
 }
 
 .dark {
-  /* Dark Mode - Professional Healthcare Dark Theme */
   --background: #1A1D21;
-  /* Dark background */
   --foreground: #E9ECEF;
-  /* Light text */
-
   --card: #212529;
-  /* Dark card */
   --card-foreground: #E9ECEF;
-  /* Light text */
   --popover: #212529;
-  /* Dark popover */
   --popover-foreground: #E9ECEF;
-  /* Light text */
-
-  /* Primary - Emerald Green (slightly brighter for dark mode) */
   --primary: #4FCF85;
-  /* Brighter Emerald Green */
   --primary-foreground: #FFFFFF;
-
-  /* Secondary - Sky Blue */
   --secondary: #33BFFF;
-  /* Brighter Sky Blue */
   --secondary-foreground: #FFFFFF;
-
   --muted: #2D3238;
-  /* Dark muted */
   --muted-foreground: #ADB5BD;
-  /* Muted text */
-
   --accent: #33BFFF;
-  /* Brighter Sky Blue */
   --accent-foreground: #FFFFFF;
-
-  /* Destructive - Lava Red (brighter for visibility) */
   --destructive: #EF5350;
-  /* Brighter Lava Red */
   --destructive-foreground: #FFFFFF;
-
   --border: rgba(255, 255, 255, 0.1);
   --input: rgba(255, 255, 255, 0.15);
   --ring: #4FCF85;
-  /* Emerald Green */
-
-  /* Chart Colors - Dark mode adjusted */
   --chart-1: #2E9E5B;
-  /* Brighter Growth Green */
   --chart-2: #4FCF85;
-  /* Emerald Green */
   --chart-3: #33BFFF;
-  /* Brighter Sky Blue */
   --chart-4: #ADB5BD;
-  /* Light Grey */
   --chart-5: #20C997;
-  /* Teal */
-
-  /* Sidebar - Darker Growth Green */
   --sidebar: #0A4D26;
-  /* Darker Growth Green */
   --sidebar-foreground: #FFFFFF;
   --sidebar-primary: #3D9BFF;
-  /* Tech Blue for active */
   --sidebar-primary-foreground: #FFFFFF;
   --sidebar-accent: rgba(255, 255, 255, 0.1);
   --sidebar-accent-foreground: #FFFFFF;
   --sidebar-border: rgba(255, 255, 255, 0.1);
   --sidebar-ring: #33BFFF;
-  /* Sky Blue */
 }
 
 @layer base {
@@ -217,4 +122,30 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* 
+  GPU-Accelerated Animations for Critical Alerts
+  Using opacity and transform only to avoid layout thrashing
+*/
+@keyframes emergency-pulse {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.5;
+    transform: scale(0.98);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-emergency {
+  animation: emergency-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  will-change: opacity, transform;
 }

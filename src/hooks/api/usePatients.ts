@@ -31,8 +31,25 @@ export function usePatients(params?: PatientSearchParams) {
                 ? `/patients/search`
                 : '/patients';
 
+            if (process.env.NODE_ENV !== 'production') {
+                console.debug('[usePatients] request', {
+                    url,
+                    params,
+                });
+            }
+
             const { data } = await api.get(url, { params });
-            return Array.isArray(data) ? { data, meta: { total: data.length } } : data;
+            const normalized = Array.isArray(data) ? { data, meta: { total: data.length } } : data;
+
+            if (process.env.NODE_ENV !== 'production') {
+                console.debug('[usePatients] response', {
+                    url,
+                    total: Array.isArray(normalized?.data) ? normalized.data.length : undefined,
+                    shape: Array.isArray(data) ? 'array' : 'object',
+                });
+            }
+
+            return normalized;
         },
     });
 }

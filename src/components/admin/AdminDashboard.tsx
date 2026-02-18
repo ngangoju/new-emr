@@ -4,6 +4,7 @@ import { PageHeader } from '@/components/layout/PageHeader'
 import { SystemStats } from './SystemStats'
 import { UserManagementTable } from './UserManagementTable'
 import { ReportsSection } from './ReportsSection'
+import { EventHealthMonitor } from './EventHealthMonitor'
 
 export default function AdminDashboard() {
   return (
@@ -18,6 +19,10 @@ export default function AdminDashboard() {
       <section className="space-y-6">
         <h2 className="text-3xl font-heading font-bold tracking-tight">User Management</h2>
         <UserManagementTable />
+      </section>
+      <section className="space-y-6">
+        <h2 className="text-3xl font-heading font-bold tracking-tight">System Health</h2>
+        <EventHealthMonitor />
       </section>
       <section className="space-y-6">
         <h2 className="text-3xl font-heading font-bold tracking-tight">Reports & Analytics</h2>

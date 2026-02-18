@@ -1,6 +1,6 @@
 'use client'
 
-import React from 'react'
+import React, { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { Button } from "@/components/ui/button"
@@ -28,6 +28,7 @@ import toast from 'react-hot-toast'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { loginSchema, type LoginInput } from '@/lib/validations/auth'
+import { getAccessToken, getSessionUser, setSessionUser } from '@/lib/utils/auth'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -43,15 +44,20 @@ export default function LoginPage() {
 
   const loginMutation = useLogin()
 
+  useEffect(() => {
+    if (getAccessToken() && getSessionUser()) {
+      router.replace('/dashboard')
+    }
+  }, [router])
+
   const onSubmit = (data: LoginInput) => {
     loginMutation.mutate(
       { username: data.username, password: data.password },
       {
         onSuccess: (user) => {
           toast.success(`Welcome back, ${user.username || user.email}!`)
-          localStorage.setItem('user', JSON.stringify(user))
-          router.push('/dashboard')
-          router.refresh()
+          setSessionUser(user)
+          router.replace('/dashboard')
         },
         onError: (error: any) => {
           toast.error(error?.response?.data?.message || 'Login failed. Please check your credentials.')

@@ -1,12 +1,15 @@
 'use client'
 
-import { useEffect, Suspense } from "react"
+import { useEffect, Suspense, useState } from "react"
 import { motion } from "framer-motion"
 import { Spinner } from "@/components/ui/spinner"
-import { useRouter } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
+import { AUTH_EVENTS, getAccessToken, getUserRole, isAuthInitialized, onAuthInitialized } from "@/lib/utils/auth"
+import { canAccessDashboardRoute, getRoleDefaultDashboardRoute, normalizeUserRole } from "@/lib/authz/policy"
 
 import { Header } from "@/components/layout/Header"
 import { Sidebar } from "@/components/layout/Sidebar"
+import { DashboardRouteGuard } from "@/components/auth/DashboardRouteGuard"
 
 export default function DashboardLayout({
   children,
@@ -14,15 +17,58 @@ export default function DashboardLayout({
   children: React.ReactNode
 }) {
   const router = useRouter()
+  const pathname = usePathname()
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    // Check for authentication token
-    const token = localStorage.getItem('accessToken') || localStorage.getItem('token')
-    if (!token) {
-      router.push('/login')
-      router.refresh()
+    const ensureAuthenticated = () => {
+      const token = getAccessToken()
+      if (!token) {
+        router.replace('/login')
+        return
+      }
+
+      const role = getUserRole()
+      const currentPath = pathname || '/dashboard'
+      const hasRouteAccess = canAccessDashboardRoute(role, currentPath)
+
+      if (!hasRouteAccess) {
+        const fallback = getRoleDefaultDashboardRoute(role)
+        router.replace(fallback)
+      }
+      
+      setIsLoading(false)
     }
-  }, [router])
+
+    // If auth is already initialized, check immediately
+    if (isAuthInitialized()) {
+      ensureAuthenticated()
+    } else {
+      // Wait for auth to be initialized
+      const unsubscribe = onAuthInitialized(() => {
+        ensureAuthenticated()
+      })
+      return unsubscribe
+    }
+
+    const handleSessionCleared = () => {
+      router.replace('/login')
+    }
+
+    window.addEventListener(AUTH_EVENTS.SESSION_CLEARED, handleSessionCleared)
+
+    return () => {
+      window.removeEventListener(AUTH_EVENTS.SESSION_CLEARED, handleSessionCleared)
+    }
+  }, [pathname, router])
+
+  if (isLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-background">
+        <Spinner />
+      </div>
+    )
+  }
 
   return (
     <div className="flex h-screen bg-background overflow-hidden">
@@ -38,7 +84,9 @@ export default function DashboardLayout({
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
           >
-            {children}
+            <DashboardRouteGuard>
+              {children}
+            </DashboardRouteGuard>
           </motion.main>
         </Suspense>
       </div>

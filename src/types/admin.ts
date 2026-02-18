@@ -10,6 +10,21 @@ export interface User {
   createdAt: string;
 }
 
+export interface CreateUserInput {
+  username: string;
+  name: string;
+  email: string;
+  role: User['role'];
+  password: string;
+}
+
+export interface UpdateUserInput {
+  username: string;
+  name: string;
+  email: string;
+  role: User['role'];
+}
+
 export interface UserProfile {
   id: string;
   userId: string;

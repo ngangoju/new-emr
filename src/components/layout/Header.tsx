@@ -15,9 +15,13 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Bell, Search, Menu, User, Settings, LogOut, Sun, Moon } from "lucide-react"
 import { useUIStore } from "@/lib/stores/uiStore"
+import { AUTH_EVENTS, clearSession, getSessionUser } from '@/lib/utils/auth'
+import { getDashboardNavigationForRole, normalizeUserRole } from '@/lib/authz/policy'
+import { findDashboardSearchTarget } from '@/lib/utils/dashboardSearch'
 
 export function Header() {
   const router = useRouter()
+  const [searchQuery, setSearchQuery] = useState('')
   const [user, setUser] = useState<any>({ 
     username: 'User', 
     name: 'User',
@@ -27,14 +31,18 @@ export function Header() {
 
   useEffect(() => {
     setMounted(true)
-    const item = localStorage.getItem('user')
-    if (item) {
-      try {
-        setUser(JSON.parse(item))
-      } catch (e) {
-        console.error('Invalid user data in localStorage')
-      }
+    const sessionUser = getSessionUser()
+    if (sessionUser) {
+      setUser(sessionUser)
     }
+
+    const handleSessionCleared = () => {
+      setUser({ username: 'User', name: 'User', role: 'user' })
+    }
+
+    window.addEventListener(AUTH_EVENTS.SESSION_CLEARED, handleSessionCleared)
+
+    return () => window.removeEventListener(AUTH_EVENTS.SESSION_CLEARED, handleSessionCleared)
   }, [])
 
   useEffect(() => {
@@ -57,14 +65,24 @@ export function Header() {
   const toggleSidebar = useUIStore((state) => state.toggleSidebar)
  
   const handleLogout = () => {
-    localStorage.removeItem('accessToken')
-    localStorage.removeItem('refreshToken')
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
-    localStorage.removeItem('userRole')
-    router.push('/login')
-    router.refresh()
+    clearSession({ redirectToLogin: false, reason: 'manual-logout' })
+    router.replace('/login')
   }
+
+  const handleDashboardSearchSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+
+    const role = normalizeUserRole(user.role)
+    const allowedTargets = getDashboardNavigationForRole(role)
+    const target = findDashboardSearchTarget(searchQuery, allowedTargets)
+
+    if (!target) {
+      return
+    }
+
+    router.push(target.href)
+  }
+
   if (!mounted) {
     return (
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -97,14 +115,16 @@ export function Header() {
           <span className="sr-only">Toggle sidebar</span>
         </Button>
         <div className="flex flex-1 items-center space-x-2 md:justify-end">
-          <div className="relative flex-1 flex md:w-80">
+          <form className="relative flex-1 flex md:w-80" onSubmit={handleDashboardSearchSubmit}>
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               type="search"
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
               placeholder="Search patients, consultations, appointments..."
               className="pl-10 pr-4 h-9 w-full"
             />
-          </div>
+          </form>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-9 w-9 rounded-full">

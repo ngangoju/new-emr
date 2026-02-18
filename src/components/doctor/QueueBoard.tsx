@@ -1,7 +1,8 @@
 'use client'
 
 import React from 'react'
-import { useQueue as useQueueAPI, useCallNextPatient, useUpdateQueueStatus } from '@/hooks/api/useQueue'
+import { useQueue as useQueueAPI, useCallNextPatient, useUpdateQueueStatus } from '@/hooks/useQueue'
+import { useRole } from '@/hooks/useRole'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -12,7 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Clock, User, Phone, Bell } from 'lucide-react'
+import { Clock, User, Phone, Bell, Play, CheckCircle2, XCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 import { useQueryClient } from '@tanstack/react-query'
@@ -21,7 +22,9 @@ import { useState } from 'react'
 import { Wifi, WifiOff } from 'lucide-react'
 
 export function QueueBoard() {
-  const { data: queue = [], isLoading } = useQueueAPI()
+  const { role, isLoading: roleLoading } = useRole()
+  const canAccessQueue = !roleLoading && ['ADMIN', 'DOCTOR', 'NURSE', 'RECEPTIONIST'].includes(role || '')
+  const { data: queue = [], isLoading } = useQueueAPI({ enabled: canAccessQueue })
   const callNextMutation = useCallNextPatient()
   const updateStatusMutation = useUpdateQueueStatus()
   const queryClient = useQueryClient()
@@ -29,14 +32,17 @@ export function QueueBoard() {
 
   // Socket.io Integration
   useSocketEvent('connect', () => {
+    if (!canAccessQueue) return
     setIsConnected(true)
   })
 
   useSocketEvent('disconnect', () => {
+    if (!canAccessQueue) return
     setIsConnected(false)
   })
 
   useSocketEvent('queue:update', () => {
+    if (!canAccessQueue) return
     queryClient.invalidateQueries({ queryKey: ['queue'] })
     toast('Queue updated', {
       icon: '🔄',
@@ -59,15 +65,43 @@ export function QueueBoard() {
     })
   }
 
-  const markAsServed = (id: string) => {
+  const startConsultation = (id: string) => {
     updateStatusMutation.mutate(
       { id, status: 'IN_PROGRESS' },
       {
         onSuccess: () => {
-          toast.success('Patient marked as in consultation')
+          toast.success('Consultation started')
         },
         onError: () => {
-          toast.error('Failed to update status')
+          toast.error('Failed to start consultation')
+        }
+      }
+    )
+  }
+
+  const completeConsultation = (id: string) => {
+    updateStatusMutation.mutate(
+      { id, status: 'COMPLETED' },
+      {
+        onSuccess: () => {
+          toast.success('Consultation completed')
+        },
+        onError: () => {
+          toast.error('Failed to complete consultation')
+        }
+      }
+    )
+  }
+
+  const markNoShow = (id: string) => {
+    updateStatusMutation.mutate(
+      { id, status: 'NO_SHOW' },
+      {
+        onSuccess: () => {
+          toast.success('Patient marked as no-show')
+        },
+        onError: () => {
+          toast.error('Failed to mark as no-show')
         }
       }
     )
@@ -90,10 +124,34 @@ export function QueueBoard() {
     }
   }
 
-  const getWaitTime = (joinedAt: string | Date) => {
-    const now = new Date()
-    const diff = Math.floor((now.getTime() - new Date(joinedAt).getTime()) / 1000 / 60)
-    return `${diff} min`
+  const formatWaitTime = (minutes: number | null | undefined, checkedInAt: string | null | undefined) => {
+    // Use backend-calculated waitTimeMinutes if available and sane
+    let mins = minutes ?? 0
+
+    // If backend didn't provide it or it's absurdly large, calculate from checkedInAt  
+    if (!minutes || minutes > 1440) {
+      // Try to compute from checkedInAt
+      if (checkedInAt) {
+        const checkedIn = new Date(checkedInAt)
+        const now = new Date()
+        // Sanity check: checkedIn should be within the last 24 hours
+        const diffMs = now.getTime() - checkedIn.getTime()
+        if (diffMs > 0 && diffMs < 86400000) {
+          mins = Math.floor(diffMs / 60000)
+        } else {
+          mins = 0
+        }
+      } else {
+        mins = 0
+      }
+    }
+
+    if (mins < 1) return 'Just now'
+    if (mins < 60) return `${mins} min`
+    const hours = Math.floor(mins / 60)
+    const remainMins = mins % 60
+    if (remainMins === 0) return `${hours}h`
+    return `${hours}h ${remainMins}m`
   }
 
   if (!queue || queue.length === 0) {
@@ -135,16 +193,17 @@ export function QueueBoard() {
         )}
       </div>
 
-      <div className="rounded-lg border">
-        <Table>
+      <div className="rounded-lg border overflow-x-auto">
+        <Table className="min-w-[700px]">
           <TableHeader>
             <TableRow>
-              <TableHead className="w-20">Queue #</TableHead>
-              <TableHead>Patient</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Wait Time</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              <TableHead className="w-16 text-center">#</TableHead>
+              <TableHead className="min-w-[120px]">Patient</TableHead>
+              <TableHead className="w-20">Type</TableHead>
+              <TableHead className="w-28">Triage</TableHead>
+              <TableHead className="w-24">Wait</TableHead>
+              <TableHead className="w-28">Status</TableHead>
+              <TableHead className="w-44 text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -157,59 +216,104 @@ export function QueueBoard() {
                   hover:bg-accent/50 transition-colors
                 `}
               >
-                <TableCell>
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 font-bold text-primary">
+                <TableCell className="text-center">
+                  <div className="flex h-9 w-9 mx-auto items-center justify-center rounded-full bg-primary/10 font-bold text-sm text-primary">
                     {item.queueNumber}
                   </div>
                 </TableCell>
                 <TableCell>
-                  <div className="space-y-1">
-                    <p className="font-medium text-foreground">{item.patientName}</p>
-                    <div className="flex items-center space-x-2 text-xs text-muted-foreground">
-                      <User className="h-3 w-3" />
-                      <span>{item.patientId}</span>
-                      {item.phoneNumber && (
-                        <>
-                          <Phone className="h-3 w-3 ml-2" />
-                          <span>{item.phoneNumber}</span>
-                        </>
-                      )}
-                    </div>
+                  <div className="space-y-0.5">
+                    <p className="font-medium text-foreground text-sm leading-tight">{item.patientName}</p>
+                    {item.phoneNumber && (
+                      <div className="flex items-center space-x-1 text-xs text-muted-foreground">
+                        <Phone className="h-3 w-3 shrink-0" />
+                        <span>{item.phoneNumber}</span>
+                      </div>
+                    )}
                   </div>
                 </TableCell>
                 <TableCell>
-                  <Badge variant="secondary" className="text-xs">
-                    {item.consultationType}
+                  <Badge variant="secondary" className="text-[11px] px-1.5 py-0">
+                    {item.consultationType || 'General'}
                   </Badge>
                 </TableCell>
                 <TableCell>
+                  {item.priority >= 4 ? (
+                    <Badge className="bg-red-500 text-white animate-pulse border-none text-[11px]">EMERGENCY</Badge>
+                  ) : item.priority >= 3 ? (
+                    <Badge className="bg-orange-500 text-white border-none text-[11px]">URGENT</Badge>
+                  ) : item.priority >= 2 ? (
+                    <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200 text-[11px]">PRIORITY</Badge>
+                  ) : (
+                    <Badge variant="outline" className="text-muted-foreground text-[11px]">ROUTINE</Badge>
+                  )}
+                </TableCell>
+                <TableCell>
                   <div className="flex items-center space-x-1 text-sm text-muted-foreground">
-                    <Clock className="h-4 w-4" />
-                    <span>{getWaitTime(item.joinedAt)}</span>
+                    <Clock className="h-3.5 w-3.5 shrink-0" />
+                    <span className="whitespace-nowrap text-xs font-medium">
+                      {formatWaitTime(item.waitTimeMinutes, item.checkedInAt)}
+                    </span>
                   </div>
                 </TableCell>
                 <TableCell>
                   {getStatusBadge(item.status)}
                 </TableCell>
                 <TableCell className="text-right">
-                  <div className="flex justify-end space-x-2">
+                  <div className="flex justify-end gap-1.5">
                     {item.status === 'WAITING' && (
-                      <Button 
-                        size="sm" 
-                        onClick={() => callNext()}
-                        className="bg-primary hover:bg-primary/90"
-                      >
-                        <Bell className="h-4 w-4 mr-1" />
-                        Call
-                      </Button>
+                      <>
+                        <Button 
+                          size="sm" 
+                          onClick={() => callNext()}
+                          className="h-7 px-2 text-xs bg-primary hover:bg-primary/90"
+                          disabled={callNextMutation.isPending}
+                        >
+                          <Bell className="h-3 w-3 mr-1" />
+                          Call
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => markNoShow(item.id)}
+                          className="h-7 px-2 text-xs text-destructive hover:text-destructive"
+                          disabled={updateStatusMutation.isPending}
+                        >
+                          <XCircle className="h-3 w-3" />
+                        </Button>
+                      </>
                     )}
-                    {(item.status === 'CALLED' || item.status === 'IN_PROGRESS') && (
+                    {item.status === 'CALLED' && (
+                      <>
+                        <Button 
+                          size="sm"
+                          onClick={() => startConsultation(item.id)}
+                          className="h-7 px-2 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
+                          disabled={updateStatusMutation.isPending}
+                        >
+                          <Play className="h-3 w-3 mr-1" />
+                          Start
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => markNoShow(item.id)}
+                          className="h-7 px-2 text-xs text-destructive hover:text-destructive"
+                          disabled={updateStatusMutation.isPending}
+                        >
+                          <XCircle className="h-3 w-3" />
+                        </Button>
+                      </>
+                    )}
+                    {item.status === 'IN_PROGRESS' && (
                       <Button 
                         size="sm"
-                        variant="outline"
-                        onClick={() => markAsServed(item.id)}
+                        onClick={() => completeConsultation(item.id)}
+                        className="h-7 px-2 text-xs bg-blue-600 hover:bg-blue-700 text-white"
+                        disabled={updateStatusMutation.isPending}
                       >
-                        Start Consultation
+                        <CheckCircle2 className="h-3 w-3 mr-1" />
+                        Complete
                       </Button>
                     )}
                   </div>
@@ -235,7 +339,7 @@ export function QueueBoard() {
               </p>
             </div>
           </div>
-          <Button onClick={callNext} className="bg-primary hover:bg-primary/90">
+          <Button onClick={callNext} className="bg-primary hover:bg-primary/90" disabled={callNextMutation.isPending}>
             <Bell className="h-4 w-4 mr-2" />
             Call Next Patient
           </Button>

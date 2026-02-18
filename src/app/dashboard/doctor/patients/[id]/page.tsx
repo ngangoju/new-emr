@@ -25,11 +25,13 @@ import {
 
 import { usePatient, usePatientVitals, useUpdatePatient } from '@/hooks/api/usePatients'
 import { useConsultations } from '@/hooks/api/useConsultations'
+import { useCreateEncounter } from '@/hooks/api/useEncounters'
 import { format } from 'date-fns'
 import { EmptyState } from '@/components/ui/empty-state'
 import { formatDate, formatDateTime } from '@/lib/utils/date'
 import { formatAddress, formatShortAddress } from '@/lib/utils/address'
 import { useState } from 'react'
+import { useRole } from '@/hooks/useRole'
 import toast from 'react-hot-toast'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -40,6 +42,7 @@ export default function PatientDetailPage() {
   const params = useParams()
   const router = useRouter()
   const id = params.id as string
+  const { role, hasPermission } = useRole()
 
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [editFormData, setEditFormData] = useState<any>({})
@@ -51,6 +54,7 @@ export default function PatientDetailPage() {
   const updatePatientMutation = useUpdatePatient()
 
   const consultations = consultationsData || []
+  const createEncounterMutation = useCreateEncounter()
 
   // Loading state
   if (patientLoading || vitalsLoading || consultationsLoading) {
@@ -123,6 +127,21 @@ export default function PatientDetailPage() {
     router.push(`/dashboard/doctor/consultations/new?patientId=${id}`)
   }
 
+  const handleStartVisit = () => {
+    createEncounterMutation.mutate({
+      patientId: id,
+      type: 'CONSULTATION'
+    }, {
+      onSuccess: (data) => {
+        toast.success('Visit started! Moving to Triage.')
+        router.push(`/dashboard/doctor/consultations/new?patientId=${id}&encounterId=${data.id}`)
+      },
+      onError: (error: any) => {
+        toast.error(error?.response?.data?.message || 'Failed to start visit')
+      }
+    })
+  }
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Patient Header */}
@@ -153,10 +172,24 @@ export default function PatientDetailPage() {
             <Edit className="h-4 w-4 mr-2" />
             Edit Profile
           </Button>
-          <Button onClick={handleNewConsultation}>
-            <FileText className="h-4 w-4 mr-2" />
-            New Consultation
-          </Button>
+          
+          {hasPermission('CAN_REGISTER_PATIENT') && (
+            <Button
+              onClick={handleStartVisit}
+              disabled={createEncounterMutation.isPending}
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+            >
+              <Activity className="h-4 w-4 mr-2" />
+              {createEncounterMutation.isPending ? 'Starting...' : 'Start Visit'}
+            </Button>
+          )}
+
+          {hasPermission('CAN_PRESCRIBE') && (
+            <Button variant="outline" onClick={handleNewConsultation}>
+              <FileText className="h-4 w-4 mr-2" />
+              New Consultation
+            </Button>
+          )}
         </div>
       </div>
 
@@ -418,10 +451,10 @@ export default function PatientDetailPage() {
                     icon={FileText}
                     title="No consultations yet"
                     description="This patient hasn't had any consultations recorded. Start a new consultation to create the first medical record."
-                    action={{
+                    action={hasPermission('CAN_PRESCRIBE') ? {
                       label: "Start Consultation",
                       onClick: () => window.location.href = '/dashboard/doctor/consultations/new'
-                    }}
+                    } : undefined}
                   />
                 ) : (
                   consultations.map((consultation: any) => (

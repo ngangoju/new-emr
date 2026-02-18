@@ -16,17 +16,17 @@ export function PaymentMethodsSelect({
   value,
   onChange,
 }: PaymentMethodsSelectProps) {
-  const methods: PaymentMethod[] = ['cash', 'card', 'mobile_money', 'insurance']
+  const methods: PaymentMethod[] = ['CASH', 'MOBILE_MONEY', 'CARD', 'INSURANCE', 'BANK_TRANSFER']
 
   return (
-    <Select value={value} onValueChange={onChange as any}>
+    <Select value={value} onValueChange={(selected) => onChange(selected as PaymentMethod)}>
       <SelectTrigger className="w-[180px]">
         <SelectValue placeholder="Select payment method" />
       </SelectTrigger>
       <SelectContent>
         {methods.map((method) => (
           <SelectItem key={method} value={method}>
-            {method.replace('_', ' ').toUpperCase()}
+            {method.replace('_', ' ')}
           </SelectItem>
         ))}
       </SelectContent>

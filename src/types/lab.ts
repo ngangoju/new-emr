@@ -20,3 +20,15 @@ export interface LabResult {
   tech?: string
   completedAt?: Date
 }
+
+export interface LabResultFinalizeRequest {
+  result: LabResult
+  markAsFinal: boolean
+}
+
+export interface LabResultSubmissionResponse {
+  orderId: string
+  status: 'processed' | 'approved'
+  result: LabResult
+  submittedAt: string
+}
