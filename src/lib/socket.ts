@@ -1,137 +1,124 @@
-// Native WebSocket implementation for Spring WebFlux raw WebSockets
-const SOCKET_URL = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8080/ws';
+/**
+ * Standard WebSocket wrapper for Reactive Spring WebFlux backend.
+ * Replaces Socket.IO since the backend uses raw WebSockets.
+ * Provides a Socket.IO-compatible interface (on, off, emit).
+ */
 
-// Set to true to enable debug logging
-const WS_DEBUG = false;
+const SOCKET_URL = (process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:8888')
+    .replace('http', 'ws');
 
-function debugLog(...args: any[]) {
-    if (WS_DEBUG) {
-        console.log('[WebSocket]', ...args);
-    }
-}
+type SocketCallback = (data?: any) => void;
 
-function debugWarn(...args: any[]) {
-    if (WS_DEBUG) {
-        console.warn('[WebSocket]', ...args);
-    }
-}
-
-// Helper to get JWT token from localStorage/cookies
-function getAuthToken(): string | null {
-    if (typeof window === 'undefined') return null;
-    // Try to get from localStorage (where auth hook stores it) - key is 'accessToken'
-    return localStorage.getItem('accessToken');
-}
-
-class SocketManager {
+class SocketClient {
     private socket: WebSocket | null = null;
-    private listeners: Map<string, Array<(data: any) => void>> = new Map();
+    private eventListeners: Map<string, Set<SocketCallback>> = new Map();
     private reconnectAttempts = 0;
     private maxReconnectAttempts = 5;
-    private isConnecting = false;
-
-    connect() {
-        if (this.socket?.readyState === WebSocket.OPEN || this.isConnecting) return;
-
-        // Get JWT token for authentication
-        const token = getAuthToken();
-        const url = token ? `${SOCKET_URL}?token=${encodeURIComponent(token)}` : SOCKET_URL;
-
-        debugLog('Connecting to:', url);
-
-        try {
-            this.isConnecting = true;
-            this.socket = new WebSocket(url);
-
-            this.socket.onopen = () => {
-                debugLog('Connected');
-                this.reconnectAttempts = 0;
-                this.isConnecting = false;
-                this.notify('connect', null);
-            };
-
-            this.socket.onmessage = (event) => {
-                try {
-                    const data = JSON.parse(event.data);
-                    // If it's a simple string like "queue:update"
-                    if (typeof data === 'string') {
-                        this.notify(data, null);
-                    } else if (data.type) {
-                        // If it's an object with a type/event field
-                        this.notify(data.type, data);
-                    }
-                    // Always notify a general message event
-                    this.notify('message', data);
-                } catch (e) {
-                    // Fallback for non-JSON messages
-                    this.notify(event.data, null);
-                }
-            };
-
-            this.socket.onclose = (event) => {
-                debugLog('Disconnected:', event.reason);
-                this.isConnecting = false;
-                this.notify('disconnect', null);
-                this.attemptReconnect();
-            };
-
-            this.socket.onerror = (error) => {
-                debugWarn('Connection failed. Server may be unavailable.');
-                this.isConnecting = false;
-                // Don't spam errors - just log once and let reconnect handle it
-            };
-        } catch (error) {
-            debugWarn('Failed to create WebSocket');
-            this.isConnecting = false;
-            this.attemptReconnect();
-        }
-    }
-
-    private attemptReconnect() {
-        if (this.reconnectAttempts < this.maxReconnectAttempts) {
-            this.reconnectAttempts++;
-            debugLog(`Reconnect attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts}...`);
-            setTimeout(() => this.connect(), 2000 * this.reconnectAttempts);
-        } else {
-            debugWarn('Max reconnect attempts reached.');
-            this.notify('connect-failed', null);
-        }
-    }
-
-    on(event: string, callback: (data: any) => void) {
-        if (!this.listeners.has(event)) {
-            this.listeners.set(event, []);
-        }
-        this.listeners.get(event)?.push(callback);
-    }
-
-    off(event: string, callback: (data: any) => void) {
-        const list = this.listeners.get(event);
-        if (list) {
-            this.listeners.set(event, list.filter(cb => cb !== callback));
-        }
-    }
-
-    private notify(event: string, data: any) {
-        this.listeners.get(event)?.forEach(callback => callback(data));
-    }
-
-    send(data: any) {
-        if (this.socket?.readyState === WebSocket.OPEN) {
-            this.socket.send(JSON.stringify(data));
-        } else {
-            debugWarn('Not connected. Message not sent.');
-        }
-    }
-
-    disconnect() {
-        this.reconnectAttempts = this.maxReconnectAttempts; // Prevent reconnect
-        this.socket?.close();
-    }
+    private manualDisconnect = false;
 
     get connected() {
         return this.socket?.readyState === WebSocket.OPEN;
     }
+
+    connect() {
+        if (this.socket?.readyState === WebSocket.OPEN || this.socket?.readyState === WebSocket.CONNECTING) return;
+
+        this.manualDisconnect = false;
+        console.log(`Connecting to WebSocket: ${SOCKET_URL}/ws/queue`);
+        this.socket = new WebSocket(`${SOCKET_URL}/ws/queue`);
+
+        this.socket.onopen = () => {
+            console.log('WebSocket connected');
+            this.reconnectAttempts = 0;
+            this.triggerEvent('connect');
+        };
+
+        this.socket.onmessage = (event) => {
+            const rawData = event.data;
+            let parsedData: any;
+
+            try {
+                parsedData = JSON.parse(rawData);
+            } catch (e) {
+                parsedData = rawData;
+            }
+
+            // Trigger general message event
+            this.triggerEvent('message', parsedData);
+
+            // If it's a simple string, treat it as an event name (common in this backend)
+            if (typeof parsedData === 'string') {
+                this.triggerEvent(parsedData);
+            }
+            // If it's an object with a type/event field
+            else if (parsedData && typeof parsedData === 'object') {
+                const eventName = parsedData.type || parsedData.event;
+                if (eventName) {
+                    this.triggerEvent(eventName, parsedData.data || parsedData);
+                }
+            }
+        };
+
+        this.socket.onclose = (event) => {
+            console.log('WebSocket disconnected', event.reason);
+            this.triggerEvent('disconnect');
+
+            if (!this.manualDisconnect && this.reconnectAttempts < this.maxReconnectAttempts) {
+                this.reconnectAttempts++;
+                console.log(`Reconnecting in ${2 * this.reconnectAttempts}s... (Attempt ${this.reconnectAttempts})`);
+                setTimeout(() => this.connect(), 2000 * this.reconnectAttempts);
+            }
+        };
+
+        this.socket.onerror = (error) => {
+            console.error('WebSocket error:', error);
+            this.triggerEvent('error', error);
+        };
+    }
+
+    on(event: string, callback: SocketCallback) {
+        if (!this.eventListeners.has(event)) {
+            this.eventListeners.set(event, new Set());
+        }
+        this.eventListeners.get(event)!.add(callback);
+    }
+
+    off(event: string, callback: SocketCallback) {
+        const listeners = this.eventListeners.get(event);
+        if (listeners) {
+            listeners.delete(callback);
+        }
+    }
+
+    emit(event: string, data?: any) {
+        if (this.socket?.readyState === WebSocket.OPEN) {
+            const payload = JSON.stringify({ type: event, data });
+            this.socket.send(payload);
+        } else {
+            console.error('WebSocket not connected');
+        }
+    }
+
+    disconnect() {
+        this.manualDisconnect = true;
+        if (this.socket) {
+            this.socket.close();
+            this.socket = null;
+        }
+    }
+
+    private triggerEvent(event: string, data?: any) {
+        const listeners = this.eventListeners.get(event);
+        if (listeners) {
+            listeners.forEach(callback => {
+                try {
+                    callback(data);
+                } catch (e) {
+                    console.error(`Error in WebSocket listener for event "${event}":`, e);
+                }
+            });
+        }
+    }
 }
 
-export const socket = new SocketManager();
+export const socket = new SocketClient();

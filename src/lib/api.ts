@@ -3,7 +3,7 @@ import toast from 'react-hot-toast';
 import { getAccessToken, handleUnauthorized } from '@/lib/utils/auth';
 
 export const api = axios.create({
-    baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080',
+    baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8888',
     withCredentials: false,
 });
 
@@ -34,14 +34,31 @@ api.interceptors.response.use(
     async (error) => {
         const status = error.response?.status;
 
-        if (status === 401) {
-            handleUnauthorized();
-            return Promise.reject(error);
-        }
-
-        if (status === 403) {
-            toast.error('You are not allowed to perform this action.');
-            return Promise.reject(error);
+        // Handle 401 Unauthorized (Token Refresh)
+        if (error.response?.status === 401 && !original._retry) {
+            original._retry = true;
+            const refreshToken = localStorage.getItem('refreshToken');
+            if (refreshToken) {
+                try {
+                    const { data } = await axios.post(
+                        (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8888') + '/auth/refresh',
+                        {},
+                        { headers: { Authorization: `Bearer ${refreshToken}` } }
+                    );
+                    localStorage.setItem('accessToken', data.accessToken || data.token);
+                    original.headers.Authorization = `Bearer ${data.accessToken || data.token}`;
+                    return api(original);
+                } catch (refreshError) {
+                    // Refresh failed, redirect to login or handle logout
+                    localStorage.removeItem('accessToken');
+                    localStorage.removeItem('refreshToken');
+                    if (typeof window !== 'undefined') {
+                        window.location.href = '/login';
+                    }
+                    console.error('Refresh token failed', refreshError);
+                    return Promise.reject(refreshError);
+                }
+            }
         }
 
         // Global Error Handling
