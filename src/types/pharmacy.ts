@@ -21,8 +21,8 @@ export interface InventorySummary {
 export interface StockAlert {
   lowStockCount: number;
   expiringCount: number;
-  lowStockItems: any[]; // Define more specifically if needed
-  expiringItems: any[];
+  lowStockItems: unknown[];
+  expiringItems: unknown[];
 }
 
 export interface Medication {
@@ -64,4 +64,67 @@ export interface InventoryItem {
     quantity: number;
   }[];
   lowStockThreshold: number;
+}
+
+// Drug Request Types
+export type DrugRequestStatus = 'pending' | 'approved' | 'denied' | 'fulfilled';
+
+export interface DrugRequestItem {
+  drugId: string;
+  drugName: string;
+  quantity: number;
+  notes?: string;
+}
+
+export interface DrugRequest {
+  id: string;
+  patientId: string;
+  patientName: string;
+  requestedBy: string;
+  requestedByName?: string;
+  requestedAt: string;
+  items: DrugRequestItem[];
+  status: DrugRequestStatus;
+  notes?: string;
+  fulfilledAt?: string;
+  fulfilledBy?: string;
+  deniedAt?: string;
+  deniedBy?: string;
+  denialReason?: string;
+}
+
+export interface CreateDrugRequestInput {
+  patientId: string;
+  patientName: string;
+  items: DrugRequestItem[];
+  notes?: string;
+}
+
+export interface FulfillDrugRequestInput {
+  id: string;
+  notes?: string;
+}
+
+export interface DenyDrugRequestInput {
+  id: string;
+  reason: string;
+}
+
+export interface DrugStockEntry {
+  id: string;
+  name: string;
+  batchNumber: string;
+  quantity: number;
+  expiryDate: string;
+  supplier: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateDrugStockInput {
+  name: string;
+  batchNumber: string;
+  quantity: number;
+  expiryDate: string;
+  supplier: string;
 }

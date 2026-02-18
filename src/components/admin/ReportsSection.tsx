@@ -4,7 +4,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Download } from 'lucide-react'
-import { useReports } from '@/hooks/useReports'
+import { useExportReport, useReports } from '@/hooks/useReports'
+import type { ReportType } from '@/types/admin'
 import {
   BarChart,
   Bar,
@@ -21,9 +22,14 @@ import {
 
 export function ReportsSection() {
   const { reports, loading } = useReports()
+  const { exportReport, exporting } = useExportReport()
 
-  const handleExport = (type: string) => {
-    alert(`Export ${type} report as CSV/PDF (mock implementation)`)
+  const handleExport = async (reportType: ReportType, format: 'csv' | 'json' = 'csv') => {
+    try {
+      await exportReport({ reportType, format })
+    } catch {
+      // handled by interceptor + mutation error
+    }
   }
 
   if (loading || !reports.financial || !reports.patient || !reports.usage) {
@@ -51,9 +57,9 @@ export function ReportsSection() {
         <TabsContent value="financial" className="mt-6">
           <div className="flex justify-between items-center mb-6">
             <h3 className="text-xl font-semibold">{reports.financial.title} - {reports.financial.period}</h3>
-            <Button variant="outline" onClick={() => handleExport('financial')}>
+            <Button variant="outline" onClick={() => handleExport('financial', 'csv')} disabled={exporting}>
               <Download className="mr-2 h-4 w-4" />
-              Export
+              {exporting ? 'Exporting...' : 'Export CSV'}
             </Button>
           </div>
           <Card>
@@ -76,9 +82,9 @@ export function ReportsSection() {
         <TabsContent value="patient" className="mt-6">
           <div className="flex justify-between items-center mb-6">
             <h3 className="text-xl font-semibold">{reports.patient.title} - {reports.patient.period}</h3>
-            <Button variant="outline" onClick={() => handleExport('patient')}>
+            <Button variant="outline" onClick={() => handleExport('patient', 'json')} disabled={exporting}>
               <Download className="mr-2 h-4 w-4" />
-              Export
+              {exporting ? 'Exporting...' : 'Export JSON'}
             </Button>
           </div>
           <Card>
@@ -108,9 +114,9 @@ export function ReportsSection() {
         <TabsContent value="usage" className="mt-6">
           <div className="flex justify-between items-center mb-6">
             <h3 className="text-xl font-semibold">{reports.usage.title} - {reports.usage.period}</h3>
-            <Button variant="outline" onClick={() => handleExport('usage')}>
+            <Button variant="outline" onClick={() => handleExport('usage', 'csv')} disabled={exporting}>
               <Download className="mr-2 h-4 w-4" />
-              Export
+              {exporting ? 'Exporting...' : 'Export CSV'}
             </Button>
           </div>
           <Card>

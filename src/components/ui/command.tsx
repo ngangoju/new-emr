@@ -62,22 +62,46 @@ function CommandDialog({
 
 function CommandInput({
   className,
+  preserveSpaces = false,
+  onChange,
   ...props
-}: React.ComponentProps<typeof CommandPrimitive.Input>) {
+}: React.ComponentProps<typeof CommandPrimitive.Input> & {
+  preserveSpaces?: boolean
+  onChange?: React.ChangeEventHandler<HTMLInputElement>
+}) {
+  const handleInputChange: React.ChangeEventHandler<HTMLInputElement> = (event) => {
+    onChange?.(event)
+    props.onValueChange?.(event.target.value)
+  }
+
   return (
     <div
       data-slot="command-input-wrapper"
       className="flex h-9 items-center gap-2 border-b px-3"
     >
       <SearchIcon className="size-4 shrink-0 opacity-50" />
-      <CommandPrimitive.Input
-        data-slot="command-input"
-        className={cn(
-          "placeholder:text-muted-foreground flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-hidden disabled:cursor-not-allowed disabled:opacity-50",
-          className
-        )}
-        {...props}
-      />
+      {preserveSpaces ? (
+        <input
+          data-slot="command-input"
+          className={cn(
+            "placeholder:text-muted-foreground flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-hidden disabled:cursor-not-allowed disabled:opacity-50",
+            className
+          )}
+          value={typeof props.value === 'string' ? props.value : ''}
+          onChange={handleInputChange}
+          placeholder={props.placeholder}
+          disabled={props.disabled}
+        />
+      ) : (
+        <CommandPrimitive.Input
+          data-slot="command-input"
+          className={cn(
+            "placeholder:text-muted-foreground flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-hidden disabled:cursor-not-allowed disabled:opacity-50",
+            className
+          )}
+          {...props}
+        />
+      )}
     </div>
   )
 }

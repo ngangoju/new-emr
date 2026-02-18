@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useRouter } from 'next/navigation';
+import { clearSession, getAccessToken, setAccessToken, setSessionUser } from '@/lib/utils/auth';
 
 export interface User {
     id: string;
@@ -35,8 +36,7 @@ export function useLogin() {
                 throw new Error("Login failed: No access token received from server.");
             }
 
-            localStorage.setItem('accessToken', data.accessToken);
-            if (data.refreshToken) localStorage.setItem('refreshToken', data.refreshToken);
+            setAccessToken(data.accessToken);
 
             // If backend returns full user object, use it
             if (data.user) {
@@ -59,7 +59,7 @@ export function useLogin() {
                 console.error('Failed to parse token payload', e);
             }
 
-            return {
+            const normalizedUser = {
                 id: data.userId || '',
                 username: payload.username || '',
                 email: payload.email || '',
@@ -67,8 +67,13 @@ export function useLogin() {
                 permissions: userPermissions,
                 active: true
             } as User;
+
+            setSessionUser(normalizedUser);
+
+            return normalizedUser;
         },
         onSuccess: (user) => {
+            setSessionUser(user);
             queryClient.setQueryData(['me'], user);
         },
     });
@@ -78,6 +83,10 @@ export function useMe() {
     return useQuery({
         queryKey: ['me'],
         queryFn: async () => {
+            if (!getAccessToken()) {
+                return null;
+            }
+
             try {
                 const { data } = await api.get<User>('/auth/me');
                 return data;
@@ -100,8 +109,8 @@ export function useLogout() {
             } catch (error) {
                 // Ignore logout errors
             }
-            localStorage.removeItem('accessToken');
-            localStorage.removeItem('refreshToken');
+
+            clearSession({ redirectToLogin: false, reason: 'manual-logout' });
         },
         onSuccess: () => {
             queryClient.setQueryData(['me'], null);

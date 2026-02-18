@@ -31,29 +31,42 @@ import {
 } from '@/components/ui/form'
 
 const STEPS = [
-  { id: 1, name: 'Patient Selection', icon: User, fields: ['patientId'] },
-  { id: 2, name: 'Chief Complaint', icon: FileText, fields: ['chiefComplaint', 'history'] },
-  { id: 3, name: 'Vitals & Examination', icon: Activity, fields: ['vitals.temperature', 'vitals.bloodPressure', 'vitals.heartRate', 'vitals.weight', 'vitals.height', 'examination'] },
-  { id: 4, name: 'Diagnosis', icon: Stethoscope, fields: ['diagnosis'] },
-  { id: 5, name: 'Treatment Plan', icon: Pill, fields: ['medications', 'labTests', 'followUp'] },
-  { id: 6, name: 'Review & Submit', icon: Eye, fields: [] },
+  { id: 1, name: 'Patient Selection', icon: User, fields: ['patientId'], role: 'NURSE' },
+  { id: 2, name: 'Chief Complaint', icon: FileText, fields: ['chiefComplaint', 'history'], role: 'NURSE' },
+  { id: 3, name: 'Vitals & Examination', icon: Activity, fields: ['vitals.temperature', 'vitals.bloodPressure', 'vitals.heartRate', 'vitals.weight', 'vitals.height', 'examination'], role: 'NURSE' },
+  { id: 4, name: 'Diagnosis', icon: Stethoscope, fields: ['diagnosis'], role: 'DOCTOR' },
+  { id: 5, name: 'Treatment Plan', icon: Pill, fields: ['medications', 'labTests', 'followUp'], role: 'DOCTOR' },
+  { id: 6, name: 'Review & Submit', icon: Eye, fields: [], role: 'DOCTOR' },
 ]
 
 import { usePatients, usePatient, type Patient } from '@/hooks/api/usePatients'
 import { useCreateConsultation } from '@/hooks/api/useConsultations'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import toast from 'react-hot-toast'
 import { useDebounce } from '@/hooks/useDebounce'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { consultationSchema, type ConsultationInput } from '@/lib/validations/consultation'
+import { useRole } from '@/hooks/useRole'
+import { WorkflowIndicator } from '@/components/clinical/WorkflowIndicator'
+import { useEncounter, useHandoffEncounter, useUpdateEncounterStep } from '@/hooks/api/useEncounters'
 
 export default function NewConsultationPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const encounterId = searchParams.get('encounterId')
+  const { role, isRole } = useRole()
+  
   const [currentStep, setCurrentStep] = useState(1)
   const [patientSearch, setPatientSearch] = useState('')
   const debouncedSearch = useDebounce(patientSearch, 500)
   
+  // Fetch encounter data if it exists
+  const { data: encounterData, isLoading: isLoadingEncounter } = useEncounter(encounterId || '')
+  const encounter = encounterData as any; // Cast for now if TS still complains, or use explicit Encounter type
+  const handoffMutation = useHandoffEncounter()
+  const updateStepMutation = useUpdateEncounterStep()
+
   // React Hook Form
   const form = useForm<ConsultationInput>({
     resolver: zodResolver(consultationSchema),
@@ -104,15 +117,61 @@ export default function NewConsultationPage() {
       if (!isValid) return
     }
 
+    // Capture completion state for the step
+    if (encounterId) {
+      updateStepMutation.mutate({
+        id: encounterId,
+        stepName: STEPS[currentStep - 1].name,
+        completed: true
+      })
+    }
+
     if (currentStep < STEPS.length) {
       setCurrentStep(prev => prev + 1)
     }
+  }
+
+  const handleHandoff = async () => {
+    if (!encounterId) return;
+
+    const isNurse = isRole('NURSE');
+    const nextStage = isNurse ? 'CONSULTATION' : 'SIGN_OFF';
+    
+    // In a real app, we'd have a dropdown to select the specific doctor/user
+    // For this redesign, we'll use a placeholder or the first available
+    const placeholderDoctorId = '00000000-0000-0000-0000-000000000000'; 
+
+    handoffMutation.mutate({
+      id: encounterId,
+      nextStage,
+      newOwnerId: placeholderDoctorId,
+      notes: "Handoff from wizard"
+    }, {
+      onSuccess: () => {
+        toast.success(`Handoff to ${isNurse ? 'Doctor' : 'Reviewer'} successful!`)
+        router.push('/dashboard')
+      }
+    })
   }
 
   const handleBack = () => {
     if (currentStep > 1) {
       setCurrentStep(prev => prev - 1)
     }
+  }
+
+  // Determine if current step is editable by current role
+  const isStepEditable = () => {
+    if (encounter?.workflowMode === 'SINGLE_ACTOR') return true;
+    
+    const stepRole = STEPS[currentStep - 1].role;
+    if (stepRole === 'NURSE' && isRole('NURSE')) return true;
+    if (stepRole === 'DOCTOR' && isRole('DOCTOR')) return true;
+    
+    // Doctors can override nurse fields with audit
+    if (stepRole === 'NURSE' && isRole('DOCTOR')) return true; 
+
+    return false;
   }
 
   const onSubmit = (data: ConsultationInput) => {
@@ -144,11 +203,23 @@ Follow Up: ${data.followUp || 'N/A'}
   return (
     <div className="space-y-6 animate-fade-in max-w-5xl mx-auto">
       <PageHeader
-        title="New Consultation"
-        description="Record patient consultation following the structured workflow"
+        title="Consultation Wizard"
+        description="Multi-role clinical workflow with secure handoffs"
       />
 
-      {/* Progress Bar */}
+      {/* Workflow Indicator */}
+      {encounter && (
+        <WorkflowIndicator 
+          stage={encounter.stage as any}
+          workflowMode={encounter.workflowMode as any}
+          currentOwnerName={encounter.currentOwnerName}
+          patientName={selectedPatient ? `${selectedPatient.firstName} ${selectedPatient.lastName}` : ''}
+          lastUpdated={new Date(encounter.updatedAt).toLocaleString()}
+        />
+      )}
+
+      {/* Legacy Progress Bar (Optional, keep for compatibility if needed) */}
+      {!encounter && (
       <Card>
         <CardContent className="pt-6">
           <div className="space-y-4">
@@ -190,6 +261,7 @@ Follow Up: ${data.followUp || 'N/A'}
           </div>
         </CardContent>
       </Card>
+      )}
 
       {/* Step Content */}
       <Form {...form}>
@@ -197,7 +269,7 @@ Follow Up: ${data.followUp || 'N/A'}
           <Card className="mt-6">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
-                {React.createElement(STEPS[currentStep - 1].icon, { className: 'h-5 w-5 text-primary' })}
+                {React.createElement(STEPS[currentStep - 1].icon as any, { className: 'h-5 w-5 text-primary' })}
                 <span>{STEPS[currentStep - 1].name}</span>
               </CardTitle>
             </CardHeader>
@@ -217,6 +289,7 @@ Follow Up: ${data.followUp || 'N/A'}
                             placeholder="Search by name, ID or phone..." 
                             value={patientSearch}
                             onChange={(e) => setPatientSearch(e.target.value)}
+                            disabled={!isStepEditable()}
                           />
                           {patientSearch && !field.value && (
                             <div className="absolute z-10 w-full mt-1 bg-card border rounded-md shadow-lg max-h-60 overflow-auto">
@@ -596,18 +669,32 @@ Follow Up: ${data.followUp || 'N/A'}
             </Button>
 
             <div className="flex space-x-2">
-              <Button variant="outline" type="button">
+              <Button variant="outline" type="button" disabled={!isStepEditable()}>
                 <Save className="h-4 w-4 mr-2" />
                 Save Draft
               </Button>
 
-              {currentStep < STEPS.length ? (
+              {currentStep === 3 && isRole('NURSE') && encounter?.workflowMode === 'MULTI_ACTOR' ? (
+                <Button 
+                  onClick={handleHandoff} 
+                  type="button" 
+                  className="bg-warning hover:bg-warning/90"
+                  disabled={handoffMutation.isPending}
+                >
+                  <ChevronRight className="h-4 w-4 mr-2" />
+                  {handoffMutation.isPending ? 'Processing...' : 'Ready for Doctor'}
+                </Button>
+              ) : currentStep < STEPS.length ? (
                 <Button onClick={handleNext} type="button">
                   Next
                   <ChevronRight className="h-4 w-4 ml-2" />
                 </Button>
               ) : (
-                <Button type="submit" className="bg-success hover:bg-success/90" disabled={createConsultationMutation.isPending}>
+                <Button 
+                  type="submit" 
+                  className="bg-success hover:bg-success/90" 
+                  disabled={createConsultationMutation.isPending || !isStepEditable()}
+                >
                   <Check className="h-4 w-4 mr-2" />
                   {createConsultationMutation.isPending ? 'Completing...' : 'Complete Consultation'}
                 </Button>

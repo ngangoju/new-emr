@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Table,
@@ -22,15 +23,18 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Plus, Trash2, Save, CreditCard } from 'lucide-react'
+import toast from 'react-hot-toast'
 import { PaymentMethodsSelect } from './PaymentMethodsSelect'
-import { TariffSearchCombobox } from './TariffSearchCombobox'
-import { mockTariffs } from '@/lib/mock/tariffs'
-import type { Tariff } from '@/types/billing'
-import type { PaymentMethod } from '@/types/billing'
 import { useCreatePayment } from '@/hooks/usePayments'
+import { useCreateInvoice, useInvoicePreview } from '@/hooks/useInvoices'
+import { PatientSearchCombobox } from './PatientSearchCombobox'
+import { TariffSearchCombobox } from './TariffSearchCombobox'
+import { DoctorSelector } from '@/components/shared/DoctorSelector'
+import type { Patient } from '@/types/patient'
+import type { Tariff, PaymentMethod } from '@/types/billing'
+import { useTariffs } from '@/hooks/useTariffs'
 
 interface InvoiceItem {
   tariffId: string
@@ -40,39 +44,119 @@ interface InvoiceItem {
   total: number
 }
 
-// TODO: Replace with actual patient data from API
-const defaultPatient = {
-  id: 'temp',
-  fullName: 'Select Patient',
-  insurance: {
-    copayPercentage: 20
+const defaultPatient: Patient = {
+  id: '',
+  fullName: 'Guest Patient',
+  nationalId: '',
+  phone: '',
+  dateOfBirth: new Date(),
+  gender: 'male',
+  address: { province: '', district: '', sector: '', cell: '', village: '' },
+  insurance: { provider: 'CASH', cardNumber: '', copayPercentage: 100 },
+  emergencyContact: { name: '', phone: '', relationship: '' },
+  allergies: [],
+  status: 'active',
+  createdAt: new Date(),
+  updatedAt: new Date(),
+}
+
+function getEffectivePrice(tariff: Tariff, patient: Patient) {
+  const insuranceInfo = patient.insuranceInfo;
+  let payer = patient.insurance?.provider?.toUpperCase() || 'CASH';
+
+  // If insuranceInfo (JSON) exists, extract provider
+  if (insuranceInfo) {
+    try {
+      const parsed = JSON.parse(insuranceInfo);
+      payer = (parsed.insurance || parsed.provider || payer).toUpperCase();
+    } catch (e) {
+       // fallback to payer
+    }
   }
+
+  if (payer.includes('MUTUELLE') || payer.includes('CBHI')) {
+    if (tariff.insurancePrices) {
+      try {
+        const prices = JSON.parse(tariff.insurancePrices);
+        if (prices.mutuelle) return prices.mutuelle;
+      } catch (e) {}
+    }
+    return tariff.rssbMmiPrice || tariff.basePrice;
+  }
+
+  if (payer.includes('RSSB') || payer.includes('MMI') || payer.includes('RAMA')) {
+    return tariff.rssbMmiPrice || tariff.basePrice;
+  }
+
+  if (payer.includes('PRIVATE') || payer.includes('CASH')) {
+    return tariff.privatePrice || tariff.basePrice;
+  }
+
+  return tariff.basePrice;
+}
+
+function getPatientShare(total: number, patient: Patient) {
+    const insuranceInfo = patient.insuranceInfo;
+    let payer = patient.insurance?.provider?.toUpperCase() || 'CASH';
+  
+    if (insuranceInfo) {
+      try {
+        const parsed = JSON.parse(insuranceInfo);
+        payer = (parsed.insurance || parsed.provider || payer).toUpperCase();
+      } catch (e) {}
+    }
+  
+    if (payer.includes('MUTUELLE') || payer.includes('CBHI')) return total * 0.10;
+    if (payer.includes('MMI') || payer.includes('RAMA') || payer.includes('RADIANT') || payer.includes('RSSB')) return total * 0.15;
+    if (payer.includes('AEQUI')) return total * 0.20;
+    
+    return total;
 }
 
 export function InvoiceGenerator({ trigger }: { trigger: React.ReactNode }) {
   const [open, setOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<'patient' | 'services' | 'summary' | 'payment'>('services')
-  const [patient] = useState(defaultPatient)
+  const [patient, setPatient] = useState<Patient>(defaultPatient)
+  const [doctorId, setDoctorId] = useState('')
   const [items, setItems] = useState<InvoiceItem[]>([])
   const [discount, setDiscount] = useState(0)
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash')
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CASH')
   const [paymentAmount, setPaymentAmount] = useState(0)
-  const { createPayment } = useCreatePayment()
+  const [transactionId, setTransactionId] = useState('')
+  const [paidBy, setPaidBy] = useState('')
+  const [receiptNumber, setReceiptNumber] = useState('')
+  const [notes, setNotes] = useState('')
+  const [createdInvoiceId, setCreatedInvoiceId] = useState<string | null>(null)
+  const { createPayment, creating: paymentProcessing } = useCreatePayment()
+  const { mutateAsync: createInvoice, isPending: creatingInvoice } = useCreateInvoice()
+
+  const previewPayload = patient.id ? {
+    patientId: patient.id,
+    doctorId: doctorId || undefined,
+    items: items.map(item => ({
+      billing_code: item.tariff.billingCode,
+      quantity: item.quantity,
+      unit_price: item.unitPrice,
+      description: item.tariff.serviceName,
+      tariffId: item.tariffId
+    })),
+    discount
+  } : null;
+
+  const { data: preview, isLoading: loadingPreview } = useInvoicePreview(previewPayload)
 
   const subtotal = items.reduce((sum, item) => sum + item.total, 0)
-  const copayPercentage = patient.insurance.copayPercentage
-  const insuranceDue = subtotal * (copayPercentage / 100)
-  const patientDue = subtotal - insuranceDue - discount
-  const total = subtotal - discount
+  const patientDue = preview ? preview.patientDue : (getPatientShare(subtotal, patient) - discount)
+  const insuranceDue = preview ? preview.insuranceDue : (subtotal - patientDue - discount)
 
-  const addItem = () => {
-    // Stub: add selected tariff
+  const addItem = (tariff: Tariff) => {
+    const unitPrice = getEffectivePrice(tariff, patient)
     const newItem: InvoiceItem = {
-      tariffId: '',
-      tariff: mockTariffs[0],
+      tariffId: tariff.id,
+      tariff: tariff,
       quantity: 1,
-      unitPrice: mockTariffs[0].price,
-      total: mockTariffs[0].price,
+      unitPrice: unitPrice,
+      total: unitPrice,
     }
     setItems([...items, newItem])
   }
@@ -88,19 +172,87 @@ export function InvoiceGenerator({ trigger }: { trigger: React.ReactNode }) {
     setItems(items.filter((_, i) => i !== index))
   }
 
-  const handleSubmit = () => {
-    // Mock generate invoice
-    alert('Invoice generated! (mock)\nPatient Due: RWF ' + patientDue.toLocaleString())
-    setOpen(false)
-    // Reset form
+  const handleCreateDraft = async () => {
+    if (!patient.id) {
+       toast.error('Please select a patient first.')
+       setActiveTab('patient')
+       return
+    }
+
+    if (items.length === 0) {
+       toast.error('Please add at least one service.')
+       return
+    }
+
+    if (!doctorId) {
+       toast.error('Please select a doctor for this invoice.')
+       setActiveTab('patient')
+       return
+    }
+
+    try {
+      const result = await createInvoice({
+        patientId: patient.id,
+        doctorId,
+        items: items.map(item => ({
+          billing_code: item.tariff.billingCode,
+          quantity: item.quantity,
+          unit_price: item.unitPrice,
+          description: item.tariff.serviceName,
+          tariffId: item.tariffId
+        })),
+        discount
+      })
+      
+      setCreatedInvoiceId(result.id)
+      setPaymentAmount(result.patientDue) // Default to full patient share
+      toast.success('Invoice draft generated.')
+      setActiveTab('payment')
+    } catch (e) {
+      toast.error('Failed to create invoice.')
+    }
   }
 
-  const handlePay = () => {
-    createPayment({
-      invoiceId: 'NEW-INV',
-      method: paymentMethod,
-      amount: paymentAmount,
-    })
+  const handlePay = async () => {
+    if (!createdInvoiceId) {
+      toast.error('Invoice not created yet.')
+      return
+    }
+    if (paymentAmount <= 0) {
+      toast.error('Amount must be greater than 0.')
+      return
+    }
+
+    if (paymentAmount > patientDue) {
+      toast.error('Payment amount cannot exceed patient due amount.')
+      return
+    }
+
+    if (!paidBy.trim()) {
+      toast.error('Paid by is required.')
+      return
+    }
+
+    try {
+      await createPayment({
+        invoiceId: createdInvoiceId,
+        amount: paymentAmount,
+        paymentMethod,
+        transactionId: transactionId.trim() || undefined,
+        paidBy: paidBy.trim(),
+        receiptNumber: receiptNumber.trim() || undefined,
+        notes: notes.trim() || undefined,
+      })
+
+      setOpen(false)
+      setPaymentAmount(0)
+      setTransactionId('')
+      setPaidBy('')
+      setReceiptNumber('')
+      setNotes('')
+    } catch {
+      // handled via global api + hook error handling
+    }
   }
 
   return (
@@ -113,7 +265,7 @@ export function InvoiceGenerator({ trigger }: { trigger: React.ReactNode }) {
             Generate invoice for patient, add services, calculate totals, process payment.
           </DialogDescription>
         </DialogHeader>
-        <Tabs defaultValue="services" className="space-y-4">
+        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as typeof activeTab)} className="space-y-4">
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="patient">Patient</TabsTrigger>
             <TabsTrigger value="services">Services</TabsTrigger>
@@ -122,15 +274,24 @@ export function InvoiceGenerator({ trigger }: { trigger: React.ReactNode }) {
           </TabsList>
           <TabsContent value="patient" className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-              <div>
+              <div className="space-y-2">
                 <Label>Patient</Label>
-                <p className="text-sm text-muted-foreground mt-2">
-                  TODO: Integrate with patient search API
-                </p>
+                <PatientSearchCombobox 
+                    value={patient.id}
+                    onSelect={(p) => setPatient(p)}
+                />
               </div>
-              <div>
-                <Label>Insurance Copay</Label>
-                <Input value={`${patient.insurance.copayPercentage}%`} readOnly />
+              <div className="space-y-2">
+                <Label>Insurance Plan</Label>
+                <Input value={patient.insurance?.provider || 'CASH'} readOnly className="bg-muted" />
+              </div>
+              <div className="space-y-2">
+                <Label>Doctor *</Label>
+                <DoctorSelector
+                  value={doctorId}
+                  onValueChange={setDoctorId}
+                  placeholder="Select billing doctor"
+                />
               </div>
             </div>
           </TabsContent>
@@ -138,11 +299,11 @@ export function InvoiceGenerator({ trigger }: { trigger: React.ReactNode }) {
             <div className="flex gap-2">
               <TariffSearchCombobox 
                 value=""
-                onSelect={(id) => addItem()} 
+                onSelect={(tariff) => addItem(tariff)} 
               />
-              <Button type="button" variant="outline" size="sm" onClick={addItem}>
-                <Plus className="h-4 w-4" />
-              </Button>
+              <p className="text-xs text-muted-foreground self-center">
+                Search and select a service to add to the invoice.
+              </p>
             </div>
             <Table>
               <TableHeader>
@@ -157,7 +318,7 @@ export function InvoiceGenerator({ trigger }: { trigger: React.ReactNode }) {
               <TableBody>
                 {items.map((item, index) => (
                   <TableRow key={index}>
-                    <TableCell>{item.tariff.name}</TableCell>
+                    <TableCell>{item.tariff.serviceName}</TableCell>
                     <TableCell>
                       <Input 
                         type="number" 
@@ -197,13 +358,13 @@ export function InvoiceGenerator({ trigger }: { trigger: React.ReactNode }) {
                     className="w-24"
                   />
                 </div>
-                <div className="flex justify-between text-warning">
-                  <span>Insurance ({copayPercentage}%):</span>
-                  <span>RWF {insuranceDue.toLocaleString()}</span>
+                <div className="flex justify-between text-blue-600">
+                  <span>Insurance Share:</span>
+                  <span>{loadingPreview ? 'Calculating...' : `RWF ${insuranceDue.toLocaleString()}`}</span>
                 </div>
-                <div className="flex justify-between border-t pt-3 font-bold">
+                <div className="flex justify-between border-t pt-3 font-bold text-lg text-primary">
                   <span>Patient Due:</span>
-                  <span>RWF {patientDue.toLocaleString()}</span>
+                  <span>{loadingPreview ? 'Calculating...' : `RWF ${patientDue.toLocaleString()}`}</span>
                 </div>
               </CardContent>
             </Card>
@@ -225,14 +386,50 @@ export function InvoiceGenerator({ trigger }: { trigger: React.ReactNode }) {
                 placeholder="0"
               />
             </div>
+            <div>
+              <Label>Paid By</Label>
+              <Input
+                value={paidBy}
+                onChange={(e) => setPaidBy(e.target.value)}
+                placeholder="Payer full name"
+              />
+            </div>
+            <div>
+              <Label>Transaction ID (Optional)</Label>
+              <Input
+                value={transactionId}
+                onChange={(e) => setTransactionId(e.target.value)}
+                placeholder="e.g., MM-TRX-2026-0001"
+              />
+            </div>
+            <div>
+              <Label>Receipt Number (Optional)</Label>
+              <Input
+                value={receiptNumber}
+                onChange={(e) => setReceiptNumber(e.target.value)}
+                placeholder="e.g., RCPT-101"
+              />
+            </div>
+            <div>
+              <Label>Notes (Optional)</Label>
+              <Textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Additional payment notes"
+              />
+            </div>
             <div className="flex gap-2">
-              <Button variant="outline" onClick={handleSubmit}>
+              <Button 
+                variant="outline" 
+                onClick={handleCreateDraft} 
+                disabled={creatingInvoice || !!createdInvoiceId}
+              >
                 <Save className="h-4 w-4 mr-2" />
-                Generate Invoice
+                {creatingInvoice ? 'Creating...' : createdInvoiceId ? 'Invoice Created' : 'Generate Invoice'}
               </Button>
-              <Button onClick={handlePay}>
+              <Button onClick={handlePay} disabled={paymentProcessing || !createdInvoiceId}>
                 <CreditCard className="h-4 w-4 mr-2" />
-                Process Payment
+                {paymentProcessing ? 'Processing...' : 'Process Payment'}
               </Button>
             </div>
           </TabsContent>

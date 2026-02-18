@@ -22,7 +22,7 @@ import type { Tariff } from '@/types/billing'
 
 interface TariffSearchComboboxProps {
   value: string
-  onSelect: (value: string) => void
+  onSelect: (tariff: Tariff) => void
 }
 
 export function TariffSearchCombobox({ value, onSelect }: TariffSearchComboboxProps) {
@@ -44,9 +44,9 @@ export function TariffSearchCombobox({ value, onSelect }: TariffSearchComboboxPr
         >
           {selectedTariff ? (
             <>
-              {selectedTariff.name}
+              {selectedTariff.serviceName}
               <span className="ml-2 text-muted-foreground">
-                RWF {selectedTariff.price.toLocaleString()}
+                RWF {selectedTariff.basePrice.toLocaleString()}
               </span>
             </>
           ) : (
@@ -59,6 +59,7 @@ export function TariffSearchCombobox({ value, onSelect }: TariffSearchComboboxPr
         <Command shouldFilter={false}>
           <CommandInput
             placeholder="Search tariff by name or category..."
+            preserveSpaces
             value={search}
             onValueChange={setSearch}
           />
@@ -68,9 +69,9 @@ export function TariffSearchCombobox({ value, onSelect }: TariffSearchComboboxPr
               {tariffs.map((tariff) => (
                 <CommandItem
                   key={tariff.id}
-                  value={tariff.name}
+                  value={tariff.serviceName}
                   onSelect={() => {
-                    onSelect(tariff.id)
+                    onSelect(tariff)
                     setOpen(false)
                   }}
                 >
@@ -80,12 +81,12 @@ export function TariffSearchCombobox({ value, onSelect }: TariffSearchComboboxPr
                       value === tariff.id ? 'opacity-100' : 'opacity-0'
                     )}
                   />
-                  {tariff.name}
+                  {tariff.serviceName}
                   <div className="ml-auto text-xs text-muted-foreground">
                     {tariff.category.toUpperCase()}
                   </div>
                   <span className="ml-2 font-medium">
-                    RWF {tariff.price.toLocaleString()}
+                    RWF {tariff.basePrice.toLocaleString()}
                   </span>
                 </CommandItem>
               ))}

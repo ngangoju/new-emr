@@ -11,16 +11,19 @@ export interface Consultation {
     findings?: string;
     prescriptions?: string;
     createdAt: string;
-    [key: string]: any;
+    [key: string]: unknown;
 }
 
 export interface CreateConsultationPayload {
     patientId: string;
+    doctorId?: string;
+    type?: string;
     appointmentId?: string;
     diagnosis?: string;
     findings?: string;
     prescriptions?: string;
-    vitals?: any;
+    notes?: string;
+    vitals?: unknown;
 }
 
 export function useConsultations(params?: { patientId?: string; doctorId?: string }) {
@@ -68,6 +71,20 @@ export function useUpdateConsultation() {
         },
         onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: ['consultation', data.id] });
+        },
+    });
+}
+
+export function useDeleteConsultation() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async (id: string) => {
+            await api.delete(`/consultations/${id}`);
+            return id;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['consultations'] });
         },
     });
 }

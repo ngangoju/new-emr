@@ -1,8 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { useUsers } from '@/hooks/useUsers'
-import type { User } from '@/types/admin'
+import { useUsers, useCreateUser, useUpdateUser } from '@/hooks/useUsers'
+import type { User, CreateUserInput, UpdateUserInput } from '@/types/admin'
 import {
   Table,
   TableBody,
@@ -22,7 +22,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
-import { Edit3, Trash2, UserX } from 'lucide-react'
+import { Edit3, Trash2, UserX, Plus } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -31,16 +31,37 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import toast from 'react-hot-toast'
 
 export function UserManagementTable() {
   const [search, setSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [editDialogOpen, setEditDialogOpen] = useState(false)
+  const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
+  
+  // Create user form state
+  const [newUser, setNewUser] = useState<CreateUserInput>({
+    username: '',
+    name: '',
+    email: '',
+    role: 'user',
+    password: '',
+  })
+
+  // Edit user form state
+  const [editForm, setEditForm] = useState<UpdateUserInput>({
+    username: '',
+    name: '',
+    email: '',
+    role: 'user',
+  })
 
   const filters = { search, role: roleFilter, status: statusFilter }
   const { filteredUsers } = useUsers(filters)
+  const { createUser, isCreating } = useCreateUser()
+  const { updateUser, isUpdating } = useUpdateUser()
 
   const roles = ['admin', 'doctor', 'nurse', 'receptionist', 'cashier', 'lab_tech', 'pharmacist', 'auditor', 'billing']
   const statuses = ['active', 'inactive', 'suspended']
@@ -60,15 +81,61 @@ export function UserManagementTable() {
     }
   }
 
+  const handleCreateUser = async () => {
+    try {
+      await createUser(newUser)
+      toast.success('User created successfully')
+      setCreateDialogOpen(false)
+      setNewUser({
+        username: '',
+        name: '',
+        email: '',
+        role: 'user',
+        password: '',
+      })
+    } catch (error) {
+      toast.error('Failed to create user')
+    }
+  }
+
+  const handleUpdateUser = async () => {
+    if (!selectedUser) return
+    try {
+      await updateUser({ id: selectedUser.id, input: editForm })
+      toast.success('User updated successfully')
+      setEditDialogOpen(false)
+      setSelectedUser(null)
+    } catch (error) {
+      toast.error('Failed to update user')
+    }
+  }
+
+  const handleEditOpen = (user: User) => {
+    setSelectedUser(user)
+    setEditForm({
+      username: user.username,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+    })
+    setEditDialogOpen(true)
+  }
+
   return (
     <>
       <div className="mb-6 space-y-4">
-        <Input
-          placeholder="Search users by name or email..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="max-w-md"
-        />
+        <div className="flex justify-between items-center">
+          <Input
+            placeholder="Search users by name or email..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="max-w-md"
+          />
+          <Button onClick={() => setCreateDialogOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add User
+          </Button>
+        </div>
         <div className="flex gap-4">
           <Select value={roleFilter || undefined} onValueChange={(val) => setRoleFilter(val || '')}>
             <SelectTrigger className="w-40">
@@ -128,7 +195,7 @@ export function UserManagementTable() {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                      <DropdownMenuItem onClick={() => handleEdit(user)}>
+                      <DropdownMenuItem onClick={() => handleEditOpen(user)}>
                         <Edit3 className="mr-2 h-4 w-4" />
                         Edit
                       </DropdownMenuItem>
@@ -155,20 +222,47 @@ export function UserManagementTable() {
         </Table>
       </div>
 
-      {/* Edit Dialog Mock */}
-      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+      {/* Create User Dialog */}
+      <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Edit User</DialogTitle>
+            <DialogTitle>Add New User</DialogTitle>
             <DialogDescription>
-              Update user details. Changes saved automatically (mock).
+              Create a new user account. Fill in all required fields.
             </DialogDescription>
           </DialogHeader>
-          {selectedUser && (
-            <div className="space-y-4 py-4">
-              <Input defaultValue={selectedUser.name} placeholder="Name" />
-              <Input defaultValue={selectedUser.email} placeholder="Email" />
-              <Select defaultValue={selectedUser.role}>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Username</label>
+              <Input 
+                placeholder="Enter username"
+                value={newUser.username}
+                onChange={(e) => setNewUser({ ...newUser, username: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Full Name</label>
+              <Input 
+                placeholder="Enter full name"
+                value={newUser.name}
+                onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Email</label>
+              <Input 
+                type="email"
+                placeholder="Enter email address"
+                value={newUser.email}
+                onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Role</label>
+              <Select 
+                value={newUser.role} 
+                onValueChange={(val) => setNewUser({ ...newUser, role: val as CreateUserInput['role'] })}
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -182,12 +276,93 @@ export function UserManagementTable() {
                   <SelectItem value="pharmacist">Pharmacist</SelectItem>
                   <SelectItem value="auditor">Auditor</SelectItem>
                   <SelectItem value="billing">Billing</SelectItem>
+                  <SelectItem value="user">User</SelectItem>
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Password</label>
+              <Input 
+                type="password"
+                placeholder="Enter password"
+                value={newUser.password}
+                onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleCreateUser} 
+              disabled={isCreating || !newUser.username || !newUser.name || !newUser.email || !newUser.password}
+            >
+              {isCreating ? 'Creating...' : 'Create User'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit User Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit User</DialogTitle>
+            <DialogDescription>
+              Update user details.
+            </DialogDescription>
+          </DialogHeader>
+          {selectedUser && (
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Username</label>
+                <Input 
+                  value={editForm.username}
+                  onChange={(e) => setEditForm({ ...editForm, username: e.target.value })}
+                  placeholder="Username" 
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Email</label>
+                <Input 
+                  value={editForm.email}
+                  onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                  placeholder="Email" 
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Role</label>
+                <Select 
+                  value={editForm.role}
+                  onValueChange={(val) => setEditForm({ ...editForm, role: val as UpdateUserInput['role'] })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="doctor">Doctor</SelectItem>
+                    <SelectItem value="nurse">Nurse</SelectItem>
+                    <SelectItem value="receptionist">Receptionist</SelectItem>
+                    <SelectItem value="cashier">Cashier</SelectItem>
+                    <SelectItem value="lab_tech">Lab Tech</SelectItem>
+                    <SelectItem value="pharmacist">Pharmacist</SelectItem>
+                    <SelectItem value="auditor">Auditor</SelectItem>
+                    <SelectItem value="billing">Billing</SelectItem>
+                    <SelectItem value="user">User</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
           )}
           <DialogFooter>
-            <Button type="submit">Save Changes</Button>
+            <Button 
+              onClick={handleUpdateUser} 
+              disabled={isUpdating || !editForm.username || !editForm.email}
+            >
+              {isUpdating ? 'Saving...' : 'Save Changes'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

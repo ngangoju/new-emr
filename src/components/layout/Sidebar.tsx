@@ -7,6 +7,7 @@ import { usePathname, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import {
   LayoutDashboard,
+  type LucideIcon,
   Users,
   Stethoscope,
   CalendarDays,
@@ -16,81 +17,41 @@ import {
   Microscope,
   UserCog,
   Settings,
-  ClipboardList,
   UserPlus,
+  Image as ImageIcon,
+  BarChart3,
+  FileJson,
+  CheckCircle,
 } from "lucide-react"
 
-import { UserRole } from "@/lib/utils/auth"
+import { UserRole, getSessionUser, getUserRole, isAuthInitialized, onAuthInitialized, AUTH_EVENTS } from "@/lib/utils/auth"
 import { useUIStore } from "@/lib/stores/uiStore"
+import { getDashboardNavigationForRole, normalizeUserRole } from "@/lib/authz/policy"
 
 interface NavItem {
   title: string
   href: string
-  icon: any
-  roles?: UserRole[]
+  icon: LucideIcon
 }
 
-const navItems: NavItem[] = [
-  { 
-    title: "Dashboard", 
-    href: "/dashboard", 
-    icon: LayoutDashboard 
-  },
-  { 
-    title: "Reception", 
-    href: "/dashboard/reception", 
-    icon: UserPlus,
-    roles: ['ADMIN', 'RECEIPTION', 'RECEPTIONIST', 'CUSTOMER-CARE']
-  },
-  { 
-    title: "Patients", 
-    href: "/dashboard/doctor/patients", 
-    icon: Users,
-    roles: ['ADMIN', 'DOCTOR', 'NURSE', 'RECEIPTION', 'RECEPTIONIST', 'CUSTOMER-CARE', 'CHIEF-NURSE', 'CLINICAL-DIRECTOR']
-  },
-  { 
-    title: "Consultations", 
-    href: "/dashboard/doctor/consultations", 
-    icon: Stethoscope,
-    roles: ['ADMIN', 'DOCTOR', 'NURSE', 'CHIEF-NURSE', 'CLINICAL-DIRECTOR']
-  },
-  { 
-    title: "Schedule", 
-    href: "/dashboard/doctor/schedule", 
-    icon: CalendarDays,
-    roles: ['ADMIN', 'DOCTOR', 'NURSE', 'CHIEF-NURSE', 'CLINICAL-DIRECTOR', 'RECEIPTION', 'RECEPTIONIST']
-  },
-  { 
-    title: "Lab Results", 
-    href: "/dashboard/lab", 
-    icon: Microscope,
-    roles: ['ADMIN', 'LABORANTIN', 'LAB_TECH', 'DOCTOR', 'NURSE', 'CLINICAL-DIRECTOR', 'RADIOLOGIST']
-  },
-  { 
-    title: "Pharmacy", 
-    href: "/dashboard/pharmacy", 
-    icon: Pill,
-    roles: ['ADMIN', 'STORE', 'PHARMACIST', 'DOCTOR', 'CLINICAL-DIRECTOR']
-  },
-  { 
-    title: "Billing", 
-    href: "/dashboard/billing", 
-    icon: DollarSign,
-    roles: ['ADMIN', 'BILLING_OFFICER', 'CASHIER', 'DAF', 'COO']
-  },
-  { 
-    title: "Medical Records", 
-    href: "/dashboard/doctor/records", 
-    icon: FileText,
-    roles: ['ADMIN', 'DOCTOR', 'NURSE', 'CHIEF-NURSE', 'CLINICAL-DIRECTOR']
-  },
-  { 
-    title: "Admin", 
-    href: "/dashboard/admin", 
-    icon: UserCog,
-    roles: ['ADMIN', 'MANAGER', 'DAF', 'COO', 'HUMAN-RESOURCE']
-  },
-]
+const NAV_ICONS_BY_HREF: Record<string, LucideIcon> = {
+  '/dashboard': LayoutDashboard,
+  '/dashboard/reception': UserPlus,
+  '/dashboard/doctor/patients': Users,
+  '/dashboard/doctor/consultations': Stethoscope,
+  '/dashboard/doctor/schedule': CalendarDays,
+  '/dashboard/lab': Microscope,
+  '/dashboard/radiology': ImageIcon,
+  '/dashboard/pharmacy': Pill,
+  '/dashboard/billing': DollarSign,
+  '/dashboard/cashier/close': DollarSign,
+  '/dashboard/doctor/records': FileText,
+  '/dashboard/admin': UserCog,
+  '/dashboard/admin/tariffs': FileJson,
+  '/dashboard/admin/roles': UserCog,
+  '/dashboard/reports': BarChart3,
+  '/dashboard/approvals': CheckCircle,
+}
 
 export function Sidebar({ className }: { className?: string }) {
   const [userRole, setUserRole] = useState<UserRole>('DOCTOR')
@@ -101,22 +62,45 @@ export function Sidebar({ className }: { className?: string }) {
 
   useEffect(() => {
     setMounted(true)
-    const item = localStorage.getItem('user')
-    if (item) {
-      try {
-        const user = JSON.parse(item)
-        if (user.role) {
-          setUserRole(user.role.toUpperCase() as UserRole)
-        }
-      } catch (e) {
-        // ignore
+    
+    const checkRole = () => {
+      const role = getUserRole()
+      if (role) {
+        setUserRole(role)
       }
+    }
+    
+    // If auth is already initialized, check immediately
+    if (isAuthInitialized()) {
+      checkRole()
+    } else {
+      // Wait for auth to be initialized
+      const unsubscribe = onAuthInitialized(() => {
+        checkRole()
+      })
+      return unsubscribe
+    }
+    
+    // Listen for storage changes (in case of login/logout in other tabs)
+    window.addEventListener('storage', checkRole)
+    
+    // Listen for session cleared events
+    const handleSessionCleared = () => {
+      setUserRole('DOCTOR')
+    }
+    window.addEventListener(AUTH_EVENTS.SESSION_CLEARED, handleSessionCleared)
+    
+    return () => {
+      window.removeEventListener('storage', checkRole)
+      window.removeEventListener(AUTH_EVENTS.SESSION_CLEARED, handleSessionCleared)
     }
   }, [])
 
-  const filteredNavItems = mounted 
-    ? navItems.filter(item => !item.roles || item.roles.includes(userRole))
-    : navItems.filter(item => !item.roles || item.roles.includes('DOCTOR'))
+  const roleForFiltering = mounted ? userRole : 'DOCTOR'
+  const filteredNavItems: NavItem[] = getDashboardNavigationForRole(roleForFiltering).map((item) => ({
+    ...item,
+    icon: NAV_ICONS_BY_HREF[item.href] ?? LayoutDashboard,
+  }))
 
   return (
     <div className={cn(
@@ -153,9 +137,7 @@ export function Sidebar({ className }: { className?: string }) {
           const currentPath = pathname?.replace(/\/$/, '') || ''
           const itemPath = item.href.replace(/\/$/, '')
           
-          const isActive = itemPath === '/dashboard' 
-            ? currentPath === '/dashboard'
-            : currentPath === itemPath || currentPath.startsWith(itemPath + '/')
+          const isActive = currentPath === itemPath
           return (
             <Link
               key={item.href}
@@ -165,7 +147,7 @@ export function Sidebar({ className }: { className?: string }) {
                 sidebarCollapsed ? "justify-center" : "space-x-3",
                 isActive 
                   ? "bg-primary text-primary-foreground shadow-md" 
-                  : "hover:bg-accent hover:text-accent-foreground"
+                  : "hover:bg-primary/15 hover:text-foreground"
               )}
               title={sidebarCollapsed ? item.title : undefined}
             >
