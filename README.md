@@ -1,6 +1,8 @@
-# 🏥 Modern EMR System - Master Documentation
+# 🏥 Modern EMR Frontend — Consolidated README
 
-This file consolidates all documentation for the Modern EMR System Frontend.
+This is the consolidated **frontend** README for the `new-emr` application.
+
+It merges frontend-relevant material previously spread across multiple markdown files and keeps a cohesive structure for engineering, product, and operations handoff.
 
 ---
 
@@ -8,197 +10,268 @@ This file consolidates all documentation for the Modern EMR System Frontend.
 1. [General Overview](#-general-overview)
 2. [Quick Start](#-quick-start)
 3. [Project Structure](#-project-structure)
-4. [Implementation Plan](#-implementation-plan)
-5. [API Endpoints Specification](#-api-endpoints-specification)
-6. [System Integration Status](#-system-integration-status)
-7. [Changelog](#-changelog)
+4. [Frontend Architecture](#-frontend-architecture)
+5. [Design System & Color Standards](#-design-system--color-standards)
+6. [Integrated API Surface (Frontend Consumption)](#-integrated-api-surface-frontend-consumption)
+7. [Module Coverage](#-module-coverage)
+8. [Reporting & Radiology UI Status](#-reporting--radiology-ui-status)
+9. [Auth/Session Hardening & Role UX Stability](#-authsession-hardening--role-ux-stability)
+10. [Known Frontend Workflow Gaps](#-known-frontend-workflow-gaps)
+11. [Frontend Test Strategy](#-frontend-test-strategy)
+12. [Changelog](#-changelog)
+13. [Related Docs](#-related-docs)
 
 ---
 
 ## 📋 General Overview
 
-A stunning, modern Electronic Medical Records frontend built with Next.js 14, TypeScript, and Tailwind CSS for healthcare providers.
+A modern Electronic Medical Records frontend built with Next.js, TypeScript, and Tailwind CSS for role-based hospital workflows.
 
-**Status**: **100% Complete** - Production-ready frontend with real backend integration  
-**Framework**: Next.js 14 + React 19 + TypeScript + Tailwind CSS  
-**Backend**: Integrates with Spring Boot API (requires backend running on port 8080)
+- **Status**: Production-oriented frontend with real backend integration
+- **Backend dependency**: Spring Boot API (default `http://localhost:8080`)
+- **Primary goals**: clear role-based UX, safe critical actions, and operational reporting visibility
 
 ---
 
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Node.js 18+ and npm
+- Node.js 18+
+- npm
 
-### 1. Clone and Setup
+### Setup
 ```bash
 git clone https://github.com/ngangoju/new-emr.git
 cd new-emr
-```
-
-### 2. Install Dependencies
-```bash
 npm install
 ```
 
-### 3. Environment Configuration
-Create `.env.local` file:
+### Environment
+Create `.env.local`:
 ```bash
-# Required: Backend API URL
 NEXT_PUBLIC_API_URL=http://localhost:8080
 ```
 
-### 4. Start Development Server
+### Run
 ```bash
 npm run dev
 ```
 
-### 5. Access the Application
-- **Frontend**: http://localhost:3000
-
-**Note**: This frontend requires the backend API running on port 8080.
+### Access
+- Frontend: `http://localhost:3000`
 
 ---
 
 ## 🏗️ Project Structure
 
-```
+```text
 src/
-├── app/                    # Next.js 14 App Router pages
-│   ├── dashboard/         # Protected dashboard routes
-│   │   ├── admin/        # Admin dashboard
-│   │   ├── billing/      # Billing dashboard
-│   │   ├── doctor/       # Doctor interface
-│   │   ├── lab/          # Lab dashboard
-│   │   └── pharmacy/     # Pharmacy dashboard
-│   ├── login/            # Authentication page
-│   └── layout.tsx        # Root layout with providers
-├── components/            # React components
-│   ├── ui/               # shadcn/ui components
-│   ├── layout/           # Header, Sidebar, Footer
-│   ├── admin/            # Admin-specific components
-│   ├── billing/          # Billing components
-│   ├── doctor/           # Doctor-specific components
-│   ├── lab/              # Lab components
-│   ├── patient/          # Patient components
-│   ├── pharmacy/         # Pharmacy components
-│   └── charts/           # Reusable charts
-├── hooks/                 # Custom React hooks
-│   ├── api/              # React Query API hooks
-│   └── use*.ts           # Custom hooks
-├── lib/                   # Utilities and configurations
-│   ├── api.ts            # Axios instance with interceptors
-│   ├── stores/           # Zustand stores
-│   ├── utils/            # Helper functions
-│   ├── validations/      # Zod schemas
-│   └── mock/             # Mock data (if needed)
-└── types/                 # TypeScript type definitions
-    ├── admin.ts
-    ├── billing.ts
-    ├── lab.ts
-    ├── patient.ts
-    └── pharmacy.ts
+├── app/
+│   ├── dashboard/
+│   │   ├── admin/
+│   │   ├── approvals/
+│   │   ├── cashier/close/
+│   │   ├── doctor/
+│   │   ├── nurse/
+│   │   ├── pharmacy/
+│   │   ├── radiology/
+│   │   ├── reception/
+│   │   └── reports/
+│   └── login/
+├── components/
+│   ├── ui/
+│   ├── layout/
+│   ├── clinical/
+│   ├── billing/
+│   ├── pharmacy/
+│   ├── radiology/
+│   └── reports/
+├── hooks/
+├── lib/
+│   ├── api.ts
+│   ├── authz/policy.ts
+│   └── utils/
+└── types/
 ```
 
 ---
 
-## 🎯 Implementation Plan
+## 🧱 Frontend Architecture
 
-### Technology Stack
-- **Next.js 14+** (App Router)
-- **React 18+** (Concurrent Features)
-- **TypeScript 5.x** (Strict mode)
-- **Tailwind CSS 3.x**
-- **shadcn/ui** + **Radix UI**
-- **Framer Motion**
-- **TanStack Query (React Query)**
-- **Zustand**
+### Stack
+- Next.js (App Router)
+- React + TypeScript
+- Tailwind CSS + shadcn/ui + Radix UI
+- React Query
+- Recharts
 
-### Design Philosophy
-- **Visual Excellence**: Modern aesthetics, premium design.
-- **Strategic Color**: Medical-grade color palette.
-- **Exceptional UX**: Zero Friction, Lightning Fast.
-
-### Implementation Phases
-1. **Foundation**: Project setup, Design system, Auth pages.
-2. **Patient Management**: Registration, search, details, vitals.
-3. **Doctor Features**: Dashboard, Consultation wizard, SOAP notes.
-4. **Lab & Radiology**: Orders, Results entry.
-5. **Billing**: Invoice generator, payments.
-6. **Pharmacy**: Inventory, dispensing.
-7. **Admin**: User management, reports.
+### UX principles
+- Guarded role-based action visibility
+- Strong clinical readability and low-friction workflows
+- Clear status feedback for critical actions (payments, discharge, approvals)
+- Cohesive route-level navigation behavior across roles
 
 ---
 
-## 🔌 API Endpoints Specification
+## 🎨 Design System & Color Standards
 
-All endpoints are prefixed with `/api`.
+Kalisimbi Summit palette (standardized):
 
-### 1. Authentication (`/auth`)
-- `POST /login`: Login user.
-- `GET /me`: Get current user.
-- `POST /logout`: Logout user.
+| Color | Hex | Usage |
+|---|---|---|
+| Growth Green | `#0C6030` | Navigation, success emphasis |
+| Emerald Green | `#3ABF72` | Primary actions/CTAs/focus |
+| Sky Blue | `#00ADEF` | Secondary highlights/active states |
+| Deep Grey | `#343A40` | Core text/icons |
+| Lava Red | `#D32F2F` | Errors/destructive/critical alerts |
+| Volcanic Ash | `#F4F4F4` | Backgrounds/surfaces |
 
-### 2. Patients (`/patients`)
-- `GET /`: List patients.
-- `POST /`: Register patient.
-- `GET /:id`: Get patient details.
-- `PUT /:id`: Update patient.
-- `GET /:id/vitals`: Get vitals history.
-
-### 3. Queue Management (`/queue`)
-- `GET /`: Current queue.
-- `POST /next`: Call next patient.
-- `PUT /:id/status`: Update status.
-
-### 4. Consultations (`/consultations`)
-- `POST /`: Create consultation.
-- `GET /:id`: Get consultation.
-
-### 5. Dashboard Stats (`/dashboard`)
-- `GET /stats`: Summary metrics.
-- `GET /appointments`: Today's schedule.
+### Clinical safety constraints
+- Red reserved for true alerts/destructive actions.
+- Ensure WCAG-safe text contrast.
+- Do not rely on color-only validation.
+- For charts, supplement color with labels/patterns.
 
 ---
 
-## ✅ System Integration Status
+## 🔌 Integrated API Surface (Frontend Consumption)
 
-### 1. **Authentication**
-- ✅ **Frontend**: Login, Logout, Profile hooks fully integrated.
-- ✅ **Backend**: JWT implementation with refresh tokens and role-based access.
+### Authentication
+- `POST /auth/login`
+- `GET /auth/me`
+- `POST /auth/logout`
 
-### 2. **Patient Management**
-- ✅ **Frontend**: Patient List, Registration, Details, Vitals, History.
-- ✅ **Backend**: CRUD operations, search, vitals tracking.
+### Patient & consultation core
+- `GET /patients`
+- `GET /patients/search`
+- `POST /patients`
+- `GET /patients/{id}`
+- `PUT /patients/{id}`
+- `GET /patients/{id}/vitals`
+- `GET /consultations`
+- `POST /consultations`
+- `PUT /consultations/{id}`
 
-### 3. **Clinical Operations**
-- ✅ **Frontend**: Queue Management, Consultation Wizard (Soap Notes, Diagnosis, Prescriptions).
-- ✅ **Backend**: Queue logic, Consultation persistence.
+### Queue
+- `GET /queue/active`
+- `POST /queue`
+- `POST /queue/call-next`
+- `POST /queue/{id}/start`
+- `POST /queue/{id}/complete`
 
-### 4. **Dashboard & Analytics**
-- ✅ **Doctor Dashboard**: Appointments, Recent Patients, Queue Status.
-- ✅ **Billing Dashboard**: Real-time Financial Reporting, Invoice list.
-- ✅ **Pharmacy Dashboard**: Real-time Stock levels, Low Stock Alerts, Inventory Value.
+### Lab
+- `GET /lab-orders/pending`
+- `GET /lab-orders/completed`
+- `GET /lab-orders/{id}`
+- `POST /lab-orders/{id}/results/submit`
 
-### 5. **Support Modules**
-- ✅ **Billing & Invoices**: 100% Complete.
-- ✅ **Inventory Management**: 100% Complete.
-- ✅ **Laboratory**: 100% Complete.
+### Billing/reports
+- `GET /invoices`
+- `POST /api/billing/payments`
+- `GET /api/billing/payments/invoice/{invoiceId}`
+- `GET /reports/{reportType}/export?format=csv|json`
+
+> Full backend contracts, domain model, events, and governance are in `BACKEND_README.md`.
+
+---
+
+## 🧩 Module Coverage
+
+- **Reception**: patient registration/search and queue initiation
+- **Nurse**: triage workflow and admissions-related UI
+- **Doctor**: consultation wizard, diagnosis, orders, patient records
+- **Laboratory**: pending/completed views and result submission
+- **Pharmacy**: inventory/alerts, request queue and dispensing surfaces
+- **Billing/Cashier**: invoice/payment workflows and cash close UI entry
+- **Admin**: roles/users/system configuration/report links
+- **Reports**: throughput, revenue, pending items dashboards
+- **Radiology**: doctor ordering, tech acquisition, radiologist reporting
+
+---
+
+## 📊 Reporting & Radiology UI Status
+
+### Reporting
+- `/dashboard/reports` landing page implemented.
+- Throughput report includes date presets, summary cards, charts, and recent encounters table.
+- Revenue and Pending Items pages are implemented and routable.
+- Shared hook pattern (`useHmisReports`) and charting via Recharts.
+
+### Radiology
+End-to-end UX surfaces are implemented:
+- Order creation UI with modality/priority/body part and clinical indication validation.
+- Priority-sorted worklist for radiology technicians.
+- Acquisition workflow and reporting/sign-off interface.
+
+---
+
+## 🔐 Auth/Session Hardening & Role UX Stability
+
+### A1 Session/token hardening
+- Access token lifecycle moved to in-memory handling.
+- Centralized session invalidation and deterministic redirect on `401`.
+
+### A2 Authorization UX alignment
+- Centralized role-policy map for route families and feature visibility.
+- Sidebar and route rendering aligned to role policy.
+- `403` behavior standardized as non-logout feedback.
+
+### A5 Critical action API integration
+- Billing payment paths now use real API mutations.
+- Lab result submit/finalize wired to real API endpoint.
+- Report export uses backend endpoint with browser download handling.
+
+### Role race-condition remediation (from implementation plan)
+- Previous intermittent visibility issue traced to inconsistent localStorage role keys and hydration timing.
+- Strategy: centralized auth utilities + unified role retrieval + guarded loading before access checks.
+
+---
+
+## ⚠️ Known Frontend Workflow Gaps
+
+From workflow compliance analysis, major UI-impact gaps still tracked:
+- Nurse billing capability completeness
+- Nurse-to-pharmacy drug request UX depth
+- Cashier multi-invoice and daily closing operational polish
+- Clinical Director approval workflow visibility/ergonomics
+- Full tariff management experience for relevant privileged roles
+
+---
+
+## 🧪 Frontend Test Strategy
+
+### Automated tests
+- Unit/component tests (Vitest)
+- Auth/session hardening tests
+- Authz policy tests
+- Dashboard search tests
+
+### E2E & smoke
+- Playwright critical flow coverage
+- Role-based smoke scenarios tied to backend API contracts
+
+### Quality gates
+- Changed-files lint gate (transitional)
+- Critical action regressions (payments/lab/results/export)
+- Guardrail checks for `401` and `403` semantics
 
 ---
 
 ## 📜 Changelog
 
-### [Unreleased]
-- Full backend integration for Billing, Pharmacy, and Reports.
-- Final UI polish and accessibility improvements.
+### 2026-02-11 — Sprint 1 A1 Frontend Session/Token Hardening
+- In-memory token handling and centralized session invalidation.
 
-### [Phase 2] - 2025-11-29
-- Real data integration for patient list and search.
-- Consultation Wizard connected to backend.
+### 2026-02-12 — Sprint 1 A2 Frontend Authorization UX Alignment
+- Role-based route/nav policy alignment and deterministic `403` UX.
 
-### [Phase 1 Integration] - 2025-11-28
-- JWT Authentication & API Hooks setup.
-- Real-time queue board integration.
+### 2026-02-12 — Sprint 1 A5 Frontend Critical Actions API Integration
+- Real endpoint integration for payments, lab result submission/finalization, and report exports.
 
 ---
+
+## 📚 Related Docs
+
+- `BACKEND_README.md` — consolidated backend architecture, contracts, modules, reporting/radiology backend, insurance pricing logic, and implementation orchestration.
+- `QA_TEST_README.md` — consolidated QA plans, smoke scripts, regression workflows, evidence templates, and known issues.
+

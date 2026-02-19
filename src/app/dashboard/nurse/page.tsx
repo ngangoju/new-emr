@@ -5,6 +5,7 @@ import toast from 'react-hot-toast'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { NurseBilling } from '@/components/nurse/NurseBilling'
 import { DrugRequestForm } from '@/components/nurse/DrugRequestForm'
+import { NurseVitalsForm } from '@/components/nurse/NurseVitalsForm'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -110,10 +111,14 @@ export default function NurseDashboardPage() {
       />
       <Tabs defaultValue="billing" className="space-y-6">
         <TabsList>
+          <TabsTrigger value="vitals">Vitals</TabsTrigger>
           <TabsTrigger value="billing">Billing</TabsTrigger>
           <TabsTrigger value="drugs">Drug Requests</TabsTrigger>
           {canManageConsultations && <TabsTrigger value="consultations">Consultations</TabsTrigger>}
         </TabsList>
+        <TabsContent value="vitals">
+          <NurseVitalsForm />
+        </TabsContent>
         <TabsContent value="billing">
           <NurseBilling />
         </TabsContent>

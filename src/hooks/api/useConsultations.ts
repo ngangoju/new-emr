@@ -75,6 +75,21 @@ export function useUpdateConsultation() {
     });
 }
 
+export function useSignConsultation() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async (id: string) => {
+            const { data } = await api.post<Consultation>(`/consultations/${id}/sign`);
+            return data;
+        },
+        onSuccess: (data) => {
+            queryClient.invalidateQueries({ queryKey: ['consultation', data.id] });
+            queryClient.invalidateQueries({ queryKey: ['consultations'] });
+        },
+    });
+}
+
 export function useDeleteConsultation() {
     const queryClient = useQueryClient();
 

@@ -12,13 +12,13 @@ import {
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { RefreshCw, AlertCircle, CheckCircle2, Clock } from 'lucide-react'
+import { RefreshCw, AlertCircle, CheckCircle2, Clock, ServerCrash } from 'lucide-react'
 import { format } from 'date-fns'
 import { useSocketEvent } from '@/hooks/useSocket'
 import { useQueryClient } from '@tanstack/react-query'
 
 export function EventHealthMonitor() {
-  const { data: entries, isLoading } = useOutboxEntries()
+  const { data: entries, isLoading, isError } = useOutboxEntries()
   const { retry, retrying } = useRetryOutbox()
   const queryClient = useQueryClient()
 
@@ -40,6 +40,33 @@ export function EventHealthMonitor() {
   }
 
   if (isLoading) return <div className="p-4 text-center">Loading event health logs...</div>
+
+  if (isError) {
+    return (
+      <Card className="border-t-4 border-t-destructive">
+        <CardHeader>
+          <CardTitle className="text-xl font-bold">Domain Event Health</CardTitle>
+          <p className="text-sm text-muted-foreground mt-1">Monitor transactional outbox and event-driven consistency (HIPAA Requirement: S5-AC3)</p>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col items-center justify-center py-12 gap-3 text-muted-foreground">
+            <ServerCrash className="w-10 h-10 text-destructive" />
+            <p className="text-base font-semibold text-destructive">Backend Unavailable</p>
+            <p className="text-sm text-center max-w-sm">
+              Cannot reach the server at <code className="text-xs bg-muted px-1 py-0.5 rounded">localhost:8080</code>.
+              Start the backend to view domain event health.
+            </p>
+            <div className="mt-2 rounded-md bg-muted px-4 py-3 text-xs font-mono text-left space-y-1 w-full max-w-sm">
+              <p className="text-muted-foreground font-semibold mb-1">To start the backend:</p>
+              <p>cd new-emr-backend</p>
+              <p>docker compose up -d</p>
+              <p>./mvnw spring-boot:run</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
 
   return (
     <Card className="border-t-4 border-t-primary">

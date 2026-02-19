@@ -22,11 +22,14 @@ import {
   BarChart3,
   FileJson,
   CheckCircle,
+  Bell,
 } from "lucide-react"
 
 import { UserRole, getSessionUser, getUserRole, isAuthInitialized, onAuthInitialized, AUTH_EVENTS } from "@/lib/utils/auth"
 import { useUIStore } from "@/lib/stores/uiStore"
 import { getDashboardNavigationForRole, normalizeUserRole } from "@/lib/authz/policy"
+import { useUnreadCount } from "@/hooks/useNotifications"
+import { Badge } from "@/components/ui/badge"
 
 interface NavItem {
   title: string
@@ -40,6 +43,7 @@ const NAV_ICONS_BY_HREF: Record<string, LucideIcon> = {
   '/dashboard/doctor/patients': Users,
   '/dashboard/doctor/consultations': Stethoscope,
   '/dashboard/doctor/schedule': CalendarDays,
+  '/dashboard/notifications': Bell,
   '/dashboard/lab': Microscope,
   '/dashboard/radiology': ImageIcon,
   '/dashboard/pharmacy': Pill,
@@ -59,6 +63,7 @@ export function Sidebar({ className }: { className?: string }) {
   const pathname = usePathname()
   const router = useRouter()
   const sidebarCollapsed = useUIStore((state) => state.sidebarCollapsed)
+  const { data: unreadCount = 0 } = useUnreadCount()
 
   useEffect(() => {
     setMounted(true)
@@ -138,24 +143,46 @@ export function Sidebar({ className }: { className?: string }) {
           const itemPath = item.href.replace(/\/$/, '')
           
           const isActive = currentPath === itemPath
+          const isNotifications = item.href === '/dashboard/notifications'
           return (
             <Link
               key={item.href}
               href={item.href}
               className={cn(
-                "group flex items-center rounded-lg p-3 text-sm font-medium transition-all",
+                "group relative flex items-center rounded-lg p-3 text-sm font-medium transition-all",
                 sidebarCollapsed ? "justify-center" : "space-x-3",
                 isActive 
                   ? "bg-primary text-primary-foreground shadow-md" 
                   : "hover:bg-primary/15 hover:text-foreground"
               )}
               title={sidebarCollapsed ? item.title : undefined}
+              aria-current={isActive ? 'page' : undefined}
             >
               <item.icon className={cn(
                 "h-5 w-5 shrink-0",
                 isActive ? "opacity-100" : "opacity-80 group-hover:opacity-100"
               )} />
-              {!sidebarCollapsed && <span>{item.title}</span>}
+              {!sidebarCollapsed && (
+                <div className="flex flex-1 items-center justify-between">
+                  <span>{item.title}</span>
+                  {isNotifications && unreadCount > 0 && (
+                    <Badge
+                      variant="destructive"
+                      className="h-5 min-w-5 px-1.5 text-[10px]"
+                    >
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </Badge>
+                  )}
+                </div>
+              )}
+              {sidebarCollapsed && isNotifications && unreadCount > 0 && (
+                <Badge
+                  variant="destructive"
+                  className="absolute right-3 top-2 h-4 min-w-4 px-1 text-[9px]"
+                >
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </Badge>
+              )}
             </Link>
           )
         })}

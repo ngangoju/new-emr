@@ -22,10 +22,26 @@ export function useInvoices(filters: UseInvoicesFilters = {}) {
       if (filters.date) params.append('date', filters.date)
 
       const queryString = params.toString()
-      const url = `/api/billing/invoices${queryString ? `?${queryString}` : ''}`
+      const url = `/invoices${queryString ? `?${queryString}` : ''}`
 
       const { data } = await api.get<Invoice[]>(url)
-      return data
+
+      return (data ?? []).map((invoice) => {
+        const patientFullName =
+          invoice.patient?.fullName || (invoice as unknown as { patientName?: string }).patientName || 'Unknown'
+        const patientNationalId =
+          invoice.patient?.nationalId || (invoice as unknown as { patientNationalId?: string }).patientNationalId || '—'
+
+        return {
+          ...invoice,
+          doctorName: invoice.doctorName || (invoice as unknown as { doctor_name?: string }).doctor_name,
+          patient: {
+            ...(invoice.patient ?? {}),
+            fullName: patientFullName,
+            nationalId: patientNationalId,
+          },
+        }
+      })
     }
   })
 
@@ -73,7 +89,7 @@ export function useCreateInvoice() {
   return useMutation({
     mutationFn: async (payload: CreateInvoiceInput) => {
       // The backend expects items as a JSON string
-      const { data } = await api.post<Invoice>('/api/billing/invoices', {
+      const { data } = await api.post<Invoice>('/invoices', {
         ...payload,
         items: JSON.stringify(payload.items),
         total: payload.items.reduce((sum, item) => sum + (item.unit_price * item.quantity), 0)

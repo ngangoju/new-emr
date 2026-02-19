@@ -1,4 +1,4 @@
-import { ROLE_PERMISSIONS, type UserRole } from '@/lib/utils/auth'
+import { ROLE_PERMISSIONS, normalizeRole, type UserRole } from '@/lib/utils/auth'
 
 type FrontendFeaturePolicyMap = {
     [K in keyof typeof ROLE_PERMISSIONS]: readonly UserRole[]
@@ -11,52 +11,52 @@ export type DashboardRoutePolicy = {
     allowedRoles: readonly UserRole[]
 }
 
-const DASHBOARD_PUBLIC_ROUTES = ['/dashboard', '/dashboard/profile', '/dashboard/settings'] as const
+const DASHBOARD_PUBLIC_ROUTES = ['/dashboard', '/dashboard/profile', '/dashboard/settings', '/dashboard/notifications'] as const
 
 export const DASHBOARD_ROUTE_POLICIES: readonly DashboardRoutePolicy[] = [
     {
         routePrefix: '/dashboard/reception',
-        allowedRoles: ['ADMIN', 'RECEIPTION', 'RECEPTIONIST', 'CUSTOMER-CARE'],
+        allowedRoles: ['ADMIN', 'RECEIPTION', 'RECEPTIONIST', 'CUSTOMER_CARE'],
     },
     {
         routePrefix: '/dashboard/nurse',
-        allowedRoles: ['ADMIN', 'NURSE', 'CHIEF-NURSE', 'CLINICAL-DIRECTOR'],
+        allowedRoles: ['ADMIN', 'NURSE', 'CHIEF_NURSE', 'CLINICAL_DIRECTOR'],
     },
     {
         routePrefix: '/dashboard/nurse/admissions',
-        allowedRoles: ['ADMIN', 'NURSE', 'CHIEF-NURSE', 'CLINICAL-DIRECTOR'],
+        allowedRoles: ['ADMIN', 'NURSE', 'CHIEF_NURSE', 'CLINICAL_DIRECTOR'],
     },
     {
         routePrefix: '/dashboard/doctor/patients',
-        allowedRoles: ['ADMIN', 'DOCTOR', 'NURSE', 'RECEIPTION', 'RECEPTIONIST', 'CUSTOMER-CARE', 'CHIEF-NURSE', 'CLINICAL-DIRECTOR'],
+        allowedRoles: ['ADMIN', 'DOCTOR', 'NURSE', 'RECEIPTION', 'RECEPTIONIST', 'CUSTOMER_CARE', 'CHIEF_NURSE', 'CLINICAL_DIRECTOR'],
     },
     {
         routePrefix: '/dashboard/doctor/consultations',
-        allowedRoles: ['ADMIN', 'DOCTOR', 'NURSE', 'CHIEF-NURSE', 'CLINICAL-DIRECTOR'],
+        allowedRoles: ['ADMIN', 'DOCTOR', 'NURSE', 'CHIEF_NURSE', 'CLINICAL_DIRECTOR'],
     },
     {
         routePrefix: '/dashboard/doctor/schedule',
-        allowedRoles: ['ADMIN', 'DOCTOR', 'NURSE', 'CHIEF-NURSE', 'CLINICAL-DIRECTOR', 'RECEIPTION', 'RECEPTIONIST'],
+        allowedRoles: ['ADMIN', 'DOCTOR', 'NURSE', 'CHIEF_NURSE', 'CLINICAL_DIRECTOR', 'RECEIPTION', 'RECEPTIONIST'],
     },
     {
         routePrefix: '/dashboard/schedule',
-        allowedRoles: ['ADMIN', 'DOCTOR', 'NURSE', 'CHIEF-NURSE', 'CLINICAL-DIRECTOR', 'RECEIPTION', 'RECEPTIONIST'],
+        allowedRoles: ['ADMIN', 'DOCTOR', 'NURSE', 'CHIEF_NURSE', 'CLINICAL_DIRECTOR', 'RECEIPTION', 'RECEPTIONIST'],
     },
     {
         routePrefix: '/dashboard/doctor/records',
-        allowedRoles: ['ADMIN', 'DOCTOR', 'NURSE', 'CHIEF-NURSE', 'CLINICAL-DIRECTOR'],
+        allowedRoles: ['ADMIN', 'DOCTOR', 'NURSE', 'CHIEF_NURSE', 'CLINICAL_DIRECTOR'],
     },
     {
         routePrefix: '/dashboard/lab',
-        allowedRoles: ['ADMIN', 'LABORANTIN', 'LAB_TECH', 'DOCTOR', 'NURSE', 'CLINICAL-DIRECTOR', 'RADIOLOGIST'],
+        allowedRoles: ['ADMIN', 'LABORANTIN', 'LAB_TECH', 'DOCTOR', 'NURSE', 'CLINICAL_DIRECTOR', 'RADIOLOGIST'],
     },
     {
         routePrefix: '/dashboard/pharmacy',
-        allowedRoles: ['ADMIN', 'STORE', 'PHARMACIST', 'DOCTOR', 'CLINICAL-DIRECTOR', 'NURSE'],
+        allowedRoles: ['ADMIN', 'STORE', 'PHARMACIST', 'DOCTOR', 'CLINICAL_DIRECTOR', 'NURSE'],
     },
     {
         routePrefix: '/dashboard/radiology',
-        allowedRoles: ['ADMIN', 'RADIOLOGIST', 'DOCTOR', 'NURSE', 'CLINICAL-DIRECTOR'],
+        allowedRoles: ['ADMIN', 'RADIOLOGIST', 'DOCTOR', 'NURSE', 'CLINICAL_DIRECTOR'],
     },
     {
         routePrefix: '/dashboard/billing',
@@ -68,7 +68,7 @@ export const DASHBOARD_ROUTE_POLICIES: readonly DashboardRoutePolicy[] = [
     },
     {
         routePrefix: '/dashboard/admin',
-        allowedRoles: ['ADMIN', 'MANAGER', 'DAF', 'COO', 'HUMAN-RESOURCE', 'CLINICAL-DIRECTOR'],
+        allowedRoles: ['ADMIN', 'MANAGER', 'DAF', 'COO', 'HUMAN_RESOURCE', 'CLINICAL_DIRECTOR'],
     },
     {
         routePrefix: '/dashboard/admin/roles',
@@ -76,11 +76,11 @@ export const DASHBOARD_ROUTE_POLICIES: readonly DashboardRoutePolicy[] = [
     },
     {
         routePrefix: '/dashboard/reports',
-        allowedRoles: ['ADMIN', 'DOCTOR', 'NURSE', 'DAF', 'COO', 'MANAGER', 'CLINICAL-DIRECTOR', 'CHIEF-NURSE', 'ACCOUNTANT'],
+        allowedRoles: ['ADMIN', 'DOCTOR', 'NURSE', 'DAF', 'COO', 'MANAGER', 'CLINICAL_DIRECTOR', 'CHIEF_NURSE', 'ACCOUNTANT'],
     },
     {
         routePrefix: '/dashboard/approvals',
-        allowedRoles: ['ADMIN', 'CLINICAL-DIRECTOR'],
+        allowedRoles: ['ADMIN', 'CLINICAL_DIRECTOR'],
     },
 ] as const
 
@@ -101,6 +101,7 @@ export const DASHBOARD_NAV_ITEMS: readonly DashboardNavItem[] = [
     { title: 'Patients', href: '/dashboard/doctor/patients' },
     { title: 'Consultations', href: '/dashboard/doctor/consultations' },
     { title: 'Schedule', href: '/dashboard/doctor/schedule' },
+    { title: 'Notifications', href: '/dashboard/notifications' },
     { title: 'Lab Results', href: '/dashboard/lab' },
     { title: 'Radiology', href: '/dashboard/radiology' },
     { title: 'Pharmacy', href: '/dashboard/pharmacy' },
@@ -110,16 +111,14 @@ export const DASHBOARD_NAV_ITEMS: readonly DashboardNavItem[] = [
     { title: 'Reports', href: '/dashboard/reports' },
     { title: 'Approvals', href: '/dashboard/approvals' },
     { title: 'Admin', href: '/dashboard/admin' },
-    { title: 'Tariffs', href: '/dashboard/admin/tariffs' },
-    { title: 'Roles', href: '/dashboard/admin/roles' },
 ] as const
 
 const ROLE_DEFAULT_DASHBOARD_ROUTES: Partial<Record<UserRole, string>> = {
     RECEIPTION: '/dashboard/reception',
     RECEPTIONIST: '/dashboard/reception',
-    'CUSTOMER-CARE': '/dashboard/reception',
+    'CUSTOMER_CARE': '/dashboard/reception',
     NURSE: '/dashboard/nurse',
-    'CHIEF-NURSE': '/dashboard/nurse',
+    'CHIEF_NURSE': '/dashboard/nurse',
     STORE: '/dashboard/pharmacy',
     PHARMACIST: '/dashboard/pharmacy',
     LABORANTIN: '/dashboard/lab',
@@ -130,7 +129,7 @@ const ROLE_DEFAULT_DASHBOARD_ROUTES: Partial<Record<UserRole, string>> = {
     DAF: '/dashboard/billing',
     COO: '/dashboard/billing',
     MANAGER: '/dashboard/admin',
-    'HUMAN-RESOURCE': '/dashboard/admin',
+    'HUMAN_RESOURCE': '/dashboard/admin',
     ACCOUNTANT: '/dashboard/reports',
 }
 
@@ -147,8 +146,7 @@ function matchesRoutePrefix(pathname: string, routePrefix: string): boolean {
 }
 
 export function normalizeUserRole(role?: string | null): UserRole | null {
-    if (!role) return null
-    return role.toUpperCase() as UserRole
+    return normalizeRole(role);
 }
 
 export function canRoleAccessFeature(

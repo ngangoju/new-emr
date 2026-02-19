@@ -39,31 +39,45 @@ const STEPS = [
   { id: 6, name: 'Review & Submit', icon: Eye, fields: [], role: 'DOCTOR' },
 ]
 
+const LAB_TEST_OPTIONS = [
+  'Complete Blood Count (CBC)',
+  'Blood Glucose',
+  'Urinalysis',
+  'Lipid Profile',
+  'Liver Function Test',
+  'Kidney Function Test',
+  'Malaria Test',
+  'HIV Rapid Test',
+]
+
 import { usePatients, usePatient, type Patient } from '@/hooks/api/usePatients'
-import { useCreateConsultation } from '@/hooks/api/useConsultations'
+import { useCreateConsultation, useSignConsultation } from '@/hooks/api/useConsultations'
+import { useCreateLabOrder } from '@/hooks/useLabOrders'
 import { useRouter, useSearchParams } from 'next/navigation'
 import toast from 'react-hot-toast'
 import { useDebounce } from '@/hooks/useDebounce'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { consultationSchema, type ConsultationInput } from '@/lib/validations/consultation'
 import { useRole } from '@/hooks/useRole'
 import { WorkflowIndicator } from '@/components/clinical/WorkflowIndicator'
-import { useEncounter, useHandoffEncounter, useUpdateEncounterStep } from '@/hooks/api/useEncounters'
+import { useEncounter, useHandoffEncounter, useUpdateEncounterStep, type Encounter } from '@/hooks/api/useEncounters'
 
 export default function NewConsultationPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const encounterId = searchParams.get('encounterId')
-  const { role, isRole } = useRole()
+  const { isRole } = useRole()
   
   const [currentStep, setCurrentStep] = useState(1)
   const [patientSearch, setPatientSearch] = useState('')
+  const [selectedLabTests, setSelectedLabTests] = useState<string[]>([])
+  const [createdConsultation, setCreatedConsultation] = useState<{ id: string; status: string } | null>(null)
   const debouncedSearch = useDebounce(patientSearch, 500)
   
   // Fetch encounter data if it exists
-  const { data: encounterData, isLoading: isLoadingEncounter } = useEncounter(encounterId || '')
-  const encounter = encounterData as any; // Cast for now if TS still complains, or use explicit Encounter type
+  const { data: encounterData } = useEncounter(encounterId || '')
+  const encounter: Encounter | null = encounterData ?? null
   const handoffMutation = useHandoffEncounter()
   const updateStepMutation = useUpdateEncounterStep()
 
@@ -91,8 +105,8 @@ export default function NewConsultationPage() {
   })
 
   // Watch values for review step and conditional rendering
-  const formValues = form.watch()
-  const selectedPatientId = form.watch('patientId')
+  const formValues = useWatch({ control: form.control })
+  const selectedPatientId = useWatch({ control: form.control, name: 'patientId' })
 
   // Fetch patients for search
   const { data: patientsData, isLoading: isSearching } = usePatients({ 
@@ -106,11 +120,14 @@ export default function NewConsultationPage() {
   const patients = patientsData?.data || []
 
   const createConsultationMutation = useCreateConsultation()
+  const signConsultationMutation = useSignConsultation()
+  const createLabOrderMutation = useCreateLabOrder()
 
   const progress = (currentStep / STEPS.length) * 100
 
   const handleNext = async () => {
-    const currentStepFields = STEPS[currentStep - 1].fields as any[]
+    const currentStepFields =
+      (STEPS[currentStep - 1].fields as Parameters<typeof form.trigger>[0]) ?? []
     
     if (currentStepFields.length > 0) {
       const isValid = await form.trigger(currentStepFields)
@@ -174,7 +191,20 @@ export default function NewConsultationPage() {
     return false;
   }
 
-  const onSubmit = (data: ConsultationInput) => {
+  const extractErrorMessage = (error: unknown, fallback: string) => {
+    if (typeof error === 'object' && error !== null) {
+      const maybeError = error as {
+        message?: string
+        response?: { data?: { message?: string } }
+      }
+
+      return maybeError.response?.data?.message || maybeError.message || fallback
+    }
+
+    return fallback
+  }
+
+  const onSubmit = async (data: ConsultationInput) => {
     const payload = {
       patientId: data.patientId,
       diagnosis: data.diagnosis,
@@ -189,16 +219,45 @@ Follow Up: ${data.followUp || 'N/A'}
       vitals: data.vitals
     }
 
-    createConsultationMutation.mutate(payload, {
-      onSuccess: () => {
-        toast.success('Consultation created successfully!')
-        router.push('/dashboard')
-      },
-      onError: (error: any) => {
-        toast.error(error?.response?.data?.message || 'Failed to create consultation')
-      }
-    })
+    try {
+      const created = await createConsultationMutation.mutateAsync(payload)
+      setCreatedConsultation({ id: created.id, status: created.status })
+      toast.success('Consultation created. Finalize and sign to complete.')
+    } catch (error: unknown) {
+      toast.error(extractErrorMessage(error, 'Failed to create consultation'))
+    }
   }
+
+  const toggleLabTest = (testName: string) => {
+    setSelectedLabTests((prev) =>
+      prev.includes(testName) ? prev.filter((item) => item !== testName) : [...prev, testName]
+    )
+  }
+
+  const handleFinalizeConsultation = async () => {
+    if (!createdConsultation?.id) {
+      toast.error('Create consultation first before finalizing.')
+      return
+    }
+
+    try {
+      if (selectedLabTests.length > 0) {
+        await createLabOrderMutation.mutateAsync({
+          patientId: form.getValues('patientId'),
+          consultId: createdConsultation.id,
+          tests: selectedLabTests,
+        })
+      }
+
+      const signed = await signConsultationMutation.mutateAsync(createdConsultation.id)
+      setCreatedConsultation({ id: signed.id, status: signed.status })
+      toast.success('Consultation finalized and signed successfully.')
+    } catch (error: unknown) {
+      toast.error(extractErrorMessage(error, 'Failed to finalize consultation'))
+    }
+  }
+
+  const CurrentStepIcon = STEPS[currentStep - 1].icon
 
   return (
     <div className="space-y-6 animate-fade-in max-w-5xl mx-auto">
@@ -210,8 +269,8 @@ Follow Up: ${data.followUp || 'N/A'}
       {/* Workflow Indicator */}
       {encounter && (
         <WorkflowIndicator 
-          stage={encounter.stage as any}
-          workflowMode={encounter.workflowMode as any}
+          stage={encounter.stage}
+          workflowMode={encounter.workflowMode}
           currentOwnerName={encounter.currentOwnerName}
           patientName={selectedPatient ? `${selectedPatient.firstName} ${selectedPatient.lastName}` : ''}
           lastUpdated={new Date(encounter.updatedAt).toLocaleString()}
@@ -269,7 +328,7 @@ Follow Up: ${data.followUp || 'N/A'}
           <Card className="mt-6">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
-                {React.createElement(STEPS[currentStep - 1].icon as any, { className: 'h-5 w-5 text-primary' })}
+                <CurrentStepIcon className="h-5 w-5 text-primary" />
                 <span>{STEPS[currentStep - 1].name}</span>
               </CardTitle>
             </CardHeader>
@@ -586,6 +645,30 @@ Follow Up: ${data.followUp || 'N/A'}
                     )}
                   />
 
+                  <div className="space-y-3">
+                    <Label>Doctor Lab Request Selection</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Selected tests will be submitted as a lab order when you finalize the consultation.
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {LAB_TEST_OPTIONS.map((testName) => {
+                        const isSelected = selectedLabTests.includes(testName)
+                        return (
+                          <Button
+                            key={testName}
+                            type="button"
+                            variant={isSelected ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => toggleLabTest(testName)}
+                          >
+                            {isSelected ? '✓ ' : ''}
+                            {testName}
+                          </Button>
+                        )
+                      })}
+                    </div>
+                  </div>
+
                   <FormField
                     control={form.control}
                     name="followUp"
@@ -648,9 +731,28 @@ Follow Up: ${data.followUp || 'N/A'}
 
                   <div className="rounded-lg border-2 border-warning/50 bg-warning/5 p-4">
                     <p className="text-sm text-foreground">
-                      ⚠️ Please review all information carefully before submitting. This consultation will be permanently recorded in the patient's medical history.
+                      ⚠️ Please review all information carefully before submitting. This consultation will be permanently recorded in the patient&apos;s medical history.
                     </p>
                   </div>
+
+                  {createdConsultation && (
+                    <div className="rounded-lg border bg-primary/5 border-primary/20 p-4 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-medium">Consultation Status</p>
+                        <Badge variant={createdConsultation.status === 'SIGNED' ? 'default' : 'secondary'}>
+                          {createdConsultation.status}
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground font-mono">ID: {createdConsultation.id}</p>
+                      {createdConsultation.status === 'SIGNED' ? (
+                        <p className="text-sm text-success">Consultation is finalized and signed.</p>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">
+                          Consultation created in pending state. Finalize and sign to complete workflow.
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </CardContent>
@@ -690,14 +792,39 @@ Follow Up: ${data.followUp || 'N/A'}
                   <ChevronRight className="h-4 w-4 ml-2" />
                 </Button>
               ) : (
-                <Button 
-                  type="submit" 
-                  className="bg-success hover:bg-success/90" 
-                  disabled={createConsultationMutation.isPending || !isStepEditable()}
-                >
-                  <Check className="h-4 w-4 mr-2" />
-                  {createConsultationMutation.isPending ? 'Completing...' : 'Complete Consultation'}
-                </Button>
+                <>
+                  {!createdConsultation ? (
+                    <Button
+                      type="submit"
+                      className="bg-success hover:bg-success/90"
+                      disabled={createConsultationMutation.isPending || !isStepEditable()}
+                    >
+                      <Check className="h-4 w-4 mr-2" />
+                      {createConsultationMutation.isPending ? 'Creating...' : 'Create Consultation'}
+                    </Button>
+                  ) : (
+                    <Button
+                      type="button"
+                      className="bg-success hover:bg-success/90"
+                      disabled={
+                        signConsultationMutation.isPending ||
+                        createLabOrderMutation.isPending ||
+                        createdConsultation.status === 'SIGNED' ||
+                        !isStepEditable()
+                      }
+                      onClick={handleFinalizeConsultation}
+                    >
+                      <Check className="h-4 w-4 mr-2" />
+                      {createLabOrderMutation.isPending
+                        ? 'Submitting Lab Order...'
+                        : signConsultationMutation.isPending
+                        ? 'Signing Consultation...'
+                        : createdConsultation.status === 'SIGNED'
+                        ? 'Consultation Signed'
+                        : 'Finalize & Sign Consultation'}
+                    </Button>
+                  )}
+                </>
               )}
             </div>
           </div>

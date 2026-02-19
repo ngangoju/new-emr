@@ -27,7 +27,7 @@ interface UseUsersOptions {
 
 export function useUsers(filters: UseUsersFilters = {}, options: UseUsersOptions = {}): UseUsersResult {
   const role = getUserRole()
-  const usersEndpointAllowedRoles = new Set(['ADMIN', 'DOCTOR', 'NURSE', 'RECEPTIONIST', 'RECEIPTION', 'CLINICAL-DIRECTOR', 'MANAGER', 'HUMAN-RESOURCE'])
+  const usersEndpointAllowedRoles = new Set(['ADMIN', 'DOCTOR', 'NURSE', 'RECEPTIONIST', 'RECEIPTION', 'CLINICAL_DIRECTOR', 'MANAGER', 'HUMAN_RESOURCE'])
   const canReadUsers = !!role && usersEndpointAllowedRoles.has(role)
   const { enabled = true } = options
 

@@ -18,6 +18,14 @@ export interface InventorySummary {
   category: string;
 }
 
+export interface PaginatedInventoryResponse {
+  content: InventorySummary[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+}
+
 export interface StockAlert {
   lowStockCount: number;
   expiringCount: number;
@@ -83,6 +91,7 @@ export interface DrugRequest {
   requestedBy: string;
   requestedByName?: string;
   requestedAt: string;
+  requestedAtFormatted?: string;
   items: DrugRequestItem[];
   status: DrugRequestStatus;
   notes?: string;

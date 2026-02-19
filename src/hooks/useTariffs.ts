@@ -11,12 +11,12 @@ export function useTariffs({ search, category }: UseTariffsOptions = {}) {
   return useQuery({
     queryKey: ['tariffs', search, category],
     queryFn: async () => {
-      let url = '/api/billing/tariffs'
+      let url = '/api/tariffs'
 
       if (search) {
-        url = `/api/billing/tariffs/search?searchTerm=${encodeURIComponent(search)}`
+        url = `/api/tariffs/search?searchTerm=${encodeURIComponent(search)}`
       } else if (category) {
-        url = `/api/billing/tariffs/category/${category}`
+        url = `/api/tariffs/category/${category}`
       }
 
       const { data } = await api.get<Tariff[]>(url)

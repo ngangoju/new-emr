@@ -3,9 +3,35 @@ import {
     canAccessDashboardRoute,
     getDashboardNavigationForRole,
     getRoleDefaultDashboardRoute,
+    normalizeUserRole,
 } from '@/lib/authz/policy'
 
 describe('frontend authz policy', () => {
+    describe('normalizeUserRole', () => {
+        it('returns null for null/undefined input', () => {
+            expect(normalizeUserRole(null)).toBeNull()
+            expect(normalizeUserRole(undefined)).toBeNull()
+        })
+
+        it('passes through unknown roles unchanged', () => {
+            expect(normalizeUserRole('DOCTOR')).toBe('DOCTOR')
+            expect(normalizeUserRole('ADMIN')).toBe('ADMIN')
+            expect(normalizeUserRole('NURSE')).toBe('NURSE')
+        })
+
+        it('converts legacy hyphenated roles to underscore variants', () => {
+            expect(normalizeUserRole('CLINICAL-DIRECTOR')).toBe('CLINICAL_DIRECTOR')
+            expect(normalizeUserRole('CHIEF-NURSE')).toBe('CHIEF_NURSE')
+            expect(normalizeUserRole('CUSTOMER-CARE')).toBe('CUSTOMER_CARE')
+            expect(normalizeUserRole('HUMAN-RESOURCE')).toBe('HUMAN_RESOURCE')
+        })
+
+        it('handles lowercase legacy roles', () => {
+            expect(normalizeUserRole('clinical-director')).toBe('CLINICAL_DIRECTOR')
+            expect(normalizeUserRole('chief-nurse')).toBe('CHIEF_NURSE')
+        })
+    })
+
     it('shows admin navigation entries for admin role', () => {
         const adminNavigation = getDashboardNavigationForRole('ADMIN')
 
