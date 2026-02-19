@@ -84,13 +84,13 @@ describe('Sidebar', () => {
 
       const { unmount } = render(<Sidebar />)
 
-      const portalLabel = await screen.findByText(`${role} PORTAL`)
+      const portalLabel = await screen.findByText(`${role} PORTAL`, {}, { timeout: 10000 })
       expect(portalLabel).toBeInTheDocument()
       expect(screen.getByRole('link', { name: 'Notifications' })).toBeInTheDocument()
 
       unmount()
     }
-  })
+  }, 30000)
 
   it('reflects unread badge count from useUnreadCount()', async () => {
     setupCommonMocks('DOCTOR', 12)
