@@ -2,7 +2,14 @@
 
 import { useState, useMemo } from 'react'
 import { useTariffs } from '@/hooks/useTariffs'
-import { useCreateTariff, useUpdateTariff, useDeleteTariff, type CreateTariffInput, type UpdateTariffInput } from '@/hooks/useTariffManagement'
+import {
+  useCreateTariff,
+  useUpdateTariff,
+  useDeleteTariff,
+  useUpdateTariffPrice,
+  type CreateTariffInput,
+  type UpdateTariffInput,
+} from '@/hooks/useTariffManagement'
 import { canRoleAccessFeature, FRONTEND_FEATURE_POLICY } from '@/lib/authz/policy'
 import { getUserRole } from '@/lib/utils/auth'
 import type { Tariff } from '@/types/billing'
@@ -68,6 +75,7 @@ export default function TariffManagementPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [selectedTariff, setSelectedTariff] = useState<Tariff | null>(null)
   const [hasPermissionFlag, setHasPermissionFlag] = useState(false)
+  const [currentRole, setCurrentRole] = useState<string | null>(null)
 
   // Form state
   const [formData, setFormData] = useState<CreateTariffInput>(defaultFormState)
@@ -76,6 +84,7 @@ export default function TariffManagementPage() {
   // Check permission
   useEffect(() => {
     const userRole = getUserRole()
+    setCurrentRole(userRole)
     const hasAccess = userRole ? canRoleAccessFeature(userRole, 'CAN_MANAGE_TARIFFS') : false
     setHasPermissionFlag(hasAccess)
     if (!hasAccess) {
@@ -91,6 +100,10 @@ export default function TariffManagementPage() {
   const { createTariff, isCreating } = useCreateTariff()
   const { updateTariff, isUpdating } = useUpdateTariff()
   const { deleteTariff, isDeleting } = useDeleteTariff()
+  const { updateTariffPrice, isUpdatingPrice } = useUpdateTariffPrice()
+
+  const isClinicalDirector = currentRole === 'CLINICAL-DIRECTOR'
+  const isAdmin = currentRole === 'ADMIN'
 
   // Filter active/inactive for display
   const filteredTariffs = useMemo(() => {
@@ -107,6 +120,11 @@ export default function TariffManagementPage() {
   }, [tariffs, search, categoryFilter])
 
   const handleCreate = async () => {
+    if (!isAdmin) {
+      toast.error('Only admin users can create tariffs.')
+      return
+    }
+
     // Validate
     const errors: Record<string, string> = {}
     if (!formData.serviceName.trim()) errors.serviceName = 'Service name is required'
@@ -145,17 +163,28 @@ export default function TariffManagementPage() {
     setFormErrors({})
 
     try {
-      const updateData: UpdateTariffInput = {
-        serviceName: formData.serviceName,
-        billingCode: formData.billingCode,
-        category: formData.category,
-        basePrice: formData.basePrice,
-        privatePrice: formData.privatePrice,
-        rssbMmiPrice: formData.rssbMmiPrice,
-        mutuellePrice: formData.mutuellePrice,
-        description: formData.description,
+      if (isClinicalDirector) {
+        await updateTariffPrice({
+          id: selectedTariff.id,
+          input: {
+            basePrice: formData.basePrice,
+            privatePrice: formData.privatePrice,
+            rssbMmiPrice: formData.rssbMmiPrice,
+          },
+        })
+      } else {
+        const updateData: UpdateTariffInput = {
+          serviceName: formData.serviceName,
+          billingCode: formData.billingCode,
+          category: formData.category,
+          basePrice: formData.basePrice,
+          privatePrice: formData.privatePrice,
+          rssbMmiPrice: formData.rssbMmiPrice,
+          mutuellePrice: formData.mutuellePrice,
+          description: formData.description,
+        }
+        await updateTariff({ id: selectedTariff.id, input: updateData })
       }
-      await updateTariff({ id: selectedTariff.id, input: updateData })
       toast.success('Tariff updated successfully')
       setEditDialogOpen(false)
       setSelectedTariff(null)
@@ -167,6 +196,11 @@ export default function TariffManagementPage() {
 
   const handleDelete = async () => {
     if (!selectedTariff) return
+
+    if (!isAdmin) {
+      toast.error('Only admin users can delete tariffs.')
+      return
+    }
 
     try {
       await deleteTariff(selectedTariff.id)
@@ -218,7 +252,7 @@ export default function TariffManagementPage() {
           <h1 className="text-2xl font-bold">Tariff Management</h1>
           <p className="text-muted-foreground">Manage service tariffs and pricing</p>
         </div>
-        <Button onClick={() => setCreateDialogOpen(true)}>
+        <Button onClick={() => setCreateDialogOpen(true)} disabled={!isAdmin}>
           <Plus className="mr-2 h-4 w-4" />
           Add Tariff
         </Button>
@@ -307,8 +341,9 @@ export default function TariffManagementPage() {
                           <Edit3 className="mr-2 h-4 w-4" />
                           Edit
                         </DropdownMenuItem>
-                        <DropdownMenuItem 
+                        <DropdownMenuItem
                           onClick={() => openDeleteDialog(tariff)}
+                          disabled={!isAdmin}
                           className="text-destructive focus:text-destructive"
                         >
                           <Trash2 className="mr-2 h-4 w-4" />
@@ -448,6 +483,7 @@ export default function TariffManagementPage() {
                   placeholder="e.g., General Consultation"
                   value={formData.serviceName}
                   onChange={(e) => setFormData({ ...formData, serviceName: e.target.value })}
+                  disabled={isClinicalDirector}
                 />
                 {formErrors.serviceName && <p className="text-sm text-destructive">{formErrors.serviceName}</p>}
               </div>
@@ -457,6 +493,7 @@ export default function TariffManagementPage() {
                   placeholder="e.g., CONS-001"
                   value={formData.billingCode}
                   onChange={(e) => setFormData({ ...formData, billingCode: e.target.value })}
+                  disabled={isClinicalDirector}
                 />
                 {formErrors.billingCode && <p className="text-sm text-destructive">{formErrors.billingCode}</p>}
               </div>
@@ -465,6 +502,7 @@ export default function TariffManagementPage() {
                 <Select 
                   value={formData.category}
                   onValueChange={(val) => setFormData({ ...formData, category: val })}
+                  disabled={isClinicalDirector}
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -513,6 +551,7 @@ export default function TariffManagementPage() {
                   placeholder="Optional"
                   value={formData.mutuellePrice || ''}
                   onChange={(e) => setFormData({ ...formData, mutuellePrice: parseFloat(e.target.value) || undefined })}
+                  disabled={isClinicalDirector}
                 />
               </div>
               <div className="space-y-2">
@@ -522,6 +561,7 @@ export default function TariffManagementPage() {
                   value={formData.description || ''}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   rows={3}
+                  disabled={isClinicalDirector}
                 />
               </div>
             </div>
@@ -532,9 +572,9 @@ export default function TariffManagementPage() {
             </Button>
             <Button 
               onClick={handleUpdate} 
-              disabled={isUpdating}
+              disabled={isUpdating || isUpdatingPrice}
             >
-              {isUpdating ? 'Saving...' : 'Save Changes'}
+              {isUpdating || isUpdatingPrice ? 'Saving...' : 'Save Changes'}
             </Button>
           </DialogFooter>
         </DialogContent>

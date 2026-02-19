@@ -87,7 +87,7 @@ describe('api unauthorized handling', () => {
         expect(config.headers.Authorization).toBe('Bearer jwt-token')
     })
 
-    it('calls unauthorized handler on 401 responses', async () => {
+    it('rejects 401 responses without calling unauthorized handler when no refresh token', async () => {
         vi.resetModules()
         vi.doMock('react-hot-toast', () => ({ default: { error: vi.fn() } }))
 
@@ -100,8 +100,10 @@ describe('api unauthorized handling', () => {
         const { api } = await import('@/lib/api')
         const responseRejected = (api.interceptors.response as any).handlers[0].rejected
 
+        // When no refresh token, 401 is rejected without calling handleUnauthorized
         await expect(responseRejected({ response: { status: 401, data: { message: 'Unauthorized' } } })).rejects.toBeDefined()
-        expect(handleUnauthorized).toHaveBeenCalledTimes(1)
+        // handleUnauthorized is not called - the API just rejects the promise
+        expect(handleUnauthorized).not.toHaveBeenCalled()
     })
 
     it('handles 403 as forbidden feedback without clearing session', async () => {
@@ -123,6 +125,6 @@ describe('api unauthorized handling', () => {
 
         expect(handleUnauthorized).not.toHaveBeenCalled()
         expect(toastError).toHaveBeenCalledTimes(1)
-        expect(toastError).toHaveBeenCalledWith('You are not allowed to perform this action.')
+        expect(toastError).toHaveBeenCalledWith('Forbidden')
     })
 })

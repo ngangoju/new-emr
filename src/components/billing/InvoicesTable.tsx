@@ -53,7 +53,7 @@ export function InvoicesTable({
   const [discountReason, setDiscountReason] = useState('')
 
   const canRequestInvoiceVoidApproval = hasPermission('CAN_APPROVE') || isRole(['ADMIN', 'MANAGER'])
-  const canRequestDiscountApproval = isRole(['DOCTOR', 'CLINICAL-DIRECTOR', 'ADMIN'])
+  const canRequestDiscountApproval = isRole(['DOCTOR', 'CLINICAL_DIRECTOR', 'ADMIN'])
   const shouldFetchPendingDiscountApprovals = !roleLoading && canRequestInvoiceVoidApproval
   const { data: pendingDiscountApprovals = [] } = usePendingApprovals('discount', {
     enabled: shouldFetchPendingDiscountApprovals,
@@ -163,20 +163,23 @@ export function InvoicesTable({
               const isVoidPending = statusValue === 'VOID_PENDING' || statusValue === 'PENDING_VOID'
               const isDiscountPending = pendingDiscountInvoiceIds.has(invoice.id)
 
-              return (
-                <TableRow key={invoice.id}>
+                const patientFullName = invoice.patient?.fullName || 'Unknown'
+                const patientInitials = patientFullName.trim() ? patientFullName.slice(0, 2).toUpperCase() : '??'
+
+                return (
+                  <TableRow key={invoice.id}>
                   <TableCell className="font-medium">
                     {invoice.invoiceNumber ? `#${invoice.invoiceNumber}` : `#${invoice.id.slice(0, 8)}`}
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center space-x-3">
                       <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center font-medium text-xs text-muted-foreground">
-                        {invoice.patient.fullName.slice(0, 2).toUpperCase()}
+                        {patientInitials}
                       </div>
                       <div>
-                        <p className="font-medium">{invoice.patient.fullName}</p>
+                        <p className="font-medium">{patientFullName}</p>
                         <p className="text-sm text-muted-foreground">
-                          {invoice.patient.nationalId}
+                          {invoice.patient?.nationalId || '—'}
                         </p>
                       </div>
                     </div>

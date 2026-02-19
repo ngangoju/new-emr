@@ -1,8 +1,9 @@
 'use client'
 
-import { usePharmacyDashboard, useInventorySummary } from '@/hooks/useInventory'
+import { usePharmacyDashboard, useInventorySummary, useInventoryCategories } from '@/hooks/useInventory'
 import { useCreateDrugStock, useDrugStock } from '@/hooks/useDrugStock'
 import { useRole } from '@/hooks/useRole'
+import { useDebounce } from '@/hooks/useDebounce'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -17,14 +18,58 @@ import {
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Activity, AlertTriangle, Package, DollarSign } from 'lucide-react'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
+  Activity,
+  AlertTriangle,
+  Package,
+  DollarSign,
+  TrendingUp,
+  Clock,
+  ShieldCheck,
+  Boxes,
+  FlaskConical,
+  ChevronRight,
+  CalendarDays,
+  Truck,
+  Search,
+  ChevronLeft,
+  ChevronFirst,
+  ChevronLast,
+} from 'lucide-react'
 import { type FormEvent, useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
 
 export function PharmacyDashboard() {
   const { isRole, isLoading: roleLoading } = useRole()
   const { data: stats, isLoading: statsLoading } = usePharmacyDashboard()
-  const { data: inventory, isLoading: inventoryLoading } = useInventorySummary()
+  
+  // Filter and pagination state
+  const [searchQuery, setSearchQuery] = useState('')
+  const [selectedCategory, setSelectedCategory] = useState<string>('all')
+  const [currentPage, setCurrentPage] = useState(0)
+  const [pageSize] = useState(20)
+
+  // Debounce search query to avoid excessive API calls
+  const debouncedSearch = useDebounce(searchQuery, 300)
+
+  // Fetch inventory with filters and pagination
+  const { data: inventoryData, isLoading: inventoryLoading } = useInventorySummary({
+    search: debouncedSearch || undefined,
+    category: selectedCategory !== 'all' ? selectedCategory : undefined,
+    page: currentPage,
+    size: pageSize
+  })
+
+  // Fetch available categories
+  const { data: categories = [] } = useInventoryCategories()
+
   const { data: stockEntries = [], isLoading: stockLoading } = useDrugStock()
   const { mutateAsync: createDrugStock, isPending: isCreatingStock } = useCreateDrugStock()
 
@@ -78,136 +123,365 @@ export function PharmacyDashboard() {
   }
 
   if (statsLoading || inventoryLoading || roleLoading) {
-    return <div className="p-8 text-center">Loading pharmacy dashboard...</div>
+    return (
+      <div className="p-12 flex flex-col items-center justify-center gap-4 text-muted-foreground">
+        <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+        <p className="text-sm">Loading pharmacy dashboard…</p>
+      </div>
+    )
   }
+
+  const statCards = [
+    {
+      label: 'Total Items',
+      value: stats?.totalMedicationsInStock ?? 0,
+      sub: 'Unique medications in stock',
+      icon: Boxes,
+      color: 'from-violet-500/20 to-violet-500/5',
+      iconColor: 'text-violet-500',
+      ringColor: 'ring-violet-200',
+    },
+    {
+      label: 'Total Value',
+      value: `RWF ${(stats?.totalInventoryValue ?? 0).toLocaleString()}`,
+      sub: 'Current inventory value',
+      icon: DollarSign,
+      color: 'from-emerald-500/20 to-emerald-500/5',
+      iconColor: 'text-emerald-500',
+      ringColor: 'ring-emerald-200',
+    },
+    {
+      label: 'Low Stock',
+      value: stats?.lowStockCount ?? 0,
+      sub: 'Items below threshold',
+      icon: AlertTriangle,
+      color:
+        (stats?.lowStockCount ?? 0) > 0
+          ? 'from-amber-500/20 to-amber-500/5'
+          : 'from-slate-100 to-slate-50',
+      iconColor: (stats?.lowStockCount ?? 0) > 0 ? 'text-amber-500' : 'text-slate-400',
+      ringColor: (stats?.lowStockCount ?? 0) > 0 ? 'ring-amber-200' : 'ring-slate-200',
+    },
+    {
+      label: 'Expiring Soon',
+      value: stats?.expiringCount ?? 0,
+      sub: 'Expires within 30 days',
+      icon: Clock,
+      color:
+        (stats?.expiringCount ?? 0) > 0
+          ? 'from-rose-500/20 to-rose-500/5'
+          : 'from-slate-100 to-slate-50',
+      iconColor: (stats?.expiringCount ?? 0) > 0 ? 'text-rose-500' : 'text-slate-400',
+      ringColor: (stats?.expiringCount ?? 0) > 0 ? 'ring-rose-200' : 'ring-slate-200',
+    },
+  ]
 
   return (
     <Tabs defaultValue="overview" className="space-y-6 animate-fade-in">
-      <TabsList>
-        <TabsTrigger value="overview">Overview</TabsTrigger>
-        <TabsTrigger value="stock-receiving">Stock Receiving</TabsTrigger>
+      <TabsList className="bg-muted/60 p-1">
+        <TabsTrigger value="overview" className="gap-2">
+          <FlaskConical className="h-4 w-4" />
+          Overview
+        </TabsTrigger>
+        <TabsTrigger value="stock-receiving" className="gap-2">
+          <Truck className="h-4 w-4" />
+          Stock Receiving
+        </TabsTrigger>
       </TabsList>
 
+      {/* ── OVERVIEW TAB ─────────────────────────────────── */}
       <TabsContent value="overview" className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Items</CardTitle>
-              <Package className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats?.totalMedicationsInStock || 0}</div>
-              <p className="text-xs text-muted-foreground">Unique medications in stock</p>
-            </CardContent>
-          </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Value</CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">RWF {stats?.totalInventoryValue?.toLocaleString() || 0}</div>
-              <p className="text-xs text-muted-foreground">Current inventory value</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Low Stock</CardTitle>
-              <AlertTriangle className="h-4 w-4 text-warning" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-warning">{stats?.lowStockCount || 0}</div>
-              <p className="text-xs text-muted-foreground">Items below threshold</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Expiring Soon</CardTitle>
-              <Activity className="h-4 w-4 text-destructive" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-destructive">{stats?.expiringCount || 0}</div>
-              <p className="text-xs text-muted-foreground">Expires in 30 days</p>
-            </CardContent>
-          </Card>
+        {/* Stat Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {statCards.map((card) => {
+            const Icon = card.icon
+            return (
+              <Card
+                key={card.label}
+                className={`relative overflow-hidden border-0 shadow-sm ring-1 ${card.ringColor} bg-gradient-to-br ${card.color}`}
+              >
+                <CardContent className="p-5">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
+                        {card.label}
+                      </p>
+                      <p className="text-3xl font-bold tracking-tight">{card.value}</p>
+                      <p className="text-xs text-muted-foreground mt-1">{card.sub}</p>
+                    </div>
+                    <div className={`p-2.5 rounded-xl bg-white/60 shadow-sm ring-1 ring-black/5 ${card.iconColor}`}>
+                      <Icon className="h-5 w-5" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )
+          })}
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Inventory Overview</CardTitle>
+        {/* Inventory Overview Table */}
+        <Card className="border shadow-sm">
+          <CardHeader className="border-b bg-muted/30 px-6 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Package className="h-5 w-5 text-primary" />
+                <CardTitle className="text-base font-semibold">Inventory Overview</CardTitle>
+              </div>
+              <span className="text-xs text-muted-foreground">
+                {inventoryData?.totalElements ?? 0} medication{(inventoryData?.totalElements ?? 0) !== 1 ? 's' : ''} total
+              </span>
+            </div>
           </CardHeader>
-          <CardContent>
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Medication</TableHead>
-                    <TableHead>Category</TableHead>
-                    <TableHead className="text-right">Quantity</TableHead>
-                    <TableHead className="text-right">Value (RWF)</TableHead>
-                    <TableHead className="text-center">Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {inventory?.map((item, index) => (
-                    <TableRow key={index}>
-                      <TableCell className="font-medium">{item.medicationName}</TableCell>
-                      <TableCell>{item.category}</TableCell>
-                      <TableCell className="text-right">{item.totalQuantity}</TableCell>
-                      <TableCell className="text-right">{item.totalValue?.toLocaleString()}</TableCell>
-                      <TableCell className="text-center">
-                        <div className="flex justify-center gap-2">
-                          {item.lowStockCount > 0 && (
-                            <Badge variant="outline" className="border-warning text-warning bg-warning/10">
-                              Low Stock
-                            </Badge>
-                          )}
-                          {item.expiringCount > 0 && (
-                            <Badge variant="outline" className="border-destructive text-destructive bg-destructive/10">
-                              Expiring
-                            </Badge>
-                          )}
-                          {item.lowStockCount === 0 && item.expiringCount === 0 && (
-                            <Badge variant="outline" className="border-success text-success bg-success/10">
+          
+          {/* Filter Controls */}
+          <div className="p-4 border-b bg-muted/10 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+            <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+              {/* Search Input */}
+              <div className="relative w-full sm:w-64">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="search"
+                  placeholder="Search medications..."
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value)
+                    setCurrentPage(0) // Reset to first page on search
+                  }}
+                  className="pl-9 h-9 text-sm"
+                  onKeyDown={(e) => {
+                    // Prevent form submission on Enter key
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                    }
+                  }}
+                />
+              </div>
+              
+              {/* Category Filter */}
+              <Select
+                value={selectedCategory}
+                onValueChange={(value) => {
+                  setSelectedCategory(value)
+                  setCurrentPage(0) // Reset to first page on filter change
+                }}
+              >
+                <SelectTrigger className="w-full sm:w-48 h-9 text-sm" type="button">
+                  <SelectValue placeholder="All Categories" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Categories</SelectItem>
+                  {categories.map((cat) => (
+                    <SelectItem key={cat} value={cat}>
+                      {cat}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            {/* Clear Filters Button */}
+            {(searchQuery || (selectedCategory && selectedCategory !== 'all')) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                type="button"
+                onClick={() => {
+                  setSearchQuery('')
+                  setSelectedCategory('all')
+                  setCurrentPage(0)
+                }}
+                className="text-xs h-7"
+              >
+                Clear Filters
+              </Button>
+            )}
+          </div>
+          
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/20 hover:bg-muted/20">
+                  <TableHead className="pl-6 font-semibold text-xs uppercase tracking-wide text-muted-foreground">
+                    Medication
+                  </TableHead>
+                  <TableHead className="font-semibold text-xs uppercase tracking-wide text-muted-foreground">
+                    Category
+                  </TableHead>
+                  <TableHead className="text-right font-semibold text-xs uppercase tracking-wide text-muted-foreground">
+                    Qty
+                  </TableHead>
+                  <TableHead className="text-right font-semibold text-xs uppercase tracking-wide text-muted-foreground">
+                    Value (RWF)
+                  </TableHead>
+                  <TableHead className="text-center pr-6 font-semibold text-xs uppercase tracking-wide text-muted-foreground">
+                    Status
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {inventoryData?.content?.map((item, index) => {
+                  const isLow = item.lowStockCount > 0
+                  const isExpiring = item.expiringCount > 0
+                  const isOk = !isLow && !isExpiring
+
+                  return (
+                    <TableRow
+                      key={index}
+                      className="group hover:bg-muted/40 transition-colors"
+                    >
+                      <TableCell className="pl-6 py-3">
+                        <div className="flex items-center gap-3">
+                          <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                            <FlaskConical className="h-4 w-4 text-primary" />
+                          </div>
+                          <span className="font-medium text-sm">{item.medicationName}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="py-3">
+                        <Badge
+                          variant="outline"
+                          className="text-xs font-normal bg-background border-border/60"
+                        >
+                          {item.category}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right py-3 font-mono text-sm font-medium">
+                        {(item.totalQuantity ?? 0).toLocaleString()}
+                      </TableCell>
+                      <TableCell className="text-right py-3 font-mono text-sm text-muted-foreground">
+                        {(item.totalValue ?? 0).toLocaleString(undefined, {
+                          minimumFractionDigits: 0,
+                          maximumFractionDigits: 2,
+                        })}
+                      </TableCell>
+                      <TableCell className="text-center py-3 pr-6">
+                        <div className="flex justify-center gap-1.5 flex-wrap">
+                          {isOk && (
+                            <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-100 gap-1 font-normal">
+                              <ShieldCheck className="h-3 w-3" />
                               OK
+                            </Badge>
+                          )}
+                          {isLow && (
+                            <Badge className="bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-100 gap-1 font-normal">
+                              <AlertTriangle className="h-3 w-3" />
+                              Low
+                            </Badge>
+                          )}
+                          {isExpiring && (
+                            <Badge className="bg-rose-100 text-rose-700 border-rose-200 hover:bg-rose-100 gap-1 font-normal">
+                              <Clock className="h-3 w-3" />
+                              Expiring
                             </Badge>
                           )}
                         </div>
                       </TableCell>
                     </TableRow>
-                  ))}
-                  {(!inventory || inventory.length === 0) && (
-                    <TableRow>
-                      <TableCell colSpan={5} className="text-center h-24 text-muted-foreground">
-                        No inventory items found.
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </div>
+                  )
+                })}
+
+                {(!inventoryData?.content || inventoryData.content.length === 0) && (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-16 text-muted-foreground">
+                      <div className="flex flex-col items-center gap-3">
+                        <div className="h-12 w-12 rounded-2xl bg-muted flex items-center justify-center">
+                          <Package className="h-6 w-6 text-muted-foreground/50" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">No inventory items found</p>
+                          <p className="text-xs text-muted-foreground/70 mt-0.5">
+                            {searchQuery || (selectedCategory && selectedCategory !== 'all')
+                              ? 'Try adjusting your search or filter criteria'
+                              : 'Receive stock to populate the inventory'}
+                          </p>
+                        </div>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+            
+            {/* Pagination Controls */}
+            {inventoryData && inventoryData.totalPages > 0 && (
+              <div className="border-t px-6 py-3 flex items-center justify-between bg-muted/10">
+                <div className="text-xs text-muted-foreground">
+                  Showing {inventoryData.content?.length ?? 0} of {inventoryData.totalElements} items
+                  (Page {inventoryData.page + 1} of {inventoryData.totalPages})
+                </div>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    type="button"
+                    className="h-8 w-8"
+                    onClick={() => setCurrentPage(0)}
+                    disabled={inventoryData.page === 0}
+                  >
+                    <ChevronFirst className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    type="button"
+                    className="h-8 w-8"
+                    onClick={() => setCurrentPage(prev => Math.max(0, prev - 1))}
+                    disabled={inventoryData.page === 0}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    type="button"
+                    className="h-8 w-8"
+                    onClick={() => setCurrentPage(prev => Math.min(inventoryData.totalPages - 1, prev + 1))}
+                    disabled={inventoryData.page >= inventoryData.totalPages - 1}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    type="button"
+                    className="h-8 w-8"
+                    onClick={() => setCurrentPage(inventoryData.totalPages - 1)}
+                    disabled={inventoryData.page >= inventoryData.totalPages - 1}
+                  >
+                    <ChevronLast className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </TabsContent>
 
+      {/* ── STOCK RECEIVING TAB ──────────────────────────── */}
       <TabsContent value="stock-receiving" className="space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Receive Incoming Drug Stock</CardTitle>
+
+        {/* Form Card */}
+        <Card className="border shadow-sm">
+          <CardHeader className="border-b bg-muted/30 px-6 py-4">
+            <div className="flex items-center gap-2">
+              <Truck className="h-5 w-5 text-primary" />
+              <CardTitle className="text-base font-semibold">Receive Incoming Drug Stock</CardTitle>
+            </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-6">
             {!canManageStock && (
-              <div className="mb-4 rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+              <div className="mb-5 flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3.5 text-sm text-amber-800">
+                <AlertTriangle className="h-4 w-4 flex-shrink-0 text-amber-600" />
                 Only pharmacist and admin users can receive stock.
               </div>
             )}
 
-            <form className="grid grid-cols-1 md:grid-cols-2 gap-4" onSubmit={handleCreateStock}>
+            <form className="grid grid-cols-1 md:grid-cols-2 gap-5" onSubmit={handleCreateStock}>
               <div className="space-y-2">
-                <Label htmlFor="stock-name">Name</Label>
+                <Label htmlFor="stock-name" className="text-sm font-medium">
+                  Drug Name
+                </Label>
                 <Input
                   id="stock-name"
                   required
@@ -215,11 +489,14 @@ export function PharmacyDashboard() {
                   onChange={(e) => setName(e.target.value)}
                   placeholder="e.g. Amoxicillin"
                   disabled={!canManageStock || isCreatingStock}
+                  className="h-10"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="stock-batch">Batch Number</Label>
+                <Label htmlFor="stock-batch" className="text-sm font-medium">
+                  Batch Number
+                </Label>
                 <Input
                   id="stock-batch"
                   required
@@ -227,11 +504,14 @@ export function PharmacyDashboard() {
                   onChange={(e) => setBatchNumber(e.target.value)}
                   placeholder="e.g. BATCH-2026-001"
                   disabled={!canManageStock || isCreatingStock}
+                  className="h-10"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="stock-quantity">Quantity</Label>
+                <Label htmlFor="stock-quantity" className="text-sm font-medium">
+                  Quantity
+                </Label>
                 <Input
                   id="stock-quantity"
                   required
@@ -242,11 +522,15 @@ export function PharmacyDashboard() {
                   onChange={(e) => setQuantity(e.target.value)}
                   placeholder="e.g. 100"
                   disabled={!canManageStock || isCreatingStock}
+                  className="h-10"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="stock-expiry">Expiry Date</Label>
+                <Label htmlFor="stock-expiry" className="text-sm font-medium flex items-center gap-1.5">
+                  <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
+                  Expiry Date
+                </Label>
                 <Input
                   id="stock-expiry"
                   required
@@ -254,11 +538,14 @@ export function PharmacyDashboard() {
                   value={expiryDate}
                   onChange={(e) => setExpiryDate(e.target.value)}
                   disabled={!canManageStock || isCreatingStock}
+                  className="h-10"
                 />
               </div>
 
               <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="stock-supplier">Supplier</Label>
+                <Label htmlFor="stock-supplier" className="text-sm font-medium">
+                  Supplier
+                </Label>
                 <Input
                   id="stock-supplier"
                   required
@@ -266,57 +553,103 @@ export function PharmacyDashboard() {
                   onChange={(e) => setSupplier(e.target.value)}
                   placeholder="e.g. Rwanda Pharma Supply"
                   disabled={!canManageStock || isCreatingStock}
+                  className="h-10"
                 />
               </div>
 
-              <div className="md:col-span-2">
-                <Button type="submit" disabled={!canManageStock || isCreatingStock}>
-                  {isCreatingStock ? 'Saving...' : 'Receive Stock'}
+              <div className="md:col-span-2 flex justify-end">
+                <Button
+                  type="submit"
+                  disabled={!canManageStock || isCreatingStock}
+                  className="gap-2 min-w-[140px]"
+                >
+                  {isCreatingStock ? (
+                    <>
+                      <div className="h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                      Saving…
+                    </>
+                  ) : (
+                    <>
+                      <Truck className="h-4 w-4" />
+                      Receive Stock
+                    </>
+                  )}
                 </Button>
               </div>
             </form>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Received Stock Entries</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Batch</TableHead>
-                    <TableHead className="text-right">Quantity</TableHead>
-                    <TableHead>Expiry Date</TableHead>
-                    <TableHead>Supplier</TableHead>
-                    <TableHead>Received At</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {stockEntries.map((entry) => (
-                    <TableRow key={entry.id}>
-                      <TableCell className="font-medium">{entry.name}</TableCell>
-                      <TableCell>{entry.batchNumber}</TableCell>
-                      <TableCell className="text-right">{entry.quantity}</TableCell>
-                      <TableCell>{new Date(entry.expiryDate).toLocaleDateString()}</TableCell>
-                      <TableCell>{entry.supplier}</TableCell>
-                      <TableCell>{new Date(entry.createdAt).toLocaleString()}</TableCell>
-                    </TableRow>
-                  ))}
-
-                  {!stockLoading && stockEntries.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-center h-24 text-muted-foreground">
-                        No stock entries recorded yet.
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
+        {/* Stock Entries Table */}
+        <Card className="border shadow-sm">
+          <CardHeader className="border-b bg-muted/30 px-6 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Activity className="h-5 w-5 text-primary" />
+                <CardTitle className="text-base font-semibold">Received Stock Entries</CardTitle>
+              </div>
+              <span className="text-xs text-muted-foreground">
+                {stockEntries.length} entr{stockEntries.length !== 1 ? 'ies' : 'y'}
+              </span>
             </div>
+          </CardHeader>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/20 hover:bg-muted/20">
+                  {['Name', 'Batch', 'Qty', 'Expiry', 'Supplier', 'Received'].map((h) => (
+                    <TableHead
+                      key={h}
+                      className={`font-semibold text-xs uppercase tracking-wide text-muted-foreground ${
+                        h === 'Qty' ? 'text-right' : ''
+                      } ${h === 'Name' ? 'pl-6' : ''} ${h === 'Received' ? 'pr-6' : ''}`}
+                    >
+                      {h}
+                    </TableHead>
+                  ))}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {stockEntries.map((entry) => (
+                  <TableRow key={entry.id} className="hover:bg-muted/40 transition-colors">
+                    <TableCell className="pl-6 py-3 font-medium text-sm">{entry.name}</TableCell>
+                    <TableCell className="py-3">
+                      <code className="text-xs bg-muted px-1.5 py-0.5 rounded font-mono">
+                        {entry.batchNumber}
+                      </code>
+                    </TableCell>
+                    <TableCell className="text-right py-3 font-mono text-sm font-medium">
+                      {entry.quantity.toLocaleString()}
+                    </TableCell>
+                    <TableCell className="py-3 text-sm text-muted-foreground">
+                      {new Date(entry.expiryDate).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell className="py-3 text-sm text-muted-foreground">{entry.supplier}</TableCell>
+                    <TableCell className="py-3 pr-6 text-sm text-muted-foreground">
+                      {new Date(entry.createdAt).toLocaleString()}
+                    </TableCell>
+                  </TableRow>
+                ))}
+
+                {!stockLoading && stockEntries.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-16 text-muted-foreground">
+                      <div className="flex flex-col items-center gap-3">
+                        <div className="h-12 w-12 rounded-2xl bg-muted flex items-center justify-center">
+                          <Truck className="h-6 w-6 text-muted-foreground/50" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">No stock entries yet</p>
+                          <p className="text-xs text-muted-foreground/70 mt-0.5">
+                            Use the form above to record incoming stock
+                          </p>
+                        </div>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
           </CardContent>
         </Card>
       </TabsContent>

@@ -11,7 +11,7 @@ describe('Patient Validation Schemas', () => {
                 firstName: 'John',
                 lastName: 'Doe',
                 dateOfBirth: '1990-01-01',
-                gender: 'Male' as const,
+                gender: 'MALE' as const,
                 phone: '+250788123456',
                 email: 'john@example.com',
                 address: 'Kigali, Rwanda',

@@ -10,10 +10,73 @@ export interface Patient {
     phone: string;
     email?: string;
     address?: string;
-    insurance?: any;
-    allergies?: string[];
-    conditions?: string[];
-    [key: string]: any;
+    nationalId?: string;
+    insurance?: {
+        provider?: string;
+        number?: string;
+        expiry?: string;
+        [key: string]: unknown;
+    };
+    emergencyContact?: {
+        name?: string;
+        relation?: string;
+        phone?: string;
+        [key: string]: unknown;
+    };
+    allergies?: string[] | string;
+    conditions?: string[] | string;
+    [key: string]: unknown;
+}
+
+export interface CreatePatientVitalsPayload {
+    temperature?: number;
+    bloodPressure?: string;
+    heartRate?: number;
+    respiratoryRate?: number;
+    oxygenSaturation?: number;
+    weight?: number;
+    height?: number;
+    bmi?: number;
+}
+
+export interface PatientLabResult {
+    orderId: string;
+    status: string;
+    tests?: string;
+    results?: string;
+    orderedAt?: string;
+    processedAt?: string;
+    approvedAt?: string;
+}
+
+export interface PatientHistoryConsultation {
+    id: string;
+    status?: string;
+    createdAt: string;
+    diagnosis?: string;
+}
+
+export interface PatientHistoryAppointment {
+    id: string;
+    status?: string;
+    scheduledAt: string;
+    reason?: string;
+}
+
+export interface PatientHistoryVital {
+    id: string;
+    recordedAt: string;
+    bloodPressure?: string;
+    heartRate?: number | string;
+    temperature?: number | string;
+}
+
+export interface PatientHistory {
+    patientId: string;
+    consultations: PatientHistoryConsultation[];
+    appointments: PatientHistoryAppointment[];
+    vitals: PatientHistoryVital[];
+    labResults: PatientLabResult[];
 }
 
 export interface PatientSearchParams {
@@ -99,6 +162,65 @@ export function usePatientVitals(id: string) {
         queryKey: ['patient', id, 'vitals'],
         queryFn: async () => {
             const { data } = await api.get(`/patients/${id}/vitals`);
+            return data;
+        },
+        enabled: !!id,
+    });
+}
+
+export function useCreatePatientVitals() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async ({ patientId, data }: { patientId: string; data: CreatePatientVitalsPayload }) => {
+            const response = await api.post(`/patients/${patientId}/vitals`, data);
+            return response.data;
+        },
+        onMutate: async ({ patientId, data }) => {
+            await queryClient.cancelQueries({ queryKey: ['patient', patientId, 'vitals'] });
+            const previousVitals = queryClient.getQueryData<unknown[]>(['patient', patientId, 'vitals']);
+
+            const optimisticVitals = {
+                id: `temp-${Date.now()}`,
+                patientId,
+                ...data,
+                recordedAt: new Date().toISOString(),
+            };
+
+            queryClient.setQueryData<unknown[]>(
+                ['patient', patientId, 'vitals'],
+                (current = []) => [optimisticVitals, ...current],
+            );
+
+            return { previousVitals, patientId };
+        },
+        onError: (_error, _variables, context) => {
+            if (context?.previousVitals && context?.patientId) {
+                queryClient.setQueryData(['patient', context.patientId, 'vitals'], context.previousVitals);
+            }
+        },
+        onSuccess: (_data, variables) => {
+            queryClient.invalidateQueries({ queryKey: ['patient', variables.patientId, 'vitals'] });
+        },
+    });
+}
+
+export function usePatientHistory(id: string) {
+    return useQuery({
+        queryKey: ['patient', id, 'history'],
+        queryFn: async () => {
+            const { data } = await api.get<PatientHistory>(`/patients/${id}/history`);
+            return data;
+        },
+        enabled: !!id,
+    });
+}
+
+export function usePatientLabResults(id: string) {
+    return useQuery({
+        queryKey: ['patient', id, 'lab-results'],
+        queryFn: async () => {
+            const { data } = await api.get<PatientLabResult[]>(`/patients/${id}/lab-results`);
             return data;
         },
         enabled: !!id,

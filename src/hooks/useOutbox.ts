@@ -24,7 +24,9 @@ export function useOutboxEntries() {
             const { data } = await api.get<OutboxEntry[]>('/admin/outbox')
             return data
         },
-        refetchInterval: 10000, // Refresh every 10s
+        refetchInterval: 10000,       // Refresh every 10s when healthy
+        retry: false,                 // Don't retry on network failure — avoids console spam
+        refetchOnWindowFocus: false,  // Don't re-fetch on tab switch when backend is down
     })
 }
 

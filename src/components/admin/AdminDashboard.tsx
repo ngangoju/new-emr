@@ -1,6 +1,5 @@
 'use client'
 
-import { PageHeader } from '@/components/layout/PageHeader'
 import { SystemStats } from './SystemStats'
 import { UserManagementTable } from './UserManagementTable'
 import { ReportsSection } from './ReportsSection'
@@ -9,10 +8,6 @@ import { EventHealthMonitor } from './EventHealthMonitor'
 export default function AdminDashboard() {
   return (
     <>
-      <PageHeader
-        title="Admin Dashboard"
-        description="System overview with key metrics, comprehensive user management, and interactive reports & analytics."
-      />
       <div className="w-full mb-8">
         <SystemStats />
       </div>

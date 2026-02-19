@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import { PharmacyDashboardStats, InventorySummary, StockAlert } from '@/types/pharmacy';
+import { PharmacyDashboardStats, InventorySummary, StockAlert, PaginatedInventoryResponse } from '@/types/pharmacy';
 
 // Fallback data for when the API fails
 const fallbackDashboardStats: PharmacyDashboardStats = {
@@ -16,12 +16,27 @@ const fallbackDashboardStats: PharmacyDashboardStats = {
 
 const fallbackInventorySummary: InventorySummary[] = [];
 
+const fallbackPaginatedInventory: PaginatedInventoryResponse = {
+  content: [],
+  page: 0,
+  size: 20,
+  totalElements: 0,
+  totalPages: 0
+};
+
 const fallbackStockAlerts: StockAlert = {
   lowStockCount: 0,
   expiringCount: 0,
   lowStockItems: [],
   expiringItems: []
 };
+
+export interface InventoryFilters {
+  search?: string;
+  category?: string;
+  page?: number;
+  size?: number;
+}
 
 export function usePharmacyDashboard() {
   return useQuery({
@@ -38,16 +53,46 @@ export function usePharmacyDashboard() {
   });
 }
 
-export function useInventorySummary() {
+export function useInventorySummary(filters?: InventoryFilters) {
+  const { search, category, page = 0, size = 20 } = filters ?? {};
+
   return useQuery({
-    queryKey: ['inventory', 'summary'],
+    queryKey: ['inventory', 'summary', search, category, page, size],
     queryFn: async () => {
       try {
-        const { data } = await api.get<InventorySummary[]>('/api/pharmacy/inventory/summary');
-        return data ?? fallbackInventorySummary;
+        // Build query params
+        const params = new URLSearchParams();
+        if (search) params.append('search', search);
+        if (category) params.append('category', category);
+        params.append('page', page.toString());
+        params.append('size', size.toString());
+
+        const { data } = await api.get<PaginatedInventoryResponse>(
+          `/api/pharmacy/inventory/summary?${params.toString()}`
+        );
+        return data ?? fallbackPaginatedInventory;
+      } catch (error: unknown) {
+        console.error('Failed to fetch inventory summary:', error);
+        // Return fallback data instead of throwing to prevent component crash
+        return fallbackPaginatedInventory;
+      }
+    },
+    // Keep previous data while fetching new data to prevent flickering
+    placeholderData: (previousData) => previousData,
+  });
+}
+
+// Hook to fetch available categories
+export function useInventoryCategories() {
+  return useQuery({
+    queryKey: ['inventory', 'categories'],
+    queryFn: async () => {
+      try {
+        const { data } = await api.get<string[]>('/api/pharmacy/inventory/categories');
+        return data ?? [];
       } catch (error) {
-        console.warn('Failed to fetch inventory summary:', error);
-        return fallbackInventorySummary;
+        console.warn('Failed to fetch inventory categories:', error);
+        return [];
       }
     },
   });

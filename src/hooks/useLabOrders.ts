@@ -4,6 +4,12 @@ import { api } from '@/lib/api'
 import type { LabOrder, LabResult } from '@/types/lab'
 import type { LabResultFinalizeRequest, LabResultSubmissionResponse } from '@/types/lab'
 
+export interface CreateLabOrderPayload {
+  patientId: string
+  consultId?: string
+  tests: string | string[]
+}
+
 export function useLabOrders() {
   const { data: pending = [], isLoading: loadingPending } = useQuery({
     queryKey: ['lab-orders', 'pending'],
@@ -50,6 +56,36 @@ export function useLabResult(orderId: string) {
       return data
     },
     enabled: !!orderId
+  })
+}
+
+export function usePatientLabOrders(patientId: string) {
+  return useQuery({
+    queryKey: ['lab-orders', 'patient', patientId],
+    queryFn: async () => {
+      const { data } = await api.get<LabOrder[]>('/lab-orders/completed')
+      return data.filter((order) => order.patientId === patientId)
+    },
+    enabled: !!patientId,
+  })
+}
+
+export function useCreateLabOrder() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (payload: CreateLabOrderPayload) => {
+      const normalizedPayload = {
+        ...payload,
+        tests: Array.isArray(payload.tests) ? JSON.stringify(payload.tests) : payload.tests,
+      }
+      const { data } = await api.post<LabOrder>('/lab-orders', normalizedPayload)
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['lab-orders'] })
+      toast.success('Lab order created successfully.')
+    },
   })
 }
 

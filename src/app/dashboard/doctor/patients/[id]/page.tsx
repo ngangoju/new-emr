@@ -2,7 +2,6 @@
 
 import React from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { PageHeader } from '@/components/layout/PageHeader'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -13,20 +12,17 @@ import {
   Phone, 
   Mail, 
   MapPin, 
-  Calendar, 
   FileText, 
   Activity, 
   Pill, 
   Microscope,
   Clock,
-  AlertCircle,
   Edit
 } from 'lucide-react'
 
-import { usePatient, usePatientVitals, useUpdatePatient } from '@/hooks/api/usePatients'
-import { useConsultations } from '@/hooks/api/useConsultations'
+import { usePatient, usePatientVitals, useUpdatePatient, usePatientLabResults, type Patient, type PatientLabResult } from '@/hooks/api/usePatients'
+import { useConsultations, type Consultation } from '@/hooks/api/useConsultations'
 import { useCreateEncounter } from '@/hooks/api/useEncounters'
-import { format } from 'date-fns'
 import { EmptyState } from '@/components/ui/empty-state'
 import { formatDate, formatDateTime } from '@/lib/utils/date'
 import { formatAddress, formatShortAddress } from '@/lib/utils/address'
@@ -38,26 +34,44 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
+type ConsultationView = Consultation & {
+  doctorName?: string
+  type?: string
+  notes?: string
+}
+
 export default function PatientDetailPage() {
   const params = useParams()
   const router = useRouter()
   const id = params.id as string
-  const { role, hasPermission } = useRole()
+  const { hasPermission } = useRole()
 
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
-  const [editFormData, setEditFormData] = useState<any>({})
+  const [editFormData, setEditFormData] = useState<Partial<Patient>>({})
 
   // Fetch real patient data
   const { data: patient, isLoading: patientLoading } = usePatient(id)
   const { data: vitals, isLoading: vitalsLoading } = usePatientVitals(id)
+  const { data: labResults = [], isLoading: labResultsLoading } = usePatientLabResults(id)
   const { data: consultationsData, isLoading: consultationsLoading } = useConsultations({ patientId: id })
   const updatePatientMutation = useUpdatePatient()
 
-  const consultations = consultationsData || []
+  const consultations: ConsultationView[] = (consultationsData || []) as ConsultationView[]
   const createEncounterMutation = useCreateEncounter()
 
+  const getErrorMessage = (error: unknown, fallback: string) => {
+    if (typeof error === 'object' && error !== null && 'response' in error) {
+      const response = (error as { response?: { data?: { message?: string } } }).response
+      const message = response?.data?.message
+      if (typeof message === 'string' && message.trim().length > 0) {
+        return message
+      }
+    }
+    return fallback
+  }
+
   // Loading state
-  if (patientLoading || vitalsLoading || consultationsLoading) {
+  if (patientLoading || vitalsLoading || consultationsLoading || labResultsLoading) {
     return (
       <div className="space-y-6 animate-pulse">
         <div className="h-32 bg-muted rounded-lg"></div>
@@ -116,8 +130,8 @@ export default function PatientDetailPage() {
           toast.success('Profile updated successfully!')
           setIsEditDialogOpen(false)
         },
-        onError: (error: any) => {
-          toast.error(error?.response?.data?.message || 'Failed to update profile')
+        onError: (error: unknown) => {
+          toast.error(getErrorMessage(error, 'Failed to update profile'))
         }
       }
     )
@@ -136,8 +150,8 @@ export default function PatientDetailPage() {
         toast.success('Visit started! Moving to Triage.')
         router.push(`/dashboard/doctor/consultations/new?patientId=${id}&encounterId=${data.id}`)
       },
-      onError: (error: any) => {
-        toast.error(error?.response?.data?.message || 'Failed to start visit')
+      onError: (error: unknown) => {
+        toast.error(getErrorMessage(error, 'Failed to start visit'))
       }
     })
   }
@@ -457,7 +471,7 @@ export default function PatientDetailPage() {
                     } : undefined}
                   />
                 ) : (
-                  consultations.map((consultation: any) => (
+                  consultations.map((consultation) => (
                     <div key={consultation.id} className="flex gap-4 pb-8 border-b last:border-0 last:pb-0">
                       <div className="flex flex-col items-center">
                         <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">
@@ -503,12 +517,42 @@ export default function PatientDetailPage() {
         
         <TabsContent value="labs">
           <Card>
-            <CardContent className="py-8">
-              <EmptyState
-                icon={Microscope}
-                title="No lab results available"
-                description="This patient doesn't have any lab test results yet. Order lab tests during consultations and results will appear here."
-              />
+            <CardHeader>
+              <CardTitle>Lab Results</CardTitle>
+              <CardDescription>Completed and processed lab orders for this patient</CardDescription>
+            </CardHeader>
+            <CardContent className="py-2">
+              {labResults.length === 0 ? (
+                <EmptyState
+                  icon={Microscope}
+                  title="No lab results available"
+                  description="This patient doesn't have any lab test results yet. Order lab tests during consultations and results will appear here."
+                />
+              ) : (
+                <div className="space-y-3">
+                  {labResults.map((result: PatientLabResult) => (
+                    <div key={result.orderId} className="rounded-md border p-4">
+                      <div className="flex items-center justify-between">
+                        <p className="font-medium">Lab Order #{String(result.orderId).slice(0, 8)}</p>
+                        <Badge variant="secondary">{result.status}</Badge>
+                      </div>
+                      {result.orderedAt ? (
+                        <p className="text-xs text-muted-foreground mt-1">Ordered: {formatDateTime(result.orderedAt)}</p>
+                      ) : null}
+                      {result.tests ? (
+                        <p className="text-sm mt-2">
+                          <span className="font-medium">Tests:</span> {result.tests}
+                        </p>
+                      ) : null}
+                      {result.results ? (
+                        <p className="text-sm mt-1 break-words">
+                          <span className="font-medium">Results:</span> {result.results}
+                        </p>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

@@ -13,11 +13,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
-import { Bell, Search, Menu, User, Settings, LogOut, Sun, Moon } from "lucide-react"
+  import { Bell, Search, Menu, User, Settings, LogOut, Sun, Moon, Loader2, CheckCheck } from "lucide-react"
 import { useUIStore } from "@/lib/stores/uiStore"
 import { AUTH_EVENTS, clearSession, getSessionUser } from '@/lib/utils/auth'
 import { getDashboardNavigationForRole, normalizeUserRole } from '@/lib/authz/policy'
 import { findDashboardSearchTarget } from '@/lib/utils/dashboardSearch'
+  import { useUnreadCount, useNotificationsModule } from '@/hooks/useNotifications'
+import { formatRelativeTime } from '@/lib/utils/date'
+import { getNotificationIcon, getNotificationColor } from '@/types/notification'
 
 export function Header() {
   const router = useRouter()
@@ -28,6 +31,11 @@ export function Header() {
     role: 'user' 
   })
   const [mounted, setMounted] = useState(false)
+  const [notificationsOpen, setNotificationsOpen] = useState(false)
+
+  // Notification hooks
+  const { data: unreadCount = 0, isLoading: isLoadingUnreadCount, refetch: refetchUnreadCount } = useUnreadCount()
+  const { notifications = [], isLoading: isLoadingNotifications, markAsRead, markAllAsRead, isMarkingAllAsRead, refetch: refetchNotifications } = useNotificationsModule({ limit: 10 })
 
   useEffect(() => {
     setMounted(true)
@@ -83,6 +91,53 @@ export function Header() {
     router.push(target.href)
   }
 
+  // Handle notification dropdown open
+  const handleNotificationsOpenChange = (open: boolean) => {
+    setNotificationsOpen(open)
+    if (open) {
+      refetchNotifications()
+      refetchUnreadCount()
+    }
+  }
+
+  // Handle marking a notification as read
+  const handleNotificationClick = async (notification: { id: string; isRead: boolean; entityType?: string; entityId?: string }) => {
+    if (!notification.isRead) {
+      await markAsRead(notification.id)
+      refetchUnreadCount()
+    }
+    
+    // Navigate to entity if applicable
+    if (notification.entityType && notification.entityId) {
+      const route = getEntityRoute(notification.entityType, notification.entityId)
+      if (route) {
+        router.push(route)
+        setNotificationsOpen(false)
+      }
+    }
+  }
+
+  // Handle marking all as read
+  const handleMarkAllAsRead = async () => {
+    await markAllAsRead()
+    refetchUnreadCount()
+  }
+
+  // Helper to get route from entity type
+  const getEntityRoute = (entityType: string, entityId: string): string | null => {
+    switch (entityType) {
+      case 'CONSULTATION': return `/dashboard/doctor/consultations`
+      case 'LAB_ORDER': return `/dashboard/lab`
+      case 'IMAGING_ORDER': return `/dashboard/radiology`
+      case 'DRUG_REQUEST': return `/dashboard/pharmacy`
+      case 'ADMISSION': return `/dashboard/nurse/admissions`
+      case 'INVOICE': return `/dashboard/billing`
+      case 'APPROVAL': return `/dashboard/approvals`
+      case 'QUEUE_ENTRY': return `/dashboard/nurse`
+      default: return null
+    }
+  }
+
   if (!mounted) {
     return (
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -125,37 +180,89 @@ export function Header() {
               className="pl-10 pr-4 h-9 w-full"
             />
           </form>
-          <DropdownMenu>
+          <DropdownMenu open={notificationsOpen} onOpenChange={handleNotificationsOpenChange}>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-9 w-9 rounded-full">
-                <Bell className="h-5 w-5" />
-                <Badge
-                  variant="destructive"
-                  className="absolute -top-1 -right-1 h-5 w-5 p-0 rounded-full"
-                >
-                  3
-                </Badge>
+                {isLoadingUnreadCount ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <Bell className="h-5 w-5" />
+                )}
+                {unreadCount > 0 && (
+                  <Badge
+                    variant="destructive"
+                    className="absolute -top-1 -right-1 h-5 w-5 p-0 rounded-full flex items-center justify-center text-[10px]"
+                  >
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </Badge>
+                )}
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-80">
-              <DropdownMenuLabel>Notifications</DropdownMenuLabel>
+            <DropdownMenuContent className="w-80" align="end" sideOffset={8}>
+              <DropdownMenuLabel className="flex items-center justify-between">
+                <span>Notifications</span>
+                {unreadCount > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 text-xs text-muted-foreground hover:text-foreground px-2"
+                    onClick={handleMarkAllAsRead}
+                    disabled={isMarkingAllAsRead}
+                  >
+                    {isMarkingAllAsRead ? (
+                      <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                    ) : (
+                      <CheckCheck className="h-3 w-3 mr-1" />
+                    )}
+                    Mark all read
+                  </Button>
+                )}
+              </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="flex flex-col items-start p-3">
-                <p className="font-medium">New consultation request</p>
-                <p className="text-xs text-muted-foreground">John Doe - 10 min ago</p>
-              </DropdownMenuItem>
-              <DropdownMenuItem className="flex flex-col items-start p-3">
-                <p className="font-medium">Lab results ready</p>
-                <p className="text-xs text-muted-foreground">Jane Smith - 1 hour ago</p>
-              </DropdownMenuItem>
-              <DropdownMenuItem className="flex flex-col items-start p-3">
-                <p className="font-medium">Patient checked in</p>
-                <p className="text-xs text-muted-foreground">Bob Wilson - 2 hours ago</p>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem className="w-full text-center">
-                View all notifications
-              </DropdownMenuItem>
+              {isLoadingNotifications ? (
+                <div className="flex items-center justify-center py-6">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                </div>
+              ) : notifications.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-6 text-muted-foreground">
+                  <Bell className="h-8 w-8 mb-2 opacity-50" />
+                  <p className="text-sm">No notifications</p>
+                </div>
+              ) : (
+                <>
+                  {notifications.slice(0, 5).map((notification) => (
+                    <DropdownMenuItem
+                      key={notification.id}
+                      className={`flex flex-col items-start p-3 cursor-pointer ${!notification.isRead ? 'bg-muted/50' : ''}`}
+                      onClick={() => handleNotificationClick(notification)}
+                    >
+                      <div className="flex items-start gap-2 w-full">
+                        <Bell className={`h-4 w-4 mt-0.5 ${getNotificationColor(notification.type)}`} />
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm truncate">{notification.title}</p>
+                          <p className="text-xs text-muted-foreground line-clamp-2">{notification.body}</p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {formatRelativeTime(notification.createdAt)}
+                          </p>
+                        </div>
+                        {!notification.isRead && (
+                          <div className="h-2 w-2 rounded-full bg-primary mt-1 flex-shrink-0" />
+                        )}
+                      </div>
+                    </DropdownMenuItem>
+                  ))}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    className="w-full text-center text-sm"
+                    onClick={() => {
+                      router.push('/dashboard/notifications')
+                      setNotificationsOpen(false)
+                    }}
+                  >
+                    View all notifications
+                  </DropdownMenuItem>
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
           <Button

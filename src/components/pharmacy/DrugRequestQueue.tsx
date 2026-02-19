@@ -35,7 +35,26 @@ import {
 
 import { useDrugRequests, useFulfillDrugRequest, useDenyDrugRequest } from '@/hooks/useDrugRequests'
 import { useRole } from '@/hooks/useRole'
-import type { DrugRequest, DrugRequestStatus } from '@/types/pharmacy'
+import type { DrugRequest, DrugRequestItem, DrugRequestStatus } from '@/types/pharmacy'
+
+/**
+ * The backend stores `items` as a raw JSON string in the DB and returns it
+ * as a string literal from the API. This helper normalises it to an array.
+ */
+function parseItems(items: DrugRequestItem[] | string | null | undefined): DrugRequestItem[] {
+  if (!items) return []
+  if (Array.isArray(items)) return items
+  try {
+    const parsed = JSON.parse(items as string)
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+function normalizeRequest(request: DrugRequest): DrugRequest {
+  return { ...request, items: parseItems(request.items as DrugRequestItem[] | string) }
+}
 
 /**
  * DrugRequestQueue - A queue for pharmacists to view and fulfill drug requests
@@ -50,7 +69,9 @@ import type { DrugRequest, DrugRequestStatus } from '@/types/pharmacy'
  */
 export function DrugRequestQueue() {
   const { hasPermission, isRole, isLoading: roleLoading } = useRole()
-  const { data: requests = [], isLoading } = useDrugRequests({})
+  const { data: rawRequests = [], isLoading } = useDrugRequests({})
+  // Normalise items field: the backend returns it as a JSON string, not an array
+  const requests = useMemo(() => rawRequests.map(normalizeRequest), [rawRequests])
   const { mutateAsync: fulfillRequest, isPending: fulfilling } = useFulfillDrugRequest()
   const { mutateAsync: denyRequest, isPending: denying } = useDenyDrugRequest()
 
@@ -89,12 +110,17 @@ export function DrugRequestQueue() {
     }
   }
 
-  // Format date
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString('en-US', {
-      dateStyle: 'medium',
-      timeStyle: 'short',
-    })
+  // Format date - handles both ISO string and formatted date from backend
+  const formatDate = (dateString: string | undefined) => {
+    if (!dateString) return '-'
+    try {
+      return new Date(dateString).toLocaleString('en-US', {
+        dateStyle: 'medium',
+        timeStyle: 'short',
+      })
+    } catch {
+      return dateString // Return as-is if parsing fails
+    }
   }
 
   // Handle fulfill
@@ -287,7 +313,7 @@ export function DrugRequestQueue() {
                       <TableCell className="font-medium">
                         <div className="flex items-center gap-2">
                           <User className="h-4 w-4 text-muted-foreground" />
-                          {request.patientName}
+                          {request.patientName || 'Patient ' + (request.patientId?.substring(0, 8) || 'Unknown')}
                         </div>
                       </TableCell>
                       <TableCell>
@@ -304,11 +330,11 @@ export function DrugRequestQueue() {
                           )}
                         </div>
                       </TableCell>
-                      <TableCell>{request.requestedByName || request.requestedBy}</TableCell>
+                      <TableCell>{request.requestedByName || request.requestedBy || 'Unknown'}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1 text-sm text-muted-foreground">
                           <Clock className="h-3 w-3" />
-                          {formatDate(request.requestedAt)}
+                          {formatDate(request.requestedAtFormatted || request.requestedAt)}
                         </div>
                       </TableCell>
                       <TableCell>{getStatusBadge(request.status)}</TableCell>
