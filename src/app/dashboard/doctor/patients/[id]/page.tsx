@@ -23,6 +23,7 @@ import {
 import { usePatient, usePatientVitals, useUpdatePatient, usePatientLabResults, type Patient, type PatientLabResult } from '@/hooks/api/usePatients'
 import { useConsultations, type Consultation } from '@/hooks/api/useConsultations'
 import { useCreateEncounter } from '@/hooks/api/useEncounters'
+import Link from 'next/link'
 import { EmptyState } from '@/components/ui/empty-state'
 import { formatDate, formatDateTime } from '@/lib/utils/date'
 import { formatAddress, formatShortAddress } from '@/lib/utils/address'
@@ -485,7 +486,9 @@ export default function PatientDetailPage() {
                             <h4 className="font-semibold text-foreground">Consultation</h4>
                             <p className="text-sm text-muted-foreground">Dr. {consultation.doctorName} • {consultation.type || 'General'}</p>
                           </div>
-                          <Button variant="ghost" size="sm">View Details</Button>
+                          <Button variant="ghost" size="sm" asChild>
+                            <Link href={`/dashboard/doctor/consultations/${consultation.id}`}>View Details</Link>
+                          </Button>
                         </div>
                         <p className="text-sm text-muted-foreground">
                           {consultation.notes || 'No notes available'}

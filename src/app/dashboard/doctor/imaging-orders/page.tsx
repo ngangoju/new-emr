@@ -9,17 +9,13 @@ import { PageHeader } from '@/components/layout/PageHeader'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { CreateImagingOrderModal } from '@/components/radiology/CreateImagingOrderModal'
-import { Image as ImageIcon, Plus, Activity } from 'lucide-react'
+import { PatientSelector } from '@/components/shared/PatientSelector'
+import { Patient } from '@/hooks/api/usePatients'
+import { Image as ImageIcon, Plus, Activity, UserSearch } from 'lucide-react'
 
 export default function ImagingOrdersPage() {
   const [showCreateModal, setShowCreateModal] = useState(false)
-
-  // Demo patient data
-  const demoPatient = {
-    id: '550e8400-e29b-41d4-a716-446655440000',
-    name: 'John Doe',
-    consultId: '660e8400-e29b-41d4-a716-446655440001'
-  }
+  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null)
 
   return (
     <div className="space-y-6">
@@ -51,12 +47,23 @@ export default function ImagingOrdersPage() {
                 </ul>
               </div>
 
+              <div className="pt-2">
+                <label className="text-sm font-medium mb-2 block flex items-center gap-2">
+                  <UserSearch className="h-4 w-4" /> Select Patient Context
+                </label>
+                <PatientSelector 
+                  selectedPatientId={selectedPatient?.id} 
+                  onSelect={(patient) => setSelectedPatient(patient)} 
+                />
+              </div>
+
               <Button 
                 onClick={() => setShowCreateModal(true)}
-                className="bg-blue-600 hover:bg-blue-700"
+                className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto mt-4"
+                disabled={!selectedPatient}
               >
                 <Plus className="h-4 w-4 mr-2" />
-                Create Imaging Order (Demo)
+                Create Imaging Order for {selectedPatient ? selectedPatient.firstName : 'Patient'}
               </Button>
             </div>
           </CardContent>
@@ -109,13 +116,14 @@ export default function ImagingOrdersPage() {
         </Card>
       </div>
 
-      <CreateImagingOrderModal
-        open={showCreateModal}
-        onOpenChange={setShowCreateModal}
-        patientId={demoPatient.id}
-        consultId={demoPatient.consultId}
-        patientName={demoPatient.name}
-      />
+      {selectedPatient && (
+        <CreateImagingOrderModal
+          open={showCreateModal}
+          onOpenChange={setShowCreateModal}
+          patientId={selectedPatient.id}
+          patientName={`${selectedPatient.firstName} ${selectedPatient.lastName}`}
+        />
+      )}
     </div>
   )
 }

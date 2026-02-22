@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -67,6 +67,7 @@ export default function NewConsultationPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const encounterId = searchParams.get('encounterId')
+  const patientIdFromUrl = searchParams.get('patientId')
   const { isRole } = useRole()
   
   const [currentStep, setCurrentStep] = useState(1)
@@ -122,6 +123,25 @@ export default function NewConsultationPage() {
   const createConsultationMutation = useCreateConsultation()
   const signConsultationMutation = useSignConsultation()
   const createLabOrderMutation = useCreateLabOrder()
+
+  // Auto-populate patient when patientId is provided in URL
+  useEffect(() => {
+    if (patientIdFromUrl) {
+      // Set the form's patientId field
+      form.setValue('patientId', patientIdFromUrl, { shouldValidate: true })
+      // Set the patient search to show the patient name
+      setPatientSearch('Loading patient...')
+      // Auto-advance to step 2 (Chief Complaint) since patient is selected
+      setCurrentStep(2)
+    }
+  }, [patientIdFromUrl, form])
+
+  // Update patient search display when patient data is loaded
+  useEffect(() => {
+    if (selectedPatient && patientIdFromUrl) {
+      setPatientSearch(`${selectedPatient.firstName} ${selectedPatient.lastName}`)
+    }
+  }, [selectedPatient, patientIdFromUrl])
 
   const progress = (currentStep / STEPS.length) * 100
 
@@ -348,7 +368,7 @@ Follow Up: ${data.followUp || 'N/A'}
                             placeholder="Search by name, ID or phone..." 
                             value={patientSearch}
                             onChange={(e) => setPatientSearch(e.target.value)}
-                            disabled={!isStepEditable()}
+                            disabled={!isStepEditable() || !!patientIdFromUrl}
                           />
                           {patientSearch && !field.value && (
                             <div className="absolute z-10 w-full mt-1 bg-card border rounded-md shadow-lg max-h-60 overflow-auto">
@@ -405,18 +425,20 @@ Follow Up: ${data.followUp || 'N/A'}
                                       <p className="font-medium text-xs font-mono">{selectedPatient.id}</p>
                                     </div>
                                   </div>
-                                  <Button 
-                                    variant="ghost" 
-                                    size="sm" 
-                                    className="mt-4 text-destructive hover:text-destructive"
-                                    onClick={() => {
-                                      field.onChange('')
-                                      setPatientSearch('')
-                                    }}
-                                    type="button"
-                                  >
-                                    Change Patient
-                                  </Button>
+                                  {!patientIdFromUrl && (
+                                    <Button 
+                                      variant="ghost" 
+                                      size="sm" 
+                                      className="mt-4 text-destructive hover:text-destructive"
+                                      onClick={() => {
+                                        field.onChange('')
+                                        setPatientSearch('')
+                                      }}
+                                      type="button"
+                                    >
+                                      Change Patient
+                                    </Button>
+                                  )}
                                 </>
                               ) : (
                                 <div className="p-4 text-center text-sm text-destructive">
@@ -786,42 +808,49 @@ Follow Up: ${data.followUp || 'N/A'}
                   <ChevronRight className="h-4 w-4 mr-2" />
                   {handoffMutation.isPending ? 'Processing...' : 'Ready for Doctor'}
                 </Button>
-              ) : currentStep < STEPS.length ? (
-                <Button onClick={handleNext} type="button">
-                  Next
-                  <ChevronRight className="h-4 w-4 ml-2" />
-                </Button>
               ) : (
                 <>
-                  {!createdConsultation ? (
-                    <Button
-                      type="submit"
-                      className="bg-success hover:bg-success/90"
-                      disabled={createConsultationMutation.isPending || !isStepEditable()}
-                    >
-                      <Check className="h-4 w-4 mr-2" />
-                      {createConsultationMutation.isPending ? 'Creating...' : 'Create Consultation'}
-                    </Button>
-                  ) : (
-                    <Button
-                      type="button"
-                      className="bg-success hover:bg-success/90"
-                      disabled={
-                        signConsultationMutation.isPending ||
-                        createLabOrderMutation.isPending ||
-                        createdConsultation.status === 'SIGNED' ||
-                        !isStepEditable()
-                      }
-                      onClick={handleFinalizeConsultation}
-                    >
-                      <Check className="h-4 w-4 mr-2" />
-                      {createLabOrderMutation.isPending
-                        ? 'Submitting Lab Order...'
-                        : signConsultationMutation.isPending
-                        ? 'Signing Consultation...'
-                        : createdConsultation.status === 'SIGNED'
-                        ? 'Consultation Signed'
-                        : 'Finalize & Sign Consultation'}
+                  {/* Always show the main action buttons on the final step (Review) */}
+                  {currentStep === STEPS.length && (
+                    <>
+                      {!createdConsultation ? (
+                        <Button
+                          type="submit"
+                          className="bg-primary text-primary-foreground hover:bg-primary/90 font-semibold"
+                          disabled={createConsultationMutation.isPending}
+                        >
+                          <Check className="h-4 w-4 mr-2" />
+                          {createConsultationMutation.isPending ? 'Creating...' : 'Create Consultation'}
+                        </Button>
+                      ) : (
+                        <Button
+                          type="button"
+                          className="bg-primary text-primary-foreground hover:bg-primary/90 font-semibold"
+                          disabled={
+                            signConsultationMutation.isPending ||
+                            createLabOrderMutation.isPending ||
+                            createdConsultation.status === 'SIGNED'
+                          }
+                          onClick={handleFinalizeConsultation}
+                        >
+                          <Check className="h-4 w-4 mr-2" />
+                          {createLabOrderMutation.isPending
+                            ? 'Submitting Lab Order...'
+                            : signConsultationMutation.isPending
+                            ? 'Signing Consultation...'
+                            : createdConsultation.status === 'SIGNED'
+                            ? 'Consultation Signed'
+                            : 'Finalize & Sign Consultation'}
+                        </Button>
+                      )}
+                    </>
+                  )}
+                  
+                  {/* Show Next button if not on final step */}
+                  {currentStep < STEPS.length && (
+                    <Button onClick={handleNext} type="button">
+                      Next
+                      <ChevronRight className="h-4 w-4 ml-2" />
                     </Button>
                   )}
                 </>

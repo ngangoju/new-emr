@@ -20,7 +20,7 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { ReportDateRangePicker } from '@/components/reports/ReportDateRangePicker'
-import { usePatientThroughputReport } from '@/hooks/useHmisReports'
+import { usePatientThroughputReport, useExportReport } from '@/hooks/useHmisReports'
 import { Badge } from '@/components/ui/badge'
 import {
   Table,
@@ -42,6 +42,8 @@ export default function PatientThroughputReportPage() {
   const endDate = date?.to ? format(date.to, 'yyyy-MM-dd') : startDate
 
   const { data: report, isLoading, isError } = usePatientThroughputReport(startDate, endDate)
+  const exportReport = useExportReport()
+  const isExporting = exportReport.isPending
 
   if (isError) {
     return (
@@ -70,7 +72,12 @@ export default function PatientThroughputReportPage() {
         </div>
         <div className="flex items-center gap-2">
           <ReportDateRangePicker date={date} setDate={setDate} disabled={isLoading} />
-          <Button variant="outline" disabled={isLoading}>
+          <Button 
+            variant="outline" 
+            disabled={isLoading || isExporting}
+            onClick={() => exportReport.mutate({ reportType: 'patient', format: 'csv' })}
+          >
+            {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
             Export
           </Button>
         </div>

@@ -4,8 +4,10 @@ import React, { useMemo, useState } from 'react'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { EmptyState } from '@/components/ui/empty-state'
-import { CalendarDays, CheckCircle2, Clock3, PlusCircle, XCircle } from 'lucide-react'
+import { CalendarDays, CheckCircle2, Clock3, PlusCircle, XCircle, List } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Badge } from '@/components/ui/badge'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import {
@@ -45,8 +47,17 @@ export default function SchedulePage() {
   const [notes, setNotes] = useState('')
 
   const todaysAppointments = useMemo(() => {
-    const today = new Date().toISOString().split('T')[0]
-    return appointments.filter((apt) => apt.scheduledAt?.startsWith(today))
+    // Use LOCAL date string (not UTC) to match the timezone the user booked in
+    const now = new Date()
+    const localToday = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+    return appointments.filter((apt) => {
+      if (!apt.scheduledAt) return false
+      // scheduledAt may be epoch ms number, ISO string, or array — normalizeAppointment handles it
+      // Convert to local date string for comparison
+      const d = new Date(apt.scheduledAt)
+      const localDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+      return localDate === localToday
+    })
   }, [appointments])
 
   const handleCreate = async () => {
@@ -153,56 +164,126 @@ export default function SchedulePage() {
         </Dialog>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <CalendarDays className="h-5 w-5" />
-            Today&apos;s Appointments
-          </CardTitle>
-          <CardDescription>Track and manage appointment lifecycle states.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <p className="text-sm text-muted-foreground">Loading appointments...</p>
-          ) : todaysAppointments.length === 0 ? (
-            <EmptyState
-              icon={CalendarDays}
-              title="Schedule is empty"
-              description="You don't have any appointments scheduled for today."
-            />
-          ) : (
-            <div className="space-y-3">
-              {todaysAppointments.map((apt) => (
-                <div key={apt.id} className="border rounded-md p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                  <div>
-                    <div className="font-medium">{apt.patientName || apt.patientId}</div>
-                    <div className="text-xs text-muted-foreground flex items-center gap-3 mt-1">
-                      <span className="inline-flex items-center gap-1">
-                        <Clock3 className="h-3 w-3" />
-                        {format(new Date(apt.scheduledAt), 'PPP p')}
-                      </span>
-                      <span>Status: {apt.status}</span>
-                    </div>
-                    {apt.reason ? <p className="text-sm mt-2">Reason: {apt.reason}</p> : null}
-                  </div>
+      <Tabs defaultValue="today">
+        <TabsList>
+          <TabsTrigger value="today">
+            Today
+            {todaysAppointments.length > 0 && (
+              <Badge variant="secondary" className="ml-2">{todaysAppointments.length}</Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="all">
+            All
+            {appointments.length > 0 && (
+              <Badge variant="secondary" className="ml-2">{appointments.length}</Badge>
+            )}
+          </TabsTrigger>
+        </TabsList>
 
-                  <div className="flex flex-wrap gap-2">
-                    <Button size="sm" variant="outline" onClick={() => markInProgress(apt.id)}>
-                      <Clock3 className="h-4 w-4 mr-1" /> In Progress
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={() => markComplete(apt.id)}>
-                      <CheckCircle2 className="h-4 w-4 mr-1" /> Complete
-                    </Button>
-                    <Button size="sm" variant="destructive" onClick={() => markCancelled(apt.id)}>
-                      <XCircle className="h-4 w-4 mr-1" /> Cancel
-                    </Button>
-                  </div>
-                </div>
-              ))}
+        <TabsContent value="today">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CalendarDays className="h-5 w-5" />
+                Today&apos;s Appointments
+              </CardTitle>
+              <CardDescription>Track and manage appointment lifecycle states.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <p className="text-sm text-muted-foreground">Loading appointments...</p>
+              ) : todaysAppointments.length === 0 ? (
+                <EmptyState
+                  icon={CalendarDays}
+                  title="No appointments today"
+                  description={`You have ${appointments.length} total appointment(s) on other days.`}
+                />
+              ) : (
+                <AppointmentList
+                  apts={todaysAppointments}
+                  onInProgress={markInProgress}
+                  onComplete={markComplete}
+                  onCancel={markCancelled}
+                />
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="all">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <List className="h-5 w-5" />
+                All Appointments
+              </CardTitle>
+              <CardDescription>All scheduled appointments across all dates.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <p className="text-sm text-muted-foreground">Loading appointments...</p>
+              ) : appointments.length === 0 ? (
+                <EmptyState
+                  icon={CalendarDays}
+                  title="No appointments found"
+                  description="Create a new appointment to get started."
+                />
+              ) : (
+                <AppointmentList
+                  apts={appointments}
+                  onInProgress={markInProgress}
+                  onComplete={markComplete}
+                  onCancel={markCancelled}
+                />
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
+  )
+}
+
+function AppointmentList({
+  apts,
+  onInProgress,
+  onComplete,
+  onCancel,
+}: {
+  apts: ReturnType<typeof import('@/hooks/api/useAppointments').useAppointments>['data'] & object[]
+  onInProgress: (id: string) => void
+  onComplete: (id: string) => void
+  onCancel: (id: string) => void
+}) {
+  return (
+    <div className="space-y-3">
+      {apts.map((apt) => (
+        <div key={apt.id} className="border rounded-md p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <div>
+            <div className="font-medium">{apt.patientName || apt.patientId}</div>
+            <div className="text-xs text-muted-foreground flex items-center gap-3 mt-1">
+              <span className="inline-flex items-center gap-1">
+                <Clock3 className="h-3 w-3" />
+                {format(new Date(apt.scheduledAt), 'PPP p')}
+              </span>
+              <span>Status: {apt.status}</span>
             </div>
-          )}
-        </CardContent>
-      </Card>
+            {apt.reason ? <p className="text-sm mt-2">Reason: {apt.reason}</p> : null}
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" variant="outline" onClick={() => onInProgress(apt.id)}>
+              <Clock3 className="h-4 w-4 mr-1" /> In Progress
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => onComplete(apt.id)}>
+              <CheckCircle2 className="h-4 w-4 mr-1" /> Complete
+            </Button>
+            <Button size="sm" variant="destructive" onClick={() => onCancel(apt.id)}>
+              <XCircle className="h-4 w-4 mr-1" /> Cancel
+            </Button>
+          </div>
+        </div>
+      ))}
     </div>
   )
 }

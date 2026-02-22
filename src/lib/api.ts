@@ -33,9 +33,10 @@ api.interceptors.response.use(
     (res) => res,
     async (error) => {
         const status = error.response?.status;
+        const original = error.config;
 
         // Handle 401 Unauthorized (Token Refresh)
-        if (error.response?.status === 401 && !original._retry) {
+        if (status === 401 && original && !original._retry) {
             original._retry = true;
             const refreshToken = localStorage.getItem('refreshToken');
             if (refreshToken) {

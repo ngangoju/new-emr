@@ -39,7 +39,7 @@ export function useDashboardStats(options: DashboardQueryOptions = {}) {
         queryKey: ['dashboard', 'stats'],
         enabled,
         queryFn: async () => {
-            const { data } = await api.get<DashboardStats>('/dashboard/stats');
+            const { data } = await api.get<DashboardStats>('/api/dashboard/stats');
             return data;
         },
     });
@@ -52,7 +52,7 @@ export function useTodayAppointments(options: DashboardQueryOptions = {}) {
         queryKey: ['dashboard', 'appointments'],
         enabled,
         queryFn: async () => {
-            const { data } = await api.get<{ appointments: Appointment[] }>('/dashboard/appointments');
+            const { data } = await api.get<{ appointments: Appointment[] }>('/api/dashboard/appointments');
             return data.appointments || [];
         },
     });
@@ -65,7 +65,7 @@ export function useRecentPatients(options: DashboardQueryOptions = {}) {
         queryKey: ['dashboard', 'recent-patients'],
         enabled,
         queryFn: async () => {
-            const { data } = await api.get<RecentPatient[]>('/dashboard/recent-patients');
+            const { data } = await api.get<RecentPatient[]>('/api/dashboard/recent-patients');
             return data;
         },
     });

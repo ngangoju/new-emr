@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 
 export interface PatientThroughputReport {
@@ -140,3 +140,28 @@ export function usePendingItemsReport() {
         refetchInterval: 60000 // Auto-refresh every 60 seconds
     })
 }
+
+export function useExportReport() {
+    return useMutation({
+        mutationFn: async ({ reportType, format = 'csv' }: { reportType: string; format?: string }) => {
+            const { data } = await api.get<{ download: string; fileName: string; contentType: string }>(`/reports/${reportType}/export`, {
+                params: { format }
+            });
+            if (data.download) {
+                let url = data.download;
+                // If it's pure base64 without data URI prefix
+                if (!url.startsWith('data:') && !url.startsWith('http')) {
+                    url = `data:${data.contentType};base64,${data.download}`;
+                }
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = data.fileName || `${reportType}-export.${format}`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            }
+            return data;
+        }
+    });
+}
+

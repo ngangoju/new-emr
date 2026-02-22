@@ -405,35 +405,35 @@
 ## Prioritized remediation list
 
 ## P0 blockers
-1. **Lab result endpoint contract mismatch**
+- [ ] **Lab result endpoint contract mismatch**
    - FE uses `/lab-orders/{id}/results/submit`; BE exposes `/lab-orders/{id}/results`
    - Files: [`useLabOrders.ts`](new-emr/src/hooks/useLabOrders.ts:74), [`LabOrderController`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/LabOrderController.java:74)
-2. **Pharmacy stock receiving endpoint missing for frontend contract**
+- [ ] **Pharmacy stock receiving endpoint missing for frontend contract**
    - Files: [`useDrugStock.ts`](new-emr/src/hooks/useDrugStock.ts:9), [`PharmacyController`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/PharmacyController.java:181)
-3. **Tariff write-path split `/api/billing/tariffs` vs `/api/tariffs`**
+- [ ] **Tariff write-path split `/api/billing/tariffs` vs `/api/tariffs`**
    - Files: [`useTariffManagement.ts`](new-emr/src/hooks/useTariffManagement.ts:33), [`TariffController`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/TariffController.java:41), [`BillingController`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/BillingController.java:56)
-4. **Role naming inconsistency across frontend and backend authorities**
+- [ ] **Role naming inconsistency across frontend and backend authorities**
    - `CHIEF-NURSE` vs `CHIEF_NURSE`, `LABORANTIN` vs `LAB`
    - Files: [`auth.ts`](new-emr/src/lib/utils/auth.ts:1), [`SecurityConfig`](new-emr-backend/src/main/java/com/emr/newemrbackend/config/SecurityConfig.java:80), [`LabOrderController`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/LabOrderController.java:39)
-5. **Nurse consultation assignment blocked by backend policy**
+- [ ] **Nurse consultation assignment blocked by backend policy**
    - Files: [`NurseDashboardPage`](new-emr/src/app/dashboard/nurse/page.tsx), [`ConsultationController`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/ConsultationController.java:34)
 
 ## P1 important
-1. Build real doctor appointment management UI using existing endpoints
+- [ ] Build real doctor appointment management UI using existing endpoints
    - Files: [`SchedulePage`](new-emr/src/app/dashboard/doctor/schedule/page.tsx), [`AppointmentController`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/AppointmentController.java)
-2. Implement doctor lab-results-by-patient and longitudinal history screens
+- [ ] Implement doctor lab-results-by-patient and longitudinal history screens
    - Files: [`PatientDetailPage`](new-emr/src/app/dashboard/doctor/patients/[id]/page.tsx), [`RecordsPage`](new-emr/src/app/dashboard/doctor/records/page.tsx)
-3. Add receptionist admission workflow and permission wiring
+- [ ] Add receptionist admission workflow and permission wiring
    - Files: [`ReceptionPage`](new-emr/src/app/dashboard/reception/page.tsx), [`AdmissionController`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/AdmissionController.java:81)
-4. Create missing admin users page and management actions
+- [ ] Create missing admin users page and management actions
    - Files: [`AdminPage`](new-emr/src/app/dashboard/admin/page.tsx:37), new [`/dashboard/admin/users/page.tsx`](new-emr/src/app/dashboard/admin/users/page.tsx)
 
 ## P2 enhancements
-1. Replace demo scaffolding in imaging orders with encounter-context integration
+- [ ] Replace demo scaffolding in imaging orders with encounter-context integration
    - File: [`ImagingOrdersPage`](new-emr/src/app/dashboard/doctor/imaging-orders/page.tsx)
-2. Wire export actions on report pages to backend export endpoints
+- [ ] Wire export actions on report pages to backend export endpoints
    - Files: [`RevenueReportPage`](new-emr/src/app/dashboard/reports/revenue/page.tsx), [`PatientThroughputReportPage`](new-emr/src/app/dashboard/reports/throughput/page.tsx), [`ReportController`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/ReportController.java:46)
-3. Replace dashboard placeholder quick insights with live API data
+- [ ] Replace dashboard placeholder quick insights with live API data
    - File: [`ReportsDashboard`](new-emr/src/app/dashboard/reports/page.tsx)
 
 ---

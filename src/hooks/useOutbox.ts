@@ -21,7 +21,7 @@ export function useOutboxEntries() {
     return useQuery({
         queryKey: ['outbox'],
         queryFn: async () => {
-            const { data } = await api.get<OutboxEntry[]>('/admin/outbox')
+            const { data } = await api.get<OutboxEntry[]>('/api/admin/outbox')
             return data
         },
         refetchInterval: 10000,       // Refresh every 10s when healthy
@@ -35,7 +35,7 @@ export function useRetryOutbox() {
 
     const mutation = useMutation({
         mutationFn: async (id: string) => {
-            await api.post(`/admin/outbox/${id}/retry`)
+            await api.post(`/api/admin/outbox/${id}/retry`)
         },
         onSuccess: () => {
             toast.success('Event scheduled for retry')

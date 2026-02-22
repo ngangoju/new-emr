@@ -3,7 +3,6 @@
 import Link from 'next/link'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
 import { 
   DollarSign,
   Clock,
@@ -12,6 +11,8 @@ import {
   TrendingUp,
   AlertCircle
 } from 'lucide-react'
+import { format } from 'date-fns'
+import { usePatientThroughputReport, useRevenueReport, usePendingItemsReport } from '@/hooks/useHmisReports'
 
 export default function ReportsDashboard() {
   const reports = [
@@ -40,6 +41,19 @@ export default function ReportsDashboard() {
       stats: 'Open Encounters, Unsigned Notes'
     }
   ]
+
+  const today = format(new Date(), 'yyyy-MM-dd')
+  const { data: throughput } = usePatientThroughputReport(today, today)
+  const { data: revenue } = useRevenueReport(today, today)
+  const { data: pending } = usePendingItemsReport()
+
+  const avgDuration = throughput?.averageEncounterDurationMinutes 
+    ? Math.round(throughput.averageEncounterDurationMinutes) 
+    : 0
+
+  const activePatients = pending?.openEncounterCount || 0
+  const totalRevenue = revenue?.totalRevenue || 0
+  const pendingLabs = pending?.pendingLabOrderCount || 0
 
   return (
     <div className="space-y-6">
@@ -84,7 +98,7 @@ export default function ReportsDashboard() {
                 <Clock className="h-4 w-4" />
                 <span className="text-sm font-medium">Avg. Visit Duration</span>
               </div>
-              <div className="text-2xl font-bold">-- min</div>
+              <div className="text-2xl font-bold">{avgDuration} min</div>
               <p className="text-xs text-muted-foreground mt-1">based on closed encounters today</p>
             </CardContent>
           </Card>
@@ -95,7 +109,7 @@ export default function ReportsDashboard() {
                 <Users className="h-4 w-4" />
                 <span className="text-sm font-medium">Active Patients</span>
               </div>
-              <div className="text-2xl font-bold">--</div>
+              <div className="text-2xl font-bold">{activePatients}</div>
               <p className="text-xs text-muted-foreground mt-1">currently checked in</p>
             </CardContent>
           </Card>
@@ -106,7 +120,7 @@ export default function ReportsDashboard() {
                 <DollarSign className="h-4 w-4" />
                 <span className="text-sm font-medium">Revenue Today</span>
               </div>
-              <div className="text-2xl font-bold">-- RWF</div>
+              <div className="text-2xl font-bold">{totalRevenue.toLocaleString()} RWF</div>
               <p className="text-xs text-muted-foreground mt-1">total invoiced amount</p>
             </CardContent>
           </Card>
@@ -117,7 +131,7 @@ export default function ReportsDashboard() {
                 <AlertCircle className="h-4 w-4" />
                 <span className="text-sm font-medium">Pending Lab Orders</span>
               </div>
-              <div className="text-2xl font-bold">--</div>
+              <div className="text-2xl font-bold">{pendingLabs}</div>
               <p className="text-xs text-muted-foreground mt-1">awaiting results</p>
             </CardContent>
           </Card>

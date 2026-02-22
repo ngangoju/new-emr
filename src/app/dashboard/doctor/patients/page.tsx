@@ -110,7 +110,7 @@ export default function PatientsPage() {
   // Client-side insurance filter (if not supported by backend)
   const filteredPatients = patients.filter((patient: Patient) => {
     if (filterInsurance === 'all') return true
-    return patient.insurance?.type === filterInsurance || patient.insurance === filterInsurance
+    return patient.insurance?.provider === filterInsurance || (patient.insurance as any)?.type === filterInsurance
   })
 
   const handleRegisterPatient = (data: PatientRegistrationInput) => {
@@ -146,10 +146,12 @@ export default function PatientsPage() {
       email: patient.email || '',
       address: patient.address || '',
       nationalId: patient.nationalId || '',
-      insurance: patient.insurance?.provider || patient.insurance || '',
-      insuranceCard: patient.insuranceCard || '',
-      allergies: Array.isArray(patient.allergies) ? patient.allergies.join(', ') : '',
-      emergencyContact: patient.emergencyContact || '',
+      insurance: (typeof patient.insurance === 'object' ? patient.insurance?.provider : (patient.insurance as unknown as string)) || '',
+      insuranceCard: String(patient.insuranceCard || ''),
+      allergies: Array.isArray(patient.allergies) ? patient.allergies.join(', ') : String(patient.allergies || ''),
+      emergencyContact: typeof patient.emergencyContact === 'string' 
+        ? patient.emergencyContact 
+        : (patient.emergencyContact as any)?.phone || (patient.emergencyContact as any)?.name || '',
     })
     setIsEditDialogOpen(true)
   }
@@ -566,8 +568,8 @@ export default function PatientsPage() {
                       </TableCell>
                       <TableCell>
                         <div>
-                          <span className="font-medium">{patient.age} years</span>
-                          <span className="text-muted-foreground"> • {patient.gender}</span>
+                          <span className="font-medium">{String((patient as any).age || '')} years</span>
+                          <span className="text-muted-foreground"> • {String(patient.gender || '')}</span>
                         </div>
                       </TableCell>
                       <TableCell>
@@ -591,18 +593,18 @@ export default function PatientsPage() {
                         <div className="space-y-1 text-sm">
                           <div className="flex items-center space-x-1">
                             <Calendar className="h-3 w-3 text-muted-foreground" />
-                            <span>{patient.lastVisit ? format(new Date(patient.lastVisit), 'MMM dd, yyyy') : 'N/A'}</span>
+                            <span>{patient.lastVisit ? format(new Date(patient.lastVisit as string), 'MMM dd, yyyy') : 'N/A'}</span>
                           </div>
-                          {patient.nextAppointment && (
+                          {!!patient.nextAppointment && (
                             <div className="text-xs text-muted-foreground">
-                              Next: {format(new Date(patient.nextAppointment), 'MMM dd')}
+                              Next: {format(new Date(patient.nextAppointment as string), 'MMM dd')}
                             </div>
                           )}
                         </div>
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline" className="bg-success/10 text-success border-success/20">
-                          {patient.status}
+                          {String(patient.status || 'Active')}
                         </Badge>
                       </TableCell>
                        <TableCell>

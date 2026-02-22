@@ -41,8 +41,11 @@ export function useNotifications(filters: NotificationFilters = {}) {
             const queryString = params.toString()
             const url = queryString ? `/api/notifications?${queryString}` : '/api/notifications'
 
-            const { data } = await api.get<NotificationsResponse>(url)
-            return data.notifications || []
+            const { data } = await api.get<any>(url)
+            if (Array.isArray(data)) {
+                return data
+            }
+            return data?.notifications || []
         },
         staleTime: 30000, // 30 seconds
     })

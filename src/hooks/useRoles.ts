@@ -1,22 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import axios from 'axios'
-
-const api = axios.create({
-    baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api',
-})
-
-// Add auth token to requests
-api.interceptors.request.use((config) => {
-    if (typeof window !== 'undefined') {
-        const token = localStorage.getItem('accessToken')
-        if (token) {
-            config.headers.Authorization = `Bearer ${token}`
-        }
-    }
-    return config
-})
+import { api } from '@/lib/api'
 
 export interface Role {
     id: string
@@ -45,7 +30,7 @@ export function useRoles() {
         setIsLoading(true)
         setError(null)
         try {
-            const response = await api.get<Role[]>('/roles')
+            const response = await api.get<Role[]>('/api/roles')
             setRoles(response.data)
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to fetch roles')
@@ -58,7 +43,7 @@ export function useRoles() {
         setIsLoading(true)
         setError(null)
         try {
-            const response = await api.post<Role>('/roles', request)
+            const response = await api.post<Role>('/api/roles', request)
             setRoles(prev => [...prev, response.data])
             return response.data
         } catch (err) {
@@ -73,7 +58,7 @@ export function useRoles() {
         setIsLoading(true)
         setError(null)
         try {
-            const response = await api.put<Role>(`/roles/${id}`, request)
+            const response = await api.put<Role>(`/api/roles/${id}`, request)
             setRoles(prev => prev.map(r => r.id === id ? response.data : r))
             return response.data
         } catch (err) {
@@ -88,7 +73,7 @@ export function useRoles() {
         setIsLoading(true)
         setError(null)
         try {
-            await api.delete(`/roles/${id}`)
+            await api.delete(`/api/roles/${id}`)
             setRoles(prev => prev.filter(r => r.id !== id))
             return true
         } catch (err) {
