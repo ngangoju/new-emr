@@ -1,12 +1,13 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { useTariffs } from '@/hooks/useTariffs'
 import {
   useCreateTariff,
   useUpdateTariff,
   useDeleteTariff,
   useUpdateTariffPrice,
+  useBulkCreateTariffs,
   type CreateTariffInput,
   type UpdateTariffInput,
 } from '@/hooks/useTariffManagement'
@@ -32,7 +33,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
-import { Edit3, Trash2, Plus, Search, DollarSign } from 'lucide-react'
+import { Plus, Search, Pencil, Trash2, FileUp, Download } from 'lucide-react'
+import { read, utils, write } from 'xlsx'
 import {
   Dialog,
   DialogContent,
@@ -43,13 +45,14 @@ import {
 } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
 import toast from 'react-hot-toast'
-import { useEffect } from 'react'
+
 import { useRouter } from 'next/navigation'
 
 const TARIFF_CATEGORIES = [
   { value: 'CONSULTATION', label: 'Consultation' },
   { value: 'LAB', label: 'Lab' },
   { value: 'RADIOLOGY', label: 'Radiology' },
+  { value: 'IMAGING', label: 'Imaging' },
   { value: 'PHARMACY', label: 'Pharmacy' },
   { value: 'PROCEDURE', label: 'Procedure' },
   { value: 'OTHER', label: 'Other' },
@@ -100,6 +103,9 @@ export default function TariffManagementPage() {
   const { createTariff, isCreating } = useCreateTariff()
   const { updateTariff, isUpdating } = useUpdateTariff()
   const { deleteTariff, isDeleting } = useDeleteTariff()
+  const { bulkCreateTariffs, isImporting } = useBulkCreateTariffs()
+
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const { updateTariffPrice, isUpdatingPrice } = useUpdateTariffPrice()
 
   const isClinicalDirector = currentRole === 'CLINICAL-DIRECTOR'
@@ -130,7 +136,7 @@ export default function TariffManagementPage() {
     if (!formData.serviceName.trim()) errors.serviceName = 'Service name is required'
     if (!formData.billingCode.trim()) errors.billingCode = 'Billing code is required'
     if (!formData.basePrice || formData.basePrice <= 0) errors.basePrice = 'Base price is required'
-    
+
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors)
       return
@@ -155,7 +161,7 @@ export default function TariffManagementPage() {
     if (!formData.serviceName.trim()) errors.serviceName = 'Service name is required'
     if (!formData.billingCode.trim()) errors.billingCode = 'Billing code is required'
     if (!formData.basePrice || formData.basePrice <= 0) errors.basePrice = 'Base price is required'
-    
+
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors)
       return
@@ -232,6 +238,89 @@ export default function TariffManagementPage() {
     setDeleteDialogOpen(true)
   }
 
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    try {
+      const reader = new FileReader()
+      reader.onload = async (e) => {
+        const data = e.target?.result
+        const workbook = read(data, { type: 'binary' })
+        const sheetName = workbook.SheetNames[0]
+        const worksheet = workbook.Sheets[sheetName]
+        const jsonData = utils.sheet_to_json(worksheet) as any[]
+
+        // Map Excel columns to Tariff fields
+        // Expecting headers: Service Name, Billing Code, Category, Base Price, Private Price, RSSB MMI Price, Description
+        const tariffsToCreate: CreateTariffInput[] = jsonData.map(row => ({
+          serviceName: row['Service Name'] || row['serviceName'] || '',
+          billingCode: row['Billing Code'] || row['billingCode'] || '',
+          category: row['Category'] || row['category'] || '',
+          basePrice: parseFloat(row['Base Price'] || row['basePrice'] || '0'),
+          privatePrice: row['Private Price'] || row['privatePrice'] ? parseFloat(row['Private Price'] || row['privatePrice']) : undefined,
+          rssbMmiPrice: row['RSSB MMI Price'] || row['rssbMmiPrice'] ? parseFloat(row['RSSB MMI Price'] || row['rssbMmiPrice']) : undefined,
+          description: row['Description'] || row['description'] || ''
+        })).filter(t => t.serviceName)
+
+        if (tariffsToCreate.length === 0) {
+          toast.error('No valid tariffs found in the file')
+          return
+        }
+
+        await bulkCreateTariffs(tariffsToCreate)
+        toast.success(`Successfully imported ${tariffsToCreate.length} tariffs`)
+
+        // Reset file input
+        if (fileInputRef.current) fileInputRef.current.value = ''
+      }
+      reader.readAsBinaryString(file)
+    } catch (error) {
+      console.error('Import error:', error)
+      toast.error('Failed to import tariffs. Please check the file format.')
+    }
+  }
+
+  const downloadTemplate = () => {
+    const template = [
+      {
+        'Service Name': 'General Consultation',
+        'Billing Code': 'CONS-001',
+        'Category': 'CONSULTATION',
+        'Base Price': 15000,
+        'Private Price': 20000,
+        'RSSB MMI Price': 12000,
+        'Description': 'Initial general consultation'
+      },
+      {
+        'Service Name': 'Laboratory Test',
+        'Billing Code': 'LAB-001',
+        'Category': 'LAB',
+        'Base Price': 8000,
+        'Private Price': 10000,
+        'RSSB MMI Price': 6400,
+        'Description': 'Standard blood test'
+      }
+    ]
+
+    const worksheet = utils.json_to_sheet(template)
+    const workbook = utils.book_new()
+    utils.book_append_sheet(workbook, worksheet, 'Tariffs')
+
+    // Create Excel file and trigger download
+    const excelBuffer = write(workbook, { bookType: 'xlsx', type: 'array' })
+    const data = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    const url = URL.createObjectURL(data)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = 'tariff_import_template.xlsx'
+    link.click()
+
+    setTimeout(() => {
+      URL.revokeObjectURL(url)
+    }, 100)
+  }
+
   const formatPrice = (price?: number) => {
     if (!price) return '-'
     return `RWF ${price.toLocaleString()}`
@@ -252,10 +341,27 @@ export default function TariffManagementPage() {
           <h1 className="text-2xl font-bold">Tariff Management</h1>
           <p className="text-muted-foreground">Manage service tariffs and pricing</p>
         </div>
-        <Button onClick={() => setCreateDialogOpen(true)} disabled={!isAdmin}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Tariff
-        </Button>
+        <div className="flex gap-2">
+          <input
+            type="file"
+            ref={fileInputRef}
+            className="hidden"
+            accept=".xlsx, .xls, .csv"
+            onChange={handleFileChange}
+          />
+          <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isImporting}>
+            <FileUp className="mr-2 h-4 w-4" />
+            {isImporting ? 'Importing...' : 'Import'}
+          </Button>
+          <Button variant="outline" onClick={downloadTemplate}>
+            <Download className="mr-2 h-4 w-4" />
+            Template
+          </Button>
+          <Button onClick={() => setCreateDialogOpen(true)} disabled={!isAdmin}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Tariff
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -269,11 +375,12 @@ export default function TariffManagementPage() {
             className="pl-9"
           />
         </div>
-        <Select value={categoryFilter || undefined} onValueChange={(val) => setCategoryFilter(val || '')}>
+        <Select value={categoryFilter || "ALL"} onValueChange={(val) => setCategoryFilter(val === "ALL" ? "" : val)}>
           <SelectTrigger className="w-48">
             <SelectValue placeholder="All Categories" />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value="ALL">All Categories</SelectItem>
             {TARIFF_CATEGORIES.map((cat) => (
               <SelectItem key={cat.value} value={cat.value}>{cat.label}</SelectItem>
             ))}
@@ -338,7 +445,7 @@ export default function TariffManagementPage() {
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
                         <DropdownMenuItem onClick={() => openEditDialog(tariff)}>
-                          <Edit3 className="mr-2 h-4 w-4" />
+                          <Pencil className="mr-2 h-4 w-4" />
                           Edit
                         </DropdownMenuItem>
                         <DropdownMenuItem
@@ -371,7 +478,7 @@ export default function TariffManagementPage() {
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <label className="text-sm font-medium">Service Name *</label>
-              <Input 
+              <Input
                 placeholder="e.g., General Consultation"
                 value={formData.serviceName}
                 onChange={(e) => setFormData({ ...formData, serviceName: e.target.value })}
@@ -380,7 +487,7 @@ export default function TariffManagementPage() {
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Billing Code *</label>
-              <Input 
+              <Input
                 placeholder="e.g., CONS-001"
                 value={formData.billingCode}
                 onChange={(e) => setFormData({ ...formData, billingCode: e.target.value })}
@@ -389,14 +496,15 @@ export default function TariffManagementPage() {
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Category *</label>
-              <Select 
-                value={formData.category}
-                onValueChange={(val) => setFormData({ ...formData, category: val })}
+              <Select
+                value={formData.category || "NONE"}
+                onValueChange={(val) => setFormData({ ...formData, category: val === "NONE" ? "" : val })}
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="NONE">None (General)</SelectItem>
                   {TARIFF_CATEGORIES.map((cat) => (
                     <SelectItem key={cat.value} value={cat.value}>{cat.label}</SelectItem>
                   ))}
@@ -405,7 +513,7 @@ export default function TariffManagementPage() {
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Base Price (RWF) *</label>
-              <Input 
+              <Input
                 type="number"
                 placeholder="0"
                 value={formData.basePrice || ''}
@@ -416,7 +524,7 @@ export default function TariffManagementPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium">Private Price (RWF)</label>
-                <Input 
+                <Input
                   type="number"
                   placeholder="Optional"
                   value={formData.privatePrice || ''}
@@ -425,7 +533,7 @@ export default function TariffManagementPage() {
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium">RSSB/MMI Price (RWF)</label>
-                <Input 
+                <Input
                   type="number"
                   placeholder="Optional"
                   value={formData.rssbMmiPrice || ''}
@@ -435,7 +543,7 @@ export default function TariffManagementPage() {
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Mutuelle Price (RWF)</label>
-              <Input 
+              <Input
                 type="number"
                 placeholder="Optional"
                 value={formData.mutuellePrice || ''}
@@ -444,7 +552,7 @@ export default function TariffManagementPage() {
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Description</label>
-              <Textarea 
+              <Textarea
                 placeholder="Optional description..."
                 value={formData.description || ''}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
@@ -456,8 +564,8 @@ export default function TariffManagementPage() {
             <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>
               Cancel
             </Button>
-            <Button 
-              onClick={handleCreate} 
+            <Button
+              onClick={handleCreate}
               disabled={isCreating}
             >
               {isCreating ? 'Creating...' : 'Create Tariff'}
@@ -479,7 +587,7 @@ export default function TariffManagementPage() {
             <div className="space-y-4 py-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium">Service Name *</label>
-                <Input 
+                <Input
                   placeholder="e.g., General Consultation"
                   value={formData.serviceName}
                   onChange={(e) => setFormData({ ...formData, serviceName: e.target.value })}
@@ -489,7 +597,7 @@ export default function TariffManagementPage() {
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium">Billing Code *</label>
-                <Input 
+                <Input
                   placeholder="e.g., CONS-001"
                   value={formData.billingCode}
                   onChange={(e) => setFormData({ ...formData, billingCode: e.target.value })}
@@ -499,15 +607,16 @@ export default function TariffManagementPage() {
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium">Category *</label>
-                <Select 
-                  value={formData.category}
-                  onValueChange={(val) => setFormData({ ...formData, category: val })}
+                <Select
+                  value={formData.category || "NONE"}
+                  onValueChange={(val) => setFormData({ ...formData, category: val === "NONE" ? "" : val })}
                   disabled={isClinicalDirector}
                 >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="NONE">None (General)</SelectItem>
                     {TARIFF_CATEGORIES.map((cat) => (
                       <SelectItem key={cat.value} value={cat.value}>{cat.label}</SelectItem>
                     ))}
@@ -516,7 +625,7 @@ export default function TariffManagementPage() {
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium">Base Price (RWF) *</label>
-                <Input 
+                <Input
                   type="number"
                   placeholder="0"
                   value={formData.basePrice || ''}
@@ -527,7 +636,7 @@ export default function TariffManagementPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Private Price (RWF)</label>
-                  <Input 
+                  <Input
                     type="number"
                     placeholder="Optional"
                     value={formData.privatePrice || ''}
@@ -536,7 +645,7 @@ export default function TariffManagementPage() {
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">RSSB/MMI Price (RWF)</label>
-                  <Input 
+                  <Input
                     type="number"
                     placeholder="Optional"
                     value={formData.rssbMmiPrice || ''}
@@ -546,7 +655,7 @@ export default function TariffManagementPage() {
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium">Mutuelle Price (RWF)</label>
-                <Input 
+                <Input
                   type="number"
                   placeholder="Optional"
                   value={formData.mutuellePrice || ''}
@@ -556,7 +665,7 @@ export default function TariffManagementPage() {
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium">Description</label>
-                <Textarea 
+                <Textarea
                   placeholder="Optional description..."
                   value={formData.description || ''}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
@@ -570,8 +679,8 @@ export default function TariffManagementPage() {
             <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
               Cancel
             </Button>
-            <Button 
-              onClick={handleUpdate} 
+            <Button
+              onClick={handleUpdate}
               disabled={isUpdating || isUpdatingPrice}
             >
               {isUpdating || isUpdatingPrice ? 'Saving...' : 'Save Changes'}
@@ -593,9 +702,9 @@ export default function TariffManagementPage() {
             <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
               Cancel
             </Button>
-            <Button 
+            <Button
               variant="destructive"
-              onClick={handleDelete} 
+              onClick={handleDelete}
               disabled={isDeleting}
             >
               {isDeleting ? 'Deleting...' : 'Delete Tariff'}

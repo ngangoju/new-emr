@@ -12,7 +12,7 @@ export function useSystemStats(): UseSystemStatsResult {
     queryKey: ['admin-stats'],
     queryFn: async () => {
       try {
-        const { data } = await api.get<SystemMetric>('/dashboard/admin-stats')
+        const { data } = await api.get<SystemMetric>('/api/dashboard/admin-stats')
         return data
       } catch (error) {
         console.warn('Failed to fetch admin stats, using fallback:', error)
