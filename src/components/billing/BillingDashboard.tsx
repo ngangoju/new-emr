@@ -9,6 +9,7 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import {
   Dialog,
   DialogContent,
@@ -25,9 +26,11 @@ import { InvoicesTable } from './InvoicesTable'
 import { ReportCharts } from './ReportCharts'
 import { InvoiceGenerator } from './InvoiceGenerator'
 import { PaymentMethodsSelect } from './PaymentMethodsSelect'
+import { AdminDischargeOverrideModal } from './AdminDischargeOverrideModal'
 import { useInvoices } from '@/hooks/useInvoices'
 import { useCreatePayment } from '@/hooks/usePayments'
 import { useAdmissions, useDischargePatient } from '@/hooks/useAdmissions'
+import { useRole } from '@/hooks/useRole'
 import { DoctorSelector } from '@/components/shared/DoctorSelector'
 import type { Invoice, PaymentMethod } from '@/types/billing'
 import toast from 'react-hot-toast'
@@ -41,9 +44,12 @@ export function BillingDashboard() {
   const [transactionId, setTransactionId] = useState('')
   const [receiptNumber, setReceiptNumber] = useState('')
   const [notes, setNotes] = useState('')
+  const [isAdminOverrideModalOpen, setIsAdminOverrideModalOpen] = useState(false)
+  const [overriddenInvoiceIds, setOverriddenInvoiceIds] = useState<Record<string, true>>({})
 
   const { pending, stats } = useInvoices({ doctorId: doctorFilter || undefined })
   const { createPayment, creating } = useCreatePayment()
+  const { isRole } = useRole()
   const { data: patientAdmissions = [] } = useAdmissions(
     selectedInvoice
       ? {
@@ -105,6 +111,14 @@ export function BillingDashboard() {
   }
 
   const activeAdmission = patientAdmissions[0]
+  const patientDue = selectedInvoice?.patientDue ?? 0
+  const isAdmin = isRole('ADMIN')
+  const hasOutstandingBalance = patientDue > 0
+  const canDischargeWithoutOverride = !hasOutstandingBalance
+  const canAdminOverrideDischarge = hasOutstandingBalance && isAdmin
+  const shouldDisableDischarge = !activeAdmission || creating || dischargePatientMutation.isPending || (hasOutstandingBalance && !isAdmin)
+  const dischargeButtonLabel = canAdminOverrideDischarge ? 'Override & Discharge' : 'Discharge Patient'
+  const nonAdminOutstandingTooltip = `Outstanding balance: ${patientDue} RWF — contact billing`
 
   const handleDischargePatient = async () => {
     if (!selectedInvoice) {
@@ -117,6 +131,10 @@ export function BillingDashboard() {
       return
     }
 
+    if (!canDischargeWithoutOverride) {
+      return
+    }
+
     try {
       await dischargePatientMutation.mutateAsync({
         id: activeAdmission.id,
@@ -125,6 +143,20 @@ export function BillingDashboard() {
     } catch {
       // handled by mutation + global interceptors
     }
+  }
+
+  const handleAdminDischargeClick = () => {
+    if (!selectedInvoice || !activeAdmission || !canAdminOverrideDischarge) return
+    setIsAdminOverrideModalOpen(true)
+  }
+
+  const handleOverrideSubmitted = () => {
+    if (!selectedInvoice) return
+    setOverriddenInvoiceIds((current) => ({
+      ...current,
+      [selectedInvoice.id]: true,
+    }))
+    closePaymentDialog()
   }
 
   return (
@@ -273,19 +305,52 @@ export function BillingDashboard() {
 
           <DialogFooter>
             <Button variant="outline" onClick={closePaymentDialog}>Cancel</Button>
-            <Button
-              variant="outline"
-              onClick={handleDischargePatient}
-              disabled={dischargePatientMutation.isPending || !activeAdmission || creating}
-            >
-              {dischargePatientMutation.isPending ? 'Discharging...' : 'Discharge Patient'}
-            </Button>
-            <Button onClick={handleSubmitPayment} disabled={creating}>
+            {hasOutstandingBalance && !isAdmin ? (
+              <Button
+                variant="outline"
+                onClick={handleDischargePatient}
+                disabled={shouldDisableDischarge}
+                title={nonAdminOutstandingTooltip}
+              >
+                {dischargePatientMutation.isPending ? 'Discharging...' : dischargeButtonLabel}
+              </Button>
+            ) : (
+              <Button
+                variant="outline"
+                className={canAdminOverrideDischarge ? 'border-amber-500 text-amber-700 hover:bg-amber-50 hover:text-amber-800' : undefined}
+                onClick={canAdminOverrideDischarge ? handleAdminDischargeClick : handleDischargePatient}
+                disabled={shouldDisableDischarge}
+              >
+                {dischargePatientMutation.isPending ? 'Discharging...' : dischargeButtonLabel}
+              </Button>
+            )}
+          <Button onClick={handleSubmitPayment} disabled={creating}>
               {creating ? 'Processing...' : 'Process Payment'}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {Object.keys(overriddenInvoiceIds).length > 0 && (
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <Badge variant="secondary" className="bg-amber-100 text-amber-800 border border-amber-300">
+            Admin Discharge — Unpaid Balance
+          </Badge>
+          <Badge variant="outline" className="border-amber-300 text-amber-700">
+            Pending Collection
+          </Badge>
+        </div>
+      )}
+
+      {selectedInvoice && activeAdmission && (
+        <AdminDischargeOverrideModal
+          open={isAdminOverrideModalOpen}
+          onOpenChange={setIsAdminOverrideModalOpen}
+          admissionId={activeAdmission.id}
+          outstandingAmount={selectedInvoice.patientDue}
+          onSubmitted={handleOverrideSubmitted}
+        />
+      )}
     </>
   )
 }

@@ -34,6 +34,8 @@ export interface CreatePatientVitalsPayload {
     heartRate?: number;
     respiratoryRate?: number;
     oxygenSaturation?: number;
+    painScore?: number;
+    avpu?: 'ALERT' | 'VOICE' | 'PAIN' | 'UNRESPONSIVE';
     weight?: number;
     height?: number;
     bmi?: number;

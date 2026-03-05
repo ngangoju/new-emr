@@ -24,16 +24,33 @@ export function TriageQueue() {
     queryClient.invalidateQueries({ queryKey: ['queue'] })
   })
 
-  const getPriorityConfig = (priority: number) => {
-    switch (priority) {
+  const getAcuityConfig = (entry: QueueEntry) => {
+    // If we have clinical acuity from MEWS, use it (Item 4)
+    if (entry.acuityColor) {
+      switch (entry.acuityColor) {
+        case 'RED':
+          return { label: `RED (MEWS ${entry.mewsScore})`, color: 'bg-red-600 text-white animate-pulse shadow-lg shadow-red-200', border: 'border-l-red-600', icon: AlertCircle }
+        case 'ORANGE':
+          return { label: `ORANGE (MEWS ${entry.mewsScore})`, color: 'bg-orange-500 text-white', border: 'border-l-orange-500', icon: Activity }
+        case 'YELLOW':
+          return { label: `YELLOW (MEWS ${entry.mewsScore})`, color: 'bg-yellow-400 text-black', border: 'border-l-yellow-400', icon: Timer }
+        case 'GREEN':
+          return { label: `GREEN (MEWS ${entry.mewsScore})`, color: 'bg-emerald-500 text-white', border: 'border-l-emerald-500', icon: Activity }
+        default:
+          break
+      }
+    }
+
+    // Fallback to manual priority if no MEWS yet
+    switch (entry.priority) {
       case 4:
-        return { label: 'EMERGENCY', color: 'bg-red-500 text-white animate-emergency', icon: AlertCircle }
+        return { label: 'EMERGENCY', color: 'bg-red-500 text-white animate-emergency', border: 'border-l-red-500', icon: AlertCircle }
       case 3:
-        return { label: 'URGENT', color: 'bg-orange-500 text-white', icon: Activity }
+        return { label: 'URGENT', color: 'bg-orange-500 text-white', border: 'border-l-orange-500', icon: Activity }
       case 2:
-        return { label: 'PRIORITY', color: 'bg-yellow-500 text-black', icon: Timer }
+        return { label: 'PRIORITY', color: 'bg-yellow-500 text-black', border: 'border-l-yellow-500', icon: Timer }
       default:
-        return { label: 'ROUTINE', color: 'bg-slate-200 text-slate-700', icon: Clock }
+        return { label: 'ROUTINE', color: 'bg-slate-200 text-slate-700', border: 'border-l-emerald-500', icon: Clock }
     }
   }
 
@@ -119,9 +136,10 @@ export function TriageQueue() {
           </TableHeader>
           <TableBody>
             {queue?.map((entry) => {
-              const priority = getPriorityConfig(entry.priority)
+              const acuity = getAcuityConfig(entry)
+              const isUrgent = entry.priority >= 3 || entry.acuityColor === 'RED' || entry.acuityColor === 'ORANGE'
               return (
-                <TableRow key={entry.id} className={`group hover:bg-slate-50 transition-colors ${entry.priority >= 3 ? 'bg-red-50/30' : ''}`}>
+                <TableRow key={entry.id} className={`group border-l-4 hover:bg-slate-50 transition-colors ${acuity.border} ${isUrgent ? 'bg-red-50/30' : ''}`}>
                   <TableCell className="text-center font-mono font-bold text-slate-500">
                     {entry.queueNumber}
                   </TableCell>
@@ -136,9 +154,9 @@ export function TriageQueue() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black tracking-tighter ${priority.color}`}>
-                      <priority.icon className="h-3.5 w-3.5" />
-                      {priority.label}
+                    <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black tracking-tighter ${acuity.color}`}>
+                      <acuity.icon className="h-3.5 w-3.5" />
+                      {acuity.label}
                     </div>
                   </TableCell>
                   <TableCell className="font-medium text-slate-700">

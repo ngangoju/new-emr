@@ -1,7 +1,8 @@
 'use client'
 
-import React, { useMemo, useState } from 'react'
+import React, { useCallback, useMemo, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import {
   ArrowLeft,
   Bell,
@@ -41,7 +42,40 @@ import {
 
 const PAGE_SIZE_OPTIONS = [10, 20, 30, 50]
 
+/**
+ * Resolve a notification's entityType + entityId to a dashboard route.
+ * Returns null when no mapping exists (the notification won't navigate).
+ */
+function resolveNotificationRoute(entityType?: string, entityId?: string): string | null {
+  if (!entityType) return null
+
+  switch (entityType) {
+    case 'QUEUE_ENTRY':
+      return '/dashboard/nurse'
+    case 'CONSULTATION':
+      return entityId
+        ? `/dashboard/doctor/consultations/${entityId}`
+        : '/dashboard/doctor/consultations'
+    case 'LAB_ORDER':
+      return '/dashboard/lab'
+    case 'IMAGING_ORDER':
+      return '/dashboard/radiology'
+    case 'DRUG_REQUEST':
+      return '/dashboard/pharmacy'
+    case 'ADMISSION':
+      return '/dashboard/nurse/admissions'
+    case 'INVOICE':
+      return '/dashboard/billing'
+    case 'APPROVAL':
+    case 'APPROVAL_REQUEST':
+      return '/dashboard/approvals'
+    default:
+      return null
+  }
+}
+
 export default function NotificationsPage() {
+  const router = useRouter()
   const [filterMode, setFilterMode] = useState<'all' | 'unread'>('all')
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
@@ -79,7 +113,7 @@ export default function NotificationsPage() {
       return notifications
     }
 
-    return notifications.filter((notification) => {
+    return notifications.filter((notification: Notification) => {
       const target = `${notification.title} ${notification.body}`.toLowerCase()
       return target.includes(query)
     })
@@ -103,12 +137,18 @@ export default function NotificationsPage() {
 
   const hasUnread = unreadCount > 0
 
-  const handleMarkNotification = async (notification: Notification) => {
-    if (notification.isRead) {
-      return
+  const handleNotificationClick = useCallback(async (notification: Notification) => {
+    // Mark as read if unread
+    if (!notification.isRead) {
+      markAsRead(notification.id).catch(() => { /* already toasted by the hook */ })
     }
-    await markAsRead(notification.id)
-  }
+
+    // Navigate to the related page
+    const route = resolveNotificationRoute(notification.entityType, notification.entityId)
+    if (route) {
+      router.push(route)
+    }
+  }, [markAsRead, router])
 
   const handleMarkAll = async () => {
     await markAllAsRead()
@@ -266,9 +306,9 @@ export default function NotificationsPage() {
                   <button
                     key={notification.id}
                     type="button"
-                    onClick={() => handleMarkNotification(notification)}
+                    onClick={() => handleNotificationClick(notification)}
                     className={cn(
-                      'w-full rounded-xl border p-4 text-left transition-all hover:border-primary/30 hover:bg-primary/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
+                      'w-full rounded-xl border p-4 text-left transition-all hover:border-primary/30 hover:bg-primary/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 cursor-pointer',
                       !notification.isRead && 'bg-muted/40 border-primary/20'
                     )}
                   >
@@ -312,10 +352,16 @@ export default function NotificationsPage() {
                           )}
                           {notification.isRead ? 'Read' : 'Unread'}
                         </Badge>
-                        <span className="flex items-center text-xs text-muted-foreground">
-                          Open
-                          <ArrowRight className="ml-1 h-3 w-3" />
-                        </span>
+                        {resolveNotificationRoute(notification.entityType, notification.entityId) ? (
+                          <span className="flex items-center text-xs text-primary font-medium">
+                            Open
+                            <ArrowRight className="ml-1 h-3 w-3" />
+                          </span>
+                        ) : (
+                          <span className="flex items-center text-xs text-muted-foreground">
+                            Info
+                          </span>
+                        )}
                       </div>
                     </div>
                   </button>

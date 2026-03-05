@@ -2,7 +2,6 @@ export type UserRole =
     | 'ADMIN'
     | 'DOCTOR'
     | 'NURSE'
-    | 'RECEIPTION' // Matches 'Receiption' in SQL
     | 'RECEPTIONIST'
     | 'CUSTOMER_CARE'
     | 'LABORANTIN'
@@ -24,7 +23,7 @@ export type UserRole =
     | 'ACCOUNTANT';
 
 export const ROLE_PERMISSIONS = {
-    CAN_REGISTER_PATIENT: ['ADMIN', 'RECEIPTION', 'RECEPTIONIST', 'CUSTOMER_CARE'],
+    CAN_REGISTER_PATIENT: ['ADMIN', 'RECEPTIONIST', 'CUSTOMER_CARE'],
     CAN_VIEW_MEDICAL_RECORDS: ['ADMIN', 'DOCTOR', 'NURSE', 'CHIEF_NURSE', 'CLINICAL_DIRECTOR', 'RADIOLOGIST'],
     CAN_PRESCRIBE: ['ADMIN', 'DOCTOR', 'CLINICAL_DIRECTOR'],
     CAN_DISPENSE: ['ADMIN', 'STORE', 'DOCTOR', 'PHARMACIST'],
@@ -44,9 +43,9 @@ export const ROLE_PERMISSIONS = {
 } as const;
 
 const SESSION_STORAGE_KEYS = {
-    ACCESS_TOKEN: 'accessToken',
-    REFRESH_TOKEN: 'refreshToken',
-    LEGACY_TOKEN: 'token',
+    // NOTE: ACCESS_TOKEN and REFRESH_TOKEN are intentionally omitted.
+    // Tokens are now stored exclusively in HttpOnly cookies managed by the backend.
+    // They are invisible to JavaScript by design (Tiger Team Phase 1 Fix 1).
     USER: 'user',
     USER_ROLE: 'userRole',
 } as const;
@@ -54,7 +53,6 @@ const SESSION_STORAGE_KEYS = {
 const SESSION_CLEARED_EVENT = 'emr:auth:session-cleared';
 const AUTH_INITIALIZED_EVENT = 'emr:auth:initialized';
 
-let inMemoryAccessToken: string | null = null;
 let authInitialized = false;
 
 export interface SessionUser {
@@ -62,6 +60,7 @@ export interface SessionUser {
     username?: string;
     email?: string;
     role?: string;
+    roles?: string[];
     permissions?: string[];
     active?: boolean;
 }
@@ -71,38 +70,10 @@ export interface ClearSessionOptions {
     reason?: 'manual-logout' | 'unauthorized' | 'invalid-session' | 'session-expired';
 }
 
-export function setAccessToken(token: string) {
-    const normalizedToken = token.trim();
-    inMemoryAccessToken = normalizedToken || null;
-
-    if (typeof window === 'undefined') return;
-
-    if (normalizedToken) {
-        localStorage.setItem(SESSION_STORAGE_KEYS.ACCESS_TOKEN, normalizedToken);
-        return;
-    }
-
-    localStorage.removeItem(SESSION_STORAGE_KEYS.ACCESS_TOKEN);
-}
-
-export function getAccessToken() {
-    if (inMemoryAccessToken) {
-        return inMemoryAccessToken;
-    }
-
-    if (typeof window === 'undefined') {
-        return null;
-    }
-
-    const persistedToken = localStorage.getItem(SESSION_STORAGE_KEYS.ACCESS_TOKEN);
-
-    if (!persistedToken) {
-        return null;
-    }
-
-    inMemoryAccessToken = persistedToken;
-    return inMemoryAccessToken;
-}
+// setAccessToken() and getAccessToken() have been REMOVED.
+// Tokens are now stored exclusively in HttpOnly cookies set by the backend.
+// They are never accessible to JavaScript — this is the security guarantee
+// that prevents XSS-based token exfiltration. (Tiger Team Phase 1 Fix 1)
 
 export function setSessionUser(user: SessionUser) {
     if (typeof window === 'undefined') return;
@@ -140,15 +111,17 @@ export function getSessionUser(): SessionUser | null {
 export function clearSession(options: ClearSessionOptions = {}) {
     const { redirectToLogin = true, reason = 'invalid-session' } = options;
 
-    inMemoryAccessToken = null;
-
+    // Tokens are HttpOnly cookies — they are cleared server-side by /auth/logout
+    // (Max-Age=0). We only clear non-sensitive session metadata here.
     if (typeof window === 'undefined') return;
 
-    localStorage.removeItem(SESSION_STORAGE_KEYS.ACCESS_TOKEN);
-    localStorage.removeItem(SESSION_STORAGE_KEYS.REFRESH_TOKEN);
-    localStorage.removeItem(SESSION_STORAGE_KEYS.LEGACY_TOKEN);
     localStorage.removeItem(SESSION_STORAGE_KEYS.USER);
     localStorage.removeItem(SESSION_STORAGE_KEYS.USER_ROLE);
+
+    // Also scrub any legacy token keys left over from the pre-migration system
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
+    localStorage.removeItem('token');
 
     window.dispatchEvent(new CustomEvent(SESSION_CLEARED_EVENT, { detail: { reason } }));
 
@@ -166,20 +139,19 @@ export const AUTH_EVENTS = {
     AUTH_INITIALIZED: AUTH_INITIALIZED_EVENT,
 } as const;
 
-// Initialize auth state on module load
+// Initialize auth state on module load.
+// With HttpOnly cookie auth, there is no token to read from localStorage.
+// Authentication state is determined by whether /auth/me succeeds (checked in useMe hook).
 function initializeAuth() {
     if (typeof window === 'undefined') return;
 
-    // Check if we already have auth data
-    const token = localStorage.getItem(SESSION_STORAGE_KEYS.ACCESS_TOKEN);
-    const user = localStorage.getItem(SESSION_STORAGE_KEYS.USER);
+    // Clean up any stale pre-migration token keys that may exist in localStorage
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
+    localStorage.removeItem('token');
 
-    if (token && user) {
-        inMemoryAccessToken = token;
-    }
-
-    // Mark auth as initialized regardless of whether a valid session exists.
-    // "initialized" means storage bootstrap is complete, not "authenticated".
+    // Mark auth as initialized.
+    // "initialized" means the bootstrap is complete, not "authenticated".
     authInitialized = true;
     window.dispatchEvent(new CustomEvent(AUTH_INITIALIZED_EVENT));
 }
@@ -207,6 +179,16 @@ export function getUserRole(): UserRole | null {
     const user = getSessionUser();
     if (user?.role) {
         return normalizeRole(user.role);
+    }
+
+    // 1b. Multi-role support: use first normalized role if present
+    if (Array.isArray(user?.roles)) {
+        for (const candidateRole of user.roles) {
+            const normalized = normalizeRole(candidateRole)
+            if (normalized) {
+                return normalized
+            }
+        }
     }
 
     // 2. Fallback to direct role key

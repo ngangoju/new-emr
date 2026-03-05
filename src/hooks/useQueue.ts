@@ -24,6 +24,8 @@ export interface QueueEntry {
   waitTimeMinutes: number
   phoneNumber?: string
   consultationType?: string
+  mewsScore?: number
+  acuityColor?: 'GREEN' | 'YELLOW' | 'ORANGE' | 'RED'
 }
 
 export interface CreateQueueEntry {
@@ -39,7 +41,7 @@ export function useQueue(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: ['queue', 'active'],
     queryFn: async () => {
-      const { data } = await api.get<QueueEntry[]>('/api/queue/active')
+      const { data } = await api.get<QueueEntry[]>('/api/triage/queue')
       return data
     },
     refetchInterval: 30000,
