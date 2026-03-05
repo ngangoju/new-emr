@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -62,17 +62,28 @@ import { consultationSchema, type ConsultationInput } from '@/lib/validations/co
 import { useRole } from '@/hooks/useRole'
 import { WorkflowIndicator } from '@/components/clinical/WorkflowIndicator'
 import { useEncounter, useHandoffEncounter, useUpdateEncounterStep, type Encounter } from '@/hooks/api/useEncounters'
+import { StructuredMedicationEntry } from '@/components/clinical/StructuredMedicationEntry'
+import { PrescriptionList } from '@/components/clinical/PrescriptionList'
+import { AllergyInteractionOverrideModal } from '@/components/clinical/AllergyInteractionOverrideModal'
+import { AddMedicationPayload, useAddMedication, useDryRunSafetyCheck } from '@/hooks/api/useConsultations'
 
 export default function NewConsultationPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const encounterId = searchParams.get('encounterId')
+  const patientIdFromUrl = searchParams.get('patientId')
   const { isRole } = useRole()
   
   const [currentStep, setCurrentStep] = useState(1)
   const [patientSearch, setPatientSearch] = useState('')
   const [selectedLabTests, setSelectedLabTests] = useState<string[]>([])
   const [createdConsultation, setCreatedConsultation] = useState<{ id: string; status: string } | null>(null)
+  
+  // Item 1 & 2: Structured Medication State
+  const [structuredMeds, setStructuredMeds] = useState<(AddMedicationPayload & { drugName: string, id: string, safetyChecked?: boolean })[]>([])
+  const [safetyError, setSafetyError] = useState<string | null>(null)
+  const [pendingMed, setPendingMed] = useState<(AddMedicationPayload & { drugName: string }) | null>(null)
+  
   const debouncedSearch = useDebounce(patientSearch, 500)
   
   // Fetch encounter data if it exists
@@ -122,6 +133,27 @@ export default function NewConsultationPage() {
   const createConsultationMutation = useCreateConsultation()
   const signConsultationMutation = useSignConsultation()
   const createLabOrderMutation = useCreateLabOrder()
+  const addMedicationMutation = useAddMedication()
+  const dryRunSafetyCheckMutation = useDryRunSafetyCheck()
+
+  // Auto-populate patient when patientId is provided in URL
+  useEffect(() => {
+    if (patientIdFromUrl) {
+      // Set the form's patientId field
+      form.setValue('patientId', patientIdFromUrl, { shouldValidate: true })
+      // Set the patient search to show the patient name
+      setPatientSearch('Loading patient...')
+      // Auto-advance to step 2 (Chief Complaint) since patient is selected
+      setCurrentStep(2)
+    }
+  }, [patientIdFromUrl, form])
+
+  // Update patient search display when patient data is loaded
+  useEffect(() => {
+    if (selectedPatient && patientIdFromUrl) {
+      setPatientSearch(`${selectedPatient.firstName} ${selectedPatient.lastName}`)
+    }
+  }, [selectedPatient, patientIdFromUrl])
 
   const progress = (currentStep / STEPS.length) * 100
 
@@ -222,10 +254,113 @@ Follow Up: ${data.followUp || 'N/A'}
     try {
       const created = await createConsultationMutation.mutateAsync(payload)
       setCreatedConsultation({ id: created.id, status: created.status })
+      
+      // Item 1 & 2: Save structured medications
+      if (structuredMeds.length > 0) {
+        toast.loading('Saving structured prescriptions...')
+        for (const med of structuredMeds) {
+          try {
+            await addMedicationMutation.mutateAsync({
+              consultationId: created.id,
+              payload: {
+                formularyId: med.formularyId,
+                dose: med.dose,
+                route: med.route,
+                frequency: med.frequency,
+                duration: med.duration,
+                indication: med.indication,
+                allergyOverrideReason: med.allergyOverrideReason,
+                interactionOverrideReason: med.interactionOverrideReason
+              }
+            })
+          } catch (err: any) {
+             console.error('Failed to save med:', med.drugName, err)
+             toast.error(`Failed to save prescription for ${med.drugName}`)
+          }
+        }
+      }
+      
+      toast.dismiss()
       toast.success('Consultation created. Finalize and sign to complete.')
     } catch (error: unknown) {
       toast.error(extractErrorMessage(error, 'Failed to create consultation'))
     }
+  }
+
+  // Item 1 & 2: Structured Med Handlers
+  const addStructuredMedLocal = (
+    med: AddMedicationPayload & { drugName: string },
+    overrides?: { allergyOverrideReason?: string; interactionOverrideReason?: string }
+  ) => {
+    // Generate a temp ID for local list
+    const tempId = Math.random().toString(36).substr(2, 9);
+    setStructuredMeds([...structuredMeds, { ...med, ...overrides, id: tempId, safetyChecked: true }]);
+    toast.success(`Added ${med.drugName} to prescription list`);
+  }
+
+  const handleAddStructuredMed = async (med: AddMedicationPayload & { drugName: string }) => {
+    const patientId = form.getValues('patientId')
+    if (!patientId) {
+      toast.error('Select a patient before adding medication')
+      return
+    }
+
+    try {
+      const safetyResult = await dryRunSafetyCheckMutation.mutateAsync({
+        patientId,
+        formularyId: med.formularyId,
+        activeFormularyIds: structuredMeds.map((m) => m.formularyId),
+      })
+
+      if (safetyResult.safe) {
+        addStructuredMedLocal(med)
+        return
+      }
+
+      if (safetyResult.allergyConflict) {
+        setPendingMed(med)
+        setSafetyError(
+          `ALLERGY CONFLICT: Patient has documented allergy to '${safetyResult.allergyConflict.allergen}' (severity: ${safetyResult.allergyConflict.severity}).`
+        )
+        return
+      }
+
+      if (safetyResult.interactionConflict) {
+        setPendingMed(med)
+        setSafetyError(
+          `DRUG INTERACTION DETECTED: ${safetyResult.interactionConflict.drug1Name} and ${safetyResult.interactionConflict.drug2Name} — ${safetyResult.interactionConflict.description}.`
+        )
+        return
+      }
+
+      addStructuredMedLocal(med)
+    } catch {
+      toast.error('Safety check failed. Please try again.')
+    }
+  }
+
+  const handleOverrideConfirm = (reason: string) => {
+    if (!pendingMed || !safetyError) return
+
+    const isAllergy = safetyError.toLowerCase().includes('allergy')
+    const isInteraction = safetyError.toLowerCase().includes('interaction')
+
+    addStructuredMedLocal(pendingMed, {
+      allergyOverrideReason: isAllergy ? reason : undefined,
+      interactionOverrideReason: isInteraction ? reason : undefined,
+    })
+
+    setPendingMed(null)
+    setSafetyError(null)
+  }
+
+  const handleOverrideClose = () => {
+    setPendingMed(null)
+    setSafetyError(null)
+  }
+
+  const handleRemoveStructuredMed = (id: string) => {
+    setStructuredMeds(structuredMeds.filter(m => m.id !== id));
   }
 
   const toggleLabTest = (testName: string) => {
@@ -348,7 +483,7 @@ Follow Up: ${data.followUp || 'N/A'}
                             placeholder="Search by name, ID or phone..." 
                             value={patientSearch}
                             onChange={(e) => setPatientSearch(e.target.value)}
-                            disabled={!isStepEditable()}
+                            disabled={!isStepEditable() || !!patientIdFromUrl}
                           />
                           {patientSearch && !field.value && (
                             <div className="absolute z-10 w-full mt-1 bg-card border rounded-md shadow-lg max-h-60 overflow-auto">
@@ -405,18 +540,20 @@ Follow Up: ${data.followUp || 'N/A'}
                                       <p className="font-medium text-xs font-mono">{selectedPatient.id}</p>
                                     </div>
                                   </div>
-                                  <Button 
-                                    variant="ghost" 
-                                    size="sm" 
-                                    className="mt-4 text-destructive hover:text-destructive"
-                                    onClick={() => {
-                                      field.onChange('')
-                                      setPatientSearch('')
-                                    }}
-                                    type="button"
-                                  >
-                                    Change Patient
-                                  </Button>
+                                  {!patientIdFromUrl && (
+                                    <Button 
+                                      variant="ghost" 
+                                      size="sm" 
+                                      className="mt-4 text-destructive hover:text-destructive"
+                                      onClick={() => {
+                                        field.onChange('')
+                                        setPatientSearch('')
+                                      }}
+                                      type="button"
+                                    >
+                                      Change Patient
+                                    </Button>
+                                  )}
                                 </>
                               ) : (
                                 <div className="p-4 text-center text-sm text-destructive">
@@ -609,23 +746,43 @@ Follow Up: ${data.followUp || 'N/A'}
               {/* Step 5: Treatment Plan */}
               {currentStep === 5 && (
                 <div className="space-y-4">
-                  <FormField
-                    control={form.control}
-                    name="medications"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Medications / Prescriptions</FormLabel>
-                        <FormControl>
-                          <Textarea
-                            placeholder="Medication name, dosage, frequency, duration..."
-                            rows={5}
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  <div className="space-y-4">
+                    <Label className="text-base font-bold flex items-center gap-2">
+                       <Pill className="h-5 w-5 text-primary" />
+                       Structured Prescriptions (Item 1 & 2)
+                    </Label>
+                    
+                    <StructuredMedicationEntry 
+                      onAdd={handleAddStructuredMed} 
+                      isLoading={addMedicationMutation.isPending}
+                    />
+
+                    <div className="space-y-2 mt-4">
+                      <Label className="text-sm font-medium">Added Medications</Label>
+                      <PrescriptionList 
+                        medications={structuredMeds as any} 
+                        onRemove={handleRemoveStructuredMed}
+                      />
+                    </div>
+
+                    <FormField
+                      control={form.control}
+                      name="medications"
+                      render={({ field }) => (
+                        <FormItem className="mt-6 opacity-60">
+                          <FormLabel>Legacy Prescription Notes (Optional)</FormLabel>
+                          <FormControl>
+                            <Textarea
+                              placeholder="Any non-drug treatment notes or general advice..."
+                              rows={2}
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
 
                   <FormField
                     control={form.control}
@@ -786,42 +943,49 @@ Follow Up: ${data.followUp || 'N/A'}
                   <ChevronRight className="h-4 w-4 mr-2" />
                   {handoffMutation.isPending ? 'Processing...' : 'Ready for Doctor'}
                 </Button>
-              ) : currentStep < STEPS.length ? (
-                <Button onClick={handleNext} type="button">
-                  Next
-                  <ChevronRight className="h-4 w-4 ml-2" />
-                </Button>
               ) : (
                 <>
-                  {!createdConsultation ? (
-                    <Button
-                      type="submit"
-                      className="bg-success hover:bg-success/90"
-                      disabled={createConsultationMutation.isPending || !isStepEditable()}
-                    >
-                      <Check className="h-4 w-4 mr-2" />
-                      {createConsultationMutation.isPending ? 'Creating...' : 'Create Consultation'}
-                    </Button>
-                  ) : (
-                    <Button
-                      type="button"
-                      className="bg-success hover:bg-success/90"
-                      disabled={
-                        signConsultationMutation.isPending ||
-                        createLabOrderMutation.isPending ||
-                        createdConsultation.status === 'SIGNED' ||
-                        !isStepEditable()
-                      }
-                      onClick={handleFinalizeConsultation}
-                    >
-                      <Check className="h-4 w-4 mr-2" />
-                      {createLabOrderMutation.isPending
-                        ? 'Submitting Lab Order...'
-                        : signConsultationMutation.isPending
-                        ? 'Signing Consultation...'
-                        : createdConsultation.status === 'SIGNED'
-                        ? 'Consultation Signed'
-                        : 'Finalize & Sign Consultation'}
+                  {/* Always show the main action buttons on the final step (Review) */}
+                  {currentStep === STEPS.length && (
+                    <>
+                      {!createdConsultation ? (
+                        <Button
+                          type="submit"
+                          className="bg-primary text-primary-foreground hover:bg-primary/90 font-semibold"
+                          disabled={createConsultationMutation.isPending}
+                        >
+                          <Check className="h-4 w-4 mr-2" />
+                          {createConsultationMutation.isPending ? 'Creating...' : 'Create Consultation'}
+                        </Button>
+                      ) : (
+                        <Button
+                          type="button"
+                          className="bg-primary text-primary-foreground hover:bg-primary/90 font-semibold"
+                          disabled={
+                            signConsultationMutation.isPending ||
+                            createLabOrderMutation.isPending ||
+                            createdConsultation.status === 'SIGNED'
+                          }
+                          onClick={handleFinalizeConsultation}
+                        >
+                          <Check className="h-4 w-4 mr-2" />
+                          {createLabOrderMutation.isPending
+                            ? 'Submitting Lab Order...'
+                            : signConsultationMutation.isPending
+                            ? 'Signing Consultation...'
+                            : createdConsultation.status === 'SIGNED'
+                            ? 'Consultation Signed'
+                            : 'Finalize & Sign Consultation'}
+                        </Button>
+                      )}
+                    </>
+                  )}
+                  
+                  {/* Show Next button if not on final step */}
+                  {currentStep < STEPS.length && (
+                    <Button onClick={handleNext} type="button">
+                      Next
+                      <ChevronRight className="h-4 w-4 ml-2" />
                     </Button>
                   )}
                 </>
@@ -830,6 +994,14 @@ Follow Up: ${data.followUp || 'N/A'}
           </div>
         </form>
       </Form>
+
+      <AllergyInteractionOverrideModal
+        isOpen={!!safetyError}
+        onClose={handleOverrideClose}
+        error={safetyError || ''}
+        onConfirm={handleOverrideConfirm}
+        isLoading={dryRunSafetyCheckMutation.isPending}
+      />
     </div>
   )
 }

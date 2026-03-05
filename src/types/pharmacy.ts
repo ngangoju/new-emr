@@ -82,6 +82,12 @@ export interface DrugRequestItem {
   drugName: string;
   quantity: number;
   notes?: string;
+  dose?: string;
+  route?: string;
+  frequency?: string;
+  duration?: string;
+  allergyOverrideReason?: string;
+  interactionOverrideReason?: string;
 }
 
 export interface DrugRequest {

@@ -25,12 +25,35 @@ export interface CreateAppointmentPayload {
     notes?: string
 }
 
+// Jackson can serialize LocalDateTime as [year,month,day,hour,min,sec] arrays.
+// This helper normalizes any date field to an ISO string.
+function toISOString(value: unknown): string {
+    if (typeof value === 'string') return value
+    if (Array.isArray(value)) {
+        // [year, month, day, hour?, min?, sec?] — month is 1-based from Java
+        const [y, m, d, hr = 0, min = 0, sec = 0] = value as number[]
+        return new Date(y, m - 1, d, hr, min, sec).toISOString()
+    }
+    if (value instanceof Date) return value.toISOString()
+    if (value != null) return new Date(value as string | number).toISOString()
+    return ''
+}
+
+function normalizeAppointment(apt: Appointment): Appointment {
+    return {
+        ...apt,
+        scheduledAt: toISOString(apt.scheduledAt),
+        createdAt: toISOString(apt.createdAt),
+        updatedAt: toISOString(apt.updatedAt),
+    }
+}
+
 export function useAppointments() {
     return useQuery({
         queryKey: ['appointments'],
         queryFn: async () => {
             const { data } = await api.get<Appointment[]>('/appointments')
-            return data
+            return data.map(normalizeAppointment)
         },
     })
 }
@@ -41,7 +64,7 @@ export function useCreateAppointment() {
     return useMutation({
         mutationFn: async (payload: CreateAppointmentPayload) => {
             const { data } = await api.post<Appointment>('/appointments', payload)
-            return data
+            return normalizeAppointment(data)
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['appointments'] })

@@ -1,7 +1,12 @@
 import { describe, it, expect } from 'vitest'
 import { patientRegistrationSchema, vitalSignsSchema } from '@/lib/validations/patient'
 import { consultationSchema } from '@/lib/validations/consultation'
-import { loginSchema } from '@/lib/validations/auth'
+import {
+    contactAdministratorSchema,
+    forgotPasswordSchema,
+    loginSchema,
+    resetPasswordSchema,
+} from '@/lib/validations/auth'
 import { appointmentSchema, labOrderSchema, prescriptionSchema } from '@/lib/validations/medical'
 
 describe('Patient Validation Schemas', () => {
@@ -120,6 +125,49 @@ describe('Auth Validation Schema', () => {
         }
 
         const result = loginSchema.safeParse(invalidData)
+        expect(result.success).toBe(false)
+    })
+
+    it('should validate forgot password payload', () => {
+        const result = forgotPasswordSchema.safeParse({ email: 'user@example.com' })
+        expect(result.success).toBe(true)
+    })
+
+    it('should reject invalid forgot password email', () => {
+        const result = forgotPasswordSchema.safeParse({ email: 'invalid-email' })
+        expect(result.success).toBe(false)
+    })
+
+    it('should validate reset password payload', () => {
+        const result = resetPasswordSchema.safeParse({
+            token: 'token-123',
+            newPassword: 'newStrongPass1',
+        })
+        expect(result.success).toBe(true)
+    })
+
+    it('should reject reset password payload with short password', () => {
+        const result = resetPasswordSchema.safeParse({ token: 'token-123', newPassword: 'short' })
+        expect(result.success).toBe(false)
+    })
+
+    it('should validate contact administrator payload', () => {
+        const result = contactAdministratorSchema.safeParse({
+            name: 'John Doe',
+            email: 'john@example.com',
+            subject: 'Access issue',
+            message: 'I need help accessing my account.',
+        })
+        expect(result.success).toBe(true)
+    })
+
+    it('should reject invalid contact administrator payload', () => {
+        const result = contactAdministratorSchema.safeParse({
+            name: 'J',
+            email: 'invalid-email',
+            subject: 'Hi',
+            message: 'short',
+        })
         expect(result.success).toBe(false)
     })
 })

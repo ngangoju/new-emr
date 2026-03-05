@@ -36,24 +36,11 @@ import {
 import { useDrugRequests, useFulfillDrugRequest, useDenyDrugRequest } from '@/hooks/useDrugRequests'
 import { useRole } from '@/hooks/useRole'
 import type { DrugRequest, DrugRequestItem, DrugRequestStatus } from '@/types/pharmacy'
-
-/**
- * The backend stores `items` as a raw JSON string in the DB and returns it
- * as a string literal from the API. This helper normalises it to an array.
- */
-function parseItems(items: DrugRequestItem[] | string | null | undefined): DrugRequestItem[] {
-  if (!items) return []
-  if (Array.isArray(items)) return items
-  try {
-    const parsed = JSON.parse(items as string)
-    return Array.isArray(parsed) ? parsed : []
-  } catch {
-    return []
-  }
-}
+import { normalizeDrugRequestItems, formatDrugRequestItemContext } from '@/lib/pharmacy/drugRequestMapping'
+import { DrugRequestQueueRow } from '@/components/pharmacy/DrugRequestQueueRow'
 
 function normalizeRequest(request: DrugRequest): DrugRequest {
-  return { ...request, items: parseItems(request.items as DrugRequestItem[] | string) }
+  return { ...request, items: normalizeDrugRequestItems(request.items) }
 }
 
 /**
@@ -309,76 +296,21 @@ export function DrugRequestQueue() {
                 </TableHeader>
                 <TableBody>
                   {filteredRequests.map((request) => (
-                    <TableRow key={request.id}>
-                      <TableCell className="font-medium">
-                        <div className="flex items-center gap-2">
-                          <User className="h-4 w-4 text-muted-foreground" />
-                          {request.patientName || 'Patient ' + (request.patientId?.substring(0, 8) || 'Unknown')}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex flex-col gap-1">
-                          {request.items.slice(0, 2).map((item, idx) => (
-                            <span key={idx} className="text-sm">
-                              {item.quantity}x {item.drugName}
-                            </span>
-                          ))}
-                          {request.items.length > 2 && (
-                            <span className="text-xs text-muted-foreground">
-                              +{request.items.length - 2} more
-                            </span>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>{request.requestedByName || request.requestedBy || 'Unknown'}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                          <Clock className="h-3 w-3" />
-                          {formatDate(request.requestedAtFormatted || request.requestedAt)}
-                        </div>
-                      </TableCell>
-                      <TableCell>{getStatusBadge(request.status)}</TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setSelectedRequest(request)}
-                          >
-                            <Eye className="h-4 w-4 mr-1" />
-                            View
-                          </Button>
-                          {request.status === 'pending' && (
-                            <>
-                              <Button
-                                variant="default"
-                                size="sm"
-                                className="bg-green-600 hover:bg-green-700"
-                                onClick={() => {
-                                  setSelectedRequest(request)
-                                  setShowFulfillDialog(true)
-                                }}
-                              >
-                                <CheckCircle className="h-4 w-4 mr-1" />
-                                Fulfill
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="text-red-600 border-red-200 hover:bg-red-50"
-                                onClick={() => {
-                                  setSelectedRequest(request)
-                                  setShowDenyDialog(true)
-                                }}
-                              >
-                                <XCircle className="h-4 w-4 mr-1" />
-                                Deny
-                              </Button>
-                            </>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
+                    <DrugRequestQueueRow
+                      key={request.id}
+                      request={request}
+                      formatDate={formatDate}
+                      getStatusBadge={getStatusBadge}
+                      onView={setSelectedRequest}
+                      onFulfill={(selected) => {
+                        setSelectedRequest(selected)
+                        setShowFulfillDialog(true)
+                      }}
+                      onDeny={(selected) => {
+                        setSelectedRequest(selected)
+                        setShowDenyDialog(true)
+                      }}
+                    />
                   ))}
                 </TableBody>
               </Table>
@@ -419,19 +351,45 @@ export function DrugRequestQueue() {
 
               <div>
                 <Label className="text-muted-foreground">Items</Label>
+                {selectedRequest.items.some((item) => Boolean(item.allergyOverrideReason)) && (
+                  <div className="mb-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                    <div className="flex items-center gap-2 font-medium">
+                      <AlertCircle className="h-4 w-4" />
+                      Allergy override reason provided for one or more medications.
+                    </div>
+                  </div>
+                )}
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Medication</TableHead>
                       <TableHead>Quantity</TableHead>
+                      <TableHead>Prescription Context</TableHead>
                       <TableHead>Notes</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {selectedRequest.items.map((item, idx) => (
                       <TableRow key={idx}>
-                        <TableCell className="font-medium">{item.drugName}</TableCell>
+                        <TableCell className="font-medium">
+                          {formatDrugRequestItemContext(item)}
+                          {item.allergyOverrideReason && (
+                            <div className="mt-1 flex items-center gap-1 text-xs text-destructive font-medium border border-destructive/20 bg-destructive/5 p-1 rounded">
+                              <AlertCircle className="w-3 h-3 flex-shrink-0" />
+                              Doctor Override: {item.allergyOverrideReason}
+                            </div>
+                          )}
+                          {item.interactionOverrideReason && (
+                            <div className="mt-1 flex items-center gap-1 text-xs text-amber-700 font-medium border border-amber-700/20 bg-amber-50 p-1 rounded">
+                              <AlertCircle className="w-3 h-3 flex-shrink-0" />
+                              Doctor Override: {item.interactionOverrideReason}
+                            </div>
+                          )}
+                        </TableCell>
                         <TableCell>{item.quantity}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground">
+                          {[item.dose, item.route, item.frequency, item.duration].filter(Boolean).join(' • ') || 'Legacy unstructured record'}
+                        </TableCell>
                         <TableCell className="text-muted-foreground">{item.notes || '-'}</TableCell>
                       </TableRow>
                     ))}

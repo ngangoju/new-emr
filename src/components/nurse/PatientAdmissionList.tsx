@@ -2,33 +2,33 @@
 
 import React, { useState } from 'react'
 import { useRole } from '@/hooks/useRole'
-import { 
-  useCurrentAdmissions, 
+import {
+  useCurrentAdmissions,
   useDischargePatient,
   useWards,
   useAvailableBeds,
-  useTransferPatient 
+  useTransferPatient
 } from '@/hooks/useAdmissions'
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogDescription, 
-  DialogFooter, 
-  DialogHeader, 
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
   DialogTitle,
   DialogTrigger
 } from '@/components/ui/dialog'
-import { 
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -39,23 +39,26 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { 
-  Users, 
-  LogOut, 
-  ArrowRightLeft, 
-  Loader2, 
+import {
+  Users,
+  LogOut,
+  ArrowRightLeft,
+  Loader2,
   Bed,
   Building2,
   Calendar,
-  User
+  User,
+  Eye,
+  EyeOff
 } from 'lucide-react'
-import { 
-  format, 
-  formatDistanceToNow, 
-  parseISO, 
-  isValid 
+import {
+  format,
+  formatDistanceToNow,
+  parseISO,
+  isValid
 } from 'date-fns'
 import type { Admission } from '@/types/admission'
+import { maskIdentifier, type RevealedIdsMap } from '@/lib/utils/masking'
 
 function formatDate(dateString: string | null | undefined): string {
   if (!dateString) return '-'
@@ -89,14 +92,28 @@ function getAdmissionDisplayName(admission: Admission): string {
   return admission.patientId || 'Unknown'
 }
 
-function getAdmissionDisplayId(admission: Admission): string | null {
+function getAdmissionDisplayId(
+  admission: Admission,
+  revealedIds: RevealedIdsMap,
+  toggleReveal: (id: string) => void
+): { displayValue: string | null; isRevealed: boolean; canReveal: boolean } {
   const nationalId = admission.patientNationalId?.trim()
-  if (nationalId) return nationalId
-
   const patientId = admission.patientId?.trim()
-  if (patientId) return patientId
 
-  return null
+  const rawId = nationalId || patientId
+  if (!rawId) return { displayValue: null, isRevealed: false, canReveal: false }
+
+  const isRevealed = revealedIds[admission.id] || false
+  const maskedValue = maskIdentifier(rawId)
+
+  // Only allow reveal if there's an actual ID to mask (not just patient UUID)
+  const canReveal = !!nationalId
+
+  return {
+    displayValue: isRevealed ? rawId : (maskedValue || rawId),
+    isRevealed,
+    canReveal
+  }
 }
 
 export function PatientAdmissionList() {
@@ -113,6 +130,14 @@ export function PatientAdmissionList() {
   const [dischargeNotes, setDischargeNotes] = useState('')
   const [transferWardId, setTransferWardId] = useState('')
   const [transferBedId, setTransferBedId] = useState('')
+  const [revealedIds, setRevealedIds] = useState<RevealedIdsMap>({})
+
+  const toggleIdReveal = (id: string) => {
+    setRevealedIds(prev => ({
+      ...prev,
+      [id]: !prev[id]
+    }))
+  }
 
   const canDischarge = hasPermission('CAN_DISCHARGE') || hasPermission('admission:discharge')
   const canTransfer = hasPermission('CAN_TRANSFER') || hasPermission('admission:transfer')
@@ -212,16 +237,31 @@ export function PatientAdmissionList() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {admissions.map((admission) => (
+                {admissions.map((admission) => {
+                  const idInfo = getAdmissionDisplayId(admission, revealedIds, toggleIdReveal)
+                  return (
                   <TableRow key={admission.id}>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <User className="h-4 w-4 text-muted-foreground" />
                         <div className="flex flex-col">
                           <span className="font-medium">{getAdmissionDisplayName(admission)}</span>
-                          {getAdmissionDisplayId(admission) && (
-                            <span className="text-xs text-muted-foreground">
-                              ID: {getAdmissionDisplayId(admission)}
+                          {idInfo.displayValue && (
+                            <span className="text-xs text-muted-foreground flex items-center gap-1">
+                              ID: {idInfo.displayValue}
+                              {idInfo.canReveal && (
+                                <button
+                                  onClick={() => toggleIdReveal(admission.id)}
+                                  className="ml-1 p-0.5 hover:bg-muted rounded-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                                  title={idInfo.isRevealed ? 'Hide ID' : 'Reveal full ID'}
+                                >
+                                  {idInfo.isRevealed ? (
+                                    <EyeOff className="h-3 w-3" />
+                                  ) : (
+                                    <Eye className="h-3 w-3" />
+                                  )}
+                                </button>
+                              )}
                             </span>
                           )}
                         </div>
@@ -280,7 +320,8 @@ export function PatientAdmissionList() {
                       </div>
                     </TableCell>
                   </TableRow>
-                ))}
+                  )
+                })}
               </TableBody>
             </Table>
           )}

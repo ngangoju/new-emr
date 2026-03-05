@@ -179,3 +179,19 @@ export function useUpdateTariffPrice() {
 
     return { updateTariffPrice, isUpdatingPrice }
 }
+
+export function useBulkCreateTariffs() {
+    const queryClient = useQueryClient()
+
+    const { mutateAsync: bulkCreateTariffs, isPending: isImporting } = useMutation({
+        mutationFn: async (inputs: CreateTariffInput[]) => {
+            const { data } = await apiRequest<Tariff[]>('POST', '/api/billing/tariffs/bulk', inputs)
+            return data
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['tariffs'] })
+        },
+    })
+
+    return { bulkCreateTariffs, isImporting }
+}

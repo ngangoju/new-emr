@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Search, ChevronDown, ChevronRight, Check, Users, Calendar, DollarSign, FileText, Pill, Microscope, Settings, Shield } from 'lucide-react'
+import { Search, ChevronDown, ChevronRight, Check, Users, Calendar, DollarSign, FileText, Pill, Microscope, Settings, Shield, LayoutDashboard } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 // Define permission groups with human-readable labels
@@ -89,6 +89,56 @@ const PERMISSION_GROUPS = [
     permissions: [
       { id: 'read:admin', label: 'View Admin', description: 'Access admin panel' },
       { id: 'write:admin', label: 'Manage System', description: 'System configuration and users' },
+    ],
+  },
+  {
+    id: 'dashboard-routes',
+    label: 'Dashboard Route Access',
+    icon: LayoutDashboard,
+    description: 'Controls direct route access under /dashboard',
+    permissions: [
+      { id: 'route:/dashboard/reception', label: 'Route: Reception', description: 'Access /dashboard/reception and nested routes' },
+      { id: 'route:/dashboard/nurse', label: 'Route: Nurse', description: 'Access /dashboard/nurse and nested routes' },
+      { id: 'route:/dashboard/nurse/admissions', label: 'Route: Admissions', description: 'Access /dashboard/nurse/admissions and nested routes' },
+      { id: 'route:/dashboard/doctor/patients', label: 'Route: Patients', description: 'Access /dashboard/doctor/patients and nested routes' },
+      { id: 'route:/dashboard/doctor/consultations', label: 'Route: Consultations', description: 'Access /dashboard/doctor/consultations and nested routes' },
+      { id: 'route:/dashboard/doctor/schedule', label: 'Route: Schedule', description: 'Access /dashboard/doctor/schedule and nested routes' },
+      { id: 'route:/dashboard/schedule', label: 'Route: Shared Schedule', description: 'Access /dashboard/schedule and nested routes' },
+      { id: 'route:/dashboard/doctor/records', label: 'Route: Medical Records', description: 'Access /dashboard/doctor/records and nested routes' },
+      { id: 'route:/dashboard/lab', label: 'Route: Lab', description: 'Access /dashboard/lab and nested routes' },
+      { id: 'route:/dashboard/radiology', label: 'Route: Radiology', description: 'Access /dashboard/radiology and nested routes' },
+      { id: 'route:/dashboard/pharmacy', label: 'Route: Pharmacy', description: 'Access /dashboard/pharmacy and nested routes' },
+      { id: 'route:/dashboard/billing', label: 'Route: Billing', description: 'Access /dashboard/billing and nested routes' },
+      { id: 'route:/dashboard/cashier/close', label: 'Route: Cash Close', description: 'Access /dashboard/cashier/close and nested routes' },
+      { id: 'route:/dashboard/admin', label: 'Route: Admin', description: 'Access /dashboard/admin and nested routes' },
+      { id: 'route:/dashboard/admin/roles', label: 'Route: Admin Roles', description: 'Access /dashboard/admin/roles and nested routes' },
+      { id: 'route:/dashboard/reports', label: 'Route: Reports', description: 'Access /dashboard/reports and nested routes' },
+      { id: 'route:/dashboard/approvals', label: 'Route: Approvals', description: 'Access /dashboard/approvals and nested routes' },
+    ],
+  },
+  {
+    id: 'dashboard-menu',
+    label: 'Dashboard Menu Visibility',
+    icon: LayoutDashboard,
+    description: 'Controls sidebar/menu item visibility',
+    permissions: [
+      { id: 'menu:/dashboard', label: 'Menu: Dashboard', description: 'Show Dashboard in sidebar' },
+      { id: 'menu:/dashboard/reception', label: 'Menu: Reception', description: 'Show Reception in sidebar' },
+      { id: 'menu:/dashboard/nurse', label: 'Menu: Nurse', description: 'Show Nurse in sidebar' },
+      { id: 'menu:/dashboard/nurse/admissions', label: 'Menu: Admissions', description: 'Show Admissions in sidebar' },
+      { id: 'menu:/dashboard/doctor/patients', label: 'Menu: Patients', description: 'Show Patients in sidebar' },
+      { id: 'menu:/dashboard/doctor/consultations', label: 'Menu: Consultations', description: 'Show Consultations in sidebar' },
+      { id: 'menu:/dashboard/doctor/schedule', label: 'Menu: Schedule', description: 'Show Schedule in sidebar' },
+      { id: 'menu:/dashboard/notifications', label: 'Menu: Notifications', description: 'Show Notifications in sidebar' },
+      { id: 'menu:/dashboard/lab', label: 'Menu: Lab Results', description: 'Show Lab Results in sidebar' },
+      { id: 'menu:/dashboard/radiology', label: 'Menu: Radiology', description: 'Show Radiology in sidebar' },
+      { id: 'menu:/dashboard/pharmacy', label: 'Menu: Pharmacy', description: 'Show Pharmacy in sidebar' },
+      { id: 'menu:/dashboard/billing', label: 'Menu: Billing', description: 'Show Billing in sidebar' },
+      { id: 'menu:/dashboard/cashier/close', label: 'Menu: Cash Close', description: 'Show Cash Close in sidebar' },
+      { id: 'menu:/dashboard/doctor/records', label: 'Menu: Medical Records', description: 'Show Medical Records in sidebar' },
+      { id: 'menu:/dashboard/reports', label: 'Menu: Reports', description: 'Show Reports in sidebar' },
+      { id: 'menu:/dashboard/approvals', label: 'Menu: Approvals', description: 'Show Approvals in sidebar' },
+      { id: 'menu:/dashboard/admin', label: 'Menu: Admin', description: 'Show Admin in sidebar' },
     ],
   },
 ]
@@ -242,6 +292,10 @@ export function PermissionsManager({ value, onChange }: PermissionsManagerProps)
     })
   }
 
+  const isBulkSelectableGroup = (groupId: string) => {
+    return groupId === 'dashboard-routes' || groupId === 'dashboard-menu'
+  }
+
   return (
     <div className="space-y-4">
       {/* Header with search and count */}
@@ -287,7 +341,7 @@ export function PermissionsManager({ value, onChange }: PermissionsManagerProps)
                 <Label className="font-medium cursor-pointer">{permission.label}</Label>
                 <p className="text-xs text-muted-foreground">{permission.description}</p>
               </div>
-              <code className="text-xs bg-muted px-2 py-1 rounded">{permission.id}</code>
+              <code className="text-xs bg-muted px-2 py-1 rounded break-all">{permission.id}</code>
             </div>
           ))}
         </div>
@@ -299,11 +353,19 @@ export function PermissionsManager({ value, onChange }: PermissionsManagerProps)
         {filteredGroups.map((group) => {
           const Icon = group.icon
           const isExpanded = expandedGroups.has(group.id)
+          const showGroupBulkToggle = isBulkSelectableGroup(group.id)
           const readPermissions = group.permissions.filter(p => p.id.startsWith('read:'))
           const writePermissions = group.permissions.filter(p => p.id.startsWith('write:'))
           const allReadSelected = readPermissions.every(p => isPermissionSelected(p.id))
           const allWriteSelected = writePermissions.every(p => isPermissionSelected(p.id))
           const groupSelectedCount = group.permissions.filter(p => isPermissionSelected(p.id)).length
+          const allGroupSelected = group.permissions.length > 0 && groupSelectedCount === group.permissions.length
+          const someGroupSelected = groupSelectedCount > 0 && groupSelectedCount < group.permissions.length
+          const groupCheckboxState: boolean | 'indeterminate' = allGroupSelected
+            ? true
+            : someGroupSelected
+              ? 'indeterminate'
+              : false
 
           return (
             <div
@@ -325,6 +387,17 @@ export function PermissionsManager({ value, onChange }: PermissionsManagerProps)
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
+                  {showGroupBulkToggle && (
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        checked={groupCheckboxState}
+                        aria-label={`Select all ${group.label}`}
+                        onClick={(e) => e.stopPropagation()}
+                        onCheckedChange={() => toggleGroup(group.id, group.permissions)}
+                      />
+                      <span className="text-xs text-muted-foreground">All</span>
+                    </div>
+                  )}
                   {groupSelectedCount > 0 && groupSelectedCount < group.permissions.length && (
                     <Badge variant="outline" className="text-xs">
                       Partial
@@ -342,38 +415,44 @@ export function PermissionsManager({ value, onChange }: PermissionsManagerProps)
               {isExpanded && (
                 <div className="p-3 space-y-3 border-t">
                   {/* Quick toggles */}
-                  <div className="flex gap-4 text-sm">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        toggleAction('read:', group.permissions)
-                      }}
-                      className={cn(
-                        "flex items-center gap-1 px-2 py-1 rounded transition-colors",
-                        allReadSelected
-                          ? "bg-primary/20 text-primary"
-                          : "hover:bg-muted"
+                  {(readPermissions.length > 0 || writePermissions.length > 0) && (
+                    <div className="flex gap-4 text-sm">
+                      {readPermissions.length > 0 && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            toggleAction('read:', group.permissions)
+                          }}
+                          className={cn(
+                            "flex items-center gap-1 px-2 py-1 rounded transition-colors",
+                            allReadSelected
+                              ? "bg-primary/20 text-primary"
+                              : "hover:bg-muted"
+                          )}
+                        >
+                          <Check className={cn("h-3 w-3", !allReadSelected && "opacity-50")} />
+                          Read All
+                        </button>
                       )}
-                    >
-                      <Check className={cn("h-3 w-3", !allReadSelected && "opacity-50")} />
-                      Read All
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        toggleAction('write:', group.permissions)
-                      }}
-                      className={cn(
-                        "flex items-center gap-1 px-2 py-1 rounded transition-colors",
-                        allWriteSelected
-                          ? "bg-primary/20 text-primary"
-                          : "hover:bg-muted"
+                      {writePermissions.length > 0 && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            toggleAction('write:', group.permissions)
+                          }}
+                          className={cn(
+                            "flex items-center gap-1 px-2 py-1 rounded transition-colors",
+                            allWriteSelected
+                              ? "bg-primary/20 text-primary"
+                              : "hover:bg-muted"
+                          )}
+                        >
+                          <Check className={cn("h-3 w-3", !allWriteSelected && "opacity-50")} />
+                          Write All
+                        </button>
                       )}
-                    >
-                      <Check className={cn("h-3 w-3", !allWriteSelected && "opacity-50")} />
-                      Write All
-                    </button>
-                  </div>
+                    </div>
+                  )}
 
                   {/* Individual permissions */}
                   <div className="space-y-2">
@@ -397,7 +476,7 @@ export function PermissionsManager({ value, onChange }: PermissionsManagerProps)
                           <Label className="cursor-pointer">{permission.label}</Label>
                           <p className="text-xs text-muted-foreground">{permission.description}</p>
                         </div>
-                        <code className="text-xs bg-muted px-1.5 py-0.5 rounded text-muted-foreground">
+                        <code className="text-xs bg-muted px-1.5 py-0.5 rounded text-muted-foreground break-all">
                           {permission.id.split(':')[1]}
                         </code>
                       </div>

@@ -51,6 +51,14 @@ export default function ReceptionPage() {
       bgColor: "bg-green-50"
     },
     {
+      title: "Admit Patient",
+      description: "Register a patient to a ward and bed",
+      icon: Activity,
+      href: "/dashboard/reception/admit",
+      color: "text-orange-600",
+      bgColor: "bg-orange-50"
+    },
+    {
       title: "Patient Records",
       description: "Search and view historic patient files",
       icon: Search,

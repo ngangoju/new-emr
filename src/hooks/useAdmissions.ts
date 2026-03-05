@@ -9,8 +9,7 @@ import type {
     Admission,
     CreateAdmissionDto,
     AdmissionFilters,
-    TransferPatientDto,
-    WardWithBeds
+    TransferPatientDto
 } from '@/types/admission'
 
 type ApiErrorPayload = {
@@ -41,7 +40,9 @@ export function useWardWithBeds(wardId: string) {
     return useQuery({
         queryKey: ['wards', wardId, 'with-beds'],
         queryFn: async () => {
-            const { data } = await api.get<WardWithBeds>(`/api/admissions/wards/${wardId}/beds`)
+            // API returns Bed[] array directly, not WardWithBeds structure
+            // NOTE: If backend changes to return WardWithBeds, update this type
+            const { data } = await api.get<Bed[]>(`/api/admissions/wards/${wardId}/beds`)
             return data
         },
         enabled: !!wardId,
@@ -139,7 +140,15 @@ export function useDischargePatient() {
     const queryClient = useQueryClient()
 
     return useMutation({
-        mutationFn: async ({ id, dischargeNotes }: { id: string; dischargeNotes?: string }) => {
+        mutationFn: async ({ id, dischargeNotes, overrideReason }: { id: string; dischargeNotes?: string; overrideReason?: string }) => {
+            if (overrideReason) {
+                const { data } = await api.post<Admission>(
+                    `/api/admissions/${id}/discharge`,
+                    { overrideReason }
+                )
+                return data
+            }
+
             const { data } = await api.patch<Admission>(
                 `/api/admissions/${id}/discharge`,
                 { dischargeNotes }

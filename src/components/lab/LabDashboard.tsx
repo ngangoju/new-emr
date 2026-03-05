@@ -1,18 +1,10 @@
 'use client'
+
 import { useMemo, useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
-import { Checkbox } from '@/components/ui/checkbox'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import {
   Dialog,
   DialogContent,
@@ -21,12 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Table,
   TableBody,
@@ -35,97 +22,97 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Clock, CheckCircle2, FileCheck, TestTube, Download } from 'lucide-react'
+import { CheckCircle2, Clock, FileCheck, TestTube } from 'lucide-react'
 import { PageHeader } from '@/components/layout/PageHeader'
-import { useLabOrders, useUploadResult } from '@/hooks/useLabOrders'
-import type { LabOrder } from '@/types/lab'
-import type { LabResult } from '@/types/lab'
+import {
+  useLabOrders,
+  useRejectSample,
+  useUpdateLabOrderStatus,
+} from '@/hooks/useLabOrders'
+import type { LabOrder, LabPanelParameter } from '@/types/lab'
+import { LabTestPanelForm } from '@/components/lab/LabTestPanelForm'
+import { FinalizeResultModal } from '@/components/lab/FinalizeResultModal'
 import toast from 'react-hot-toast'
+
+function statusBadgeClass(status: LabOrder['status']) {
+  switch (status) {
+    case 'pending':
+      return 'border-gray-600 text-gray-600'
+    case 'in_progress':
+      return 'border-blue-600 text-blue-600'
+    case 'completed':
+      return 'border-green-600 text-green-600'
+    case 'rejected':
+      return 'border-red-600 text-red-600'
+    default:
+      return ''
+  }
+}
+
+function statusLabel(status: LabOrder['status']) {
+  switch (status) {
+    case 'in_progress':
+      return 'In Progress'
+    case 'completed':
+      return 'Completed'
+    case 'rejected':
+      return 'Rejected'
+    case 'pending':
+    default:
+      return 'Pending'
+  }
+}
 
 export function LabDashboard() {
   const { pending, completed, stats, loading } = useLabOrders()
-  const { uploadResult, uploading } = useUploadResult()
-  const [selectedOrder, setSelectedOrder] = useState<LabOrder | null>(null)
-  const [resultText, setResultText] = useState('')
-  const [tech, setTech] = useState('')
-  const [comment, setComment] = useState('')
-  const [status, setStatus] = useState<LabResult['status']>('normal')
-  const [markAsFinal, setMarkAsFinal] = useState(false)
+  const { updateStatus, updatingStatus } = useUpdateLabOrderStatus()
+  const { rejectSample, rejecting } = useRejectSample()
 
-  const handleEnterResults = (order: LabOrder) => {
-    setSelectedOrder(order)
-    setResultText(order.results?.text || '')
-    setTech(order.results?.tech || '')
-    setComment(order.results?.comment || '')
-    setStatus(order.results?.status || 'normal')
-    setMarkAsFinal(false)
-  }
+  const [selectedOrder, setSelectedOrder] = useState<LabOrder | null>(null)
+  const [panelValues, setPanelValues] = useState<Record<string, string>>({})
+  const [criticalParameters, setCriticalParameters] = useState<Array<Pick<LabPanelParameter, 'code' | 'name'>>>([])
+  const [finalizeOpen, setFinalizeOpen] = useState(false)
+  const [rejectingOrder, setRejectingOrder] = useState<LabOrder | null>(null)
+  const [rejectionReason, setRejectionReason] = useState('')
 
   const pendingCount = useMemo(() => pending.length, [pending])
 
-  const resetDialog = () => {
-    setSelectedOrder(null)
-    setResultText('')
-    setTech('')
-    setComment('')
-    setStatus('normal')
-    setMarkAsFinal(false)
+  const handleStartCollection = async (orderId: string) => {
+    await updateStatus({ orderId, status: 'in_progress' })
+    toast.success('Order marked In Progress.')
   }
 
-  const handleSubmitResult = async () => {
-    if (!selectedOrder) return
-
-    if (!resultText.trim()) {
-      toast.error('Result text is required.')
-      return
-    }
-
-    if (!tech.trim()) {
-      toast.error('Lab technician name is required.')
-      return
-    }
-
-    const payload: LabResult = {
-      text: resultText.trim(),
-      tech: tech.trim(),
-      comment: comment.trim() || undefined,
-      status,
-    }
-
-    try {
-      await uploadResult({
-        orderId: selectedOrder.id,
-        result: payload,
-        markAsFinal,
-      })
-
-      resetDialog()
-    } catch {
-      // handled by interceptors/mutation onError
-    }
+  const handleEnterResults = (order: LabOrder) => {
+    setSelectedOrder(order)
+    setPanelValues({})
+    setCriticalParameters([])
   }
 
-  const handleExportSummary = () => {
-    toast.success('Lab summary export is non-critical in A5 and remains unchanged.')
+  const handleRejectSubmit = async () => {
+    if (!rejectingOrder) return
+    if (!rejectionReason.trim()) {
+      toast.error('Rejection reason is required.')
+      return
+    }
+    await rejectSample({ orderId: rejectingOrder.id, reason: rejectionReason.trim() })
+    setRejectingOrder(null)
+    setRejectionReason('')
   }
 
   return (
     <>
-        <PageHeader
-          title="Lab Dashboard"
-          description="Pending orders table, results entry, imaging upload, completed table with PDF export."
-        />
-      {loading && (
-        <div className="mb-6 rounded-md border p-3 text-sm text-muted-foreground">
-          Loading lab orders...
-        </div>
-      )}
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <PageHeader
+        title="Lab Dashboard"
+        description="Structured lab results, processing workflow, and finalized queue."
+      />
+
+      {loading && <div className="mb-4 rounded-md border p-3 text-sm text-muted-foreground">Loading lab orders...</div>}
+
+      <div className="grid grid-cols-1 gap-6 mb-8 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Pending Today</CardTitle>
-            <Clock className="h-5 w-5 text-orange-600" />
+            <Clock className="h-5 w-5 text-gray-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.pendingToday}</div>
@@ -152,7 +139,7 @@ export function LabDashboard() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Total Completed</CardTitle>
-            <FileCheck className="h-5 w-5 text-purple-600" />
+            <FileCheck className="h-5 w-5 text-green-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.completed}</div>
@@ -160,11 +147,10 @@ export function LabDashboard() {
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Pending Orders */}
-        <Card className="col-span-1">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <Card>
           <CardHeader>
-            <CardTitle>Pending Orders</CardTitle>
+            <CardTitle>Lab Queue</CardTitle>
           </CardHeader>
           <CardContent>
             <Table>
@@ -172,7 +158,7 @@ export function LabDashboard() {
                 <TableRow>
                   <TableHead>Patient</TableHead>
                   <TableHead>Test</TableHead>
-                  <TableHead>Priority</TableHead>
+                  <TableHead>Status</TableHead>
                   <TableHead>Action</TableHead>
                 </TableRow>
               </TableHeader>
@@ -182,21 +168,33 @@ export function LabDashboard() {
                     <TableCell className="font-medium">{order.patientName}</TableCell>
                     <TableCell>{order.testType}</TableCell>
                     <TableCell>
-                      <Badge variant={order.priority === 'urgent' ? 'destructive' : 'secondary'}>
-                        {order.priority}
+                      <Badge variant="outline" className={statusBadgeClass(order.status)}>
+                        {statusLabel(order.status)}
                       </Badge>
                     </TableCell>
-                    <TableCell>
-                      <Button size="sm" onClick={() => handleEnterResults(order)}>
-                        Enter Results
-                      </Button>
+                    <TableCell className="space-x-2">
+                      {order.status === 'pending' && (
+                        <Button size="sm" variant="outline" disabled={updatingStatus} onClick={() => handleStartCollection(order.id)}>
+                          Mark In Progress
+                        </Button>
+                      )}
+                      {order.status !== 'rejected' && (
+                        <Button size="sm" variant="outline" onClick={() => setRejectingOrder(order)}>
+                          Reject Sample
+                        </Button>
+                      )}
+                      {(order.status === 'in_progress' || order.status === 'pending') && (
+                        <Button size="sm" onClick={() => handleEnterResults(order)}>
+                          Enter Structured Results
+                        </Button>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}
                 {pending.length === 0 && (
                   <TableRow>
                     <TableCell colSpan={4} className="text-center text-muted-foreground">
-                      No pending orders
+                      No pending queue entries
                     </TableCell>
                   </TableRow>
                 )}
@@ -205,14 +203,9 @@ export function LabDashboard() {
           </CardContent>
         </Card>
 
-        {/* Completed Orders */}
-        <Card className="col-span-1">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Recent Results</CardTitle>
-            <Button variant="outline" size="sm" onClick={handleExportSummary}>
-              <Download className="mr-2 h-4 w-4" />
-              Export PDF
-            </Button>
+        <Card>
+          <CardHeader>
+            <CardTitle>Completed Results</CardTitle>
           </CardHeader>
           <CardContent>
             <Table>
@@ -220,7 +213,6 @@ export function LabDashboard() {
                 <TableRow>
                   <TableHead>Patient</TableHead>
                   <TableHead>Test</TableHead>
-                  <TableHead>Date</TableHead>
                   <TableHead>Status</TableHead>
                 </TableRow>
               </TableHeader>
@@ -230,10 +222,7 @@ export function LabDashboard() {
                     <TableCell className="font-medium">{order.patientName}</TableCell>
                     <TableCell>{order.testType}</TableCell>
                     <TableCell>
-                      {order.results?.completedAt?.toLocaleDateString()}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="text-green-600 border-green-600">
+                      <Badge variant="outline" className={statusBadgeClass('completed')}>
                         Completed
                       </Badge>
                     </TableCell>
@@ -241,8 +230,8 @@ export function LabDashboard() {
                 ))}
                 {completed.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={4} className="text-center text-muted-foreground">
-                      No completed orders
+                    <TableCell colSpan={3} className="text-center text-muted-foreground">
+                      No completed results
                     </TableCell>
                   </TableRow>
                 )}
@@ -252,78 +241,83 @@ export function LabDashboard() {
         </Card>
       </div>
 
-      <Dialog open={!!selectedOrder} onOpenChange={(open) => !open && resetDialog()}>
+      <Dialog open={Boolean(selectedOrder)} onOpenChange={(open) => !open && setSelectedOrder(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Submit Lab Result</DialogTitle>
+            <DialogTitle>Structured Result Entry</DialogTitle>
             <DialogDescription>
               {selectedOrder
                 ? `Order ${selectedOrder.id} · ${selectedOrder.patientName} · ${selectedOrder.testType}`
-                : 'Submit lab result'}
+                : 'Structured result entry'}
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="lab-tech">Technician</Label>
-              <Input
-                id="lab-tech"
-                value={tech}
-                onChange={(e) => setTech(e.target.value)}
-                placeholder="Lab technician name"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="lab-result">Result Payload</Label>
-              <Textarea
-                id="lab-result"
-                value={resultText}
-                onChange={(e) => setResultText(e.target.value)}
-                placeholder="Structured result text"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="lab-comment">Comment (optional)</Label>
-              <Input
-                id="lab-comment"
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-                placeholder="Additional notes"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="lab-status">Result Status</Label>
-              <Select value={status} onValueChange={(value) => setStatus(value as LabResult['status'])}>
-                <SelectTrigger id="lab-status">
-                  <SelectValue placeholder="Select status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="normal">Normal</SelectItem>
-                  <SelectItem value="abnormal">Abnormal</SelectItem>
-                  <SelectItem value="critical">Critical</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="mark-as-final"
-                checked={markAsFinal}
-                onCheckedChange={(checked) => setMarkAsFinal(Boolean(checked))}
-              />
-              <Label htmlFor="mark-as-final">Mark as final (approved)</Label>
-            </div>
-          </div>
+          {selectedOrder && (
+            <LabTestPanelForm
+              panelId={selectedOrder.panelId || selectedOrder.testType}
+              values={panelValues}
+              onValuesChange={setPanelValues}
+              onCriticalParametersChange={(codes) => {
+                setCriticalParameters(
+                  codes.map((code) => ({
+                    code,
+                    name: code,
+                  })),
+                )
+              }}
+            />
+          )}
 
           <DialogFooter>
-            <Button variant="outline" onClick={resetDialog}>
+            <Button variant="outline" onClick={() => setSelectedOrder(null)}>
               Cancel
             </Button>
-            <Button onClick={handleSubmitResult} disabled={uploading}>
-              {uploading ? 'Submitting...' : markAsFinal ? 'Finalize Result' : 'Submit Result'}
+            <Button onClick={() => setFinalizeOpen(true)} disabled={!selectedOrder}>
+              Finalize Result
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {selectedOrder && (
+        <FinalizeResultModal
+          open={finalizeOpen}
+          orderId={selectedOrder.id}
+          values={panelValues}
+          criticalParameters={criticalParameters}
+          onOpenChange={setFinalizeOpen}
+          onSubmitted={async () => {
+            await updateStatus({ orderId: selectedOrder.id, status: 'completed' })
+            setSelectedOrder(null)
+            setPanelValues({})
+            setCriticalParameters([])
+          }}
+        />
+      )}
+
+      <Dialog open={Boolean(rejectingOrder)} onOpenChange={(open) => !open && setRejectingOrder(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reject Sample</DialogTitle>
+            <DialogDescription>
+              Enter a mandatory reason. This sends a notification to the ordering nurse.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="reject-reason">Reason</Label>
+            <Input
+              id="reject-reason"
+              value={rejectionReason}
+              onChange={(event) => setRejectionReason(event.target.value)}
+              placeholder="e.g. Hemolyzed specimen"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRejectingOrder(null)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleRejectSubmit} disabled={rejecting}>
+              {rejecting ? 'Rejecting...' : 'Confirm Reject'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -331,3 +325,4 @@ export function LabDashboard() {
     </>
   )
 }
+

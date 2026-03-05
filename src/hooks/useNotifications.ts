@@ -29,7 +29,8 @@ export function useNotifications(filters: NotificationFilters = {}) {
                 params.append('limit', String(filters.limit))
             }
             if (filters.page) {
-                params.append('page', String(filters.page))
+                // Backend uses 0-based pages, frontend uses 1-based
+                params.append('page', String(filters.page - 1))
             }
             if (filters.size) {
                 params.append('size', String(filters.size))
@@ -41,8 +42,11 @@ export function useNotifications(filters: NotificationFilters = {}) {
             const queryString = params.toString()
             const url = queryString ? `/api/notifications?${queryString}` : '/api/notifications'
 
-            const { data } = await api.get<NotificationsResponse>(url)
-            return data.notifications || []
+            const { data } = await api.get<Notification[] | { notifications: Notification[] }>(url)
+            if (Array.isArray(data)) {
+                return data
+            }
+            return data?.notifications || []
         },
         staleTime: 30000, // 30 seconds
     })
@@ -158,16 +162,45 @@ export function useNotificationStream(options: { enabled?: boolean } = {}) {
         const baseUrl = api.defaults.baseURL ?? window.location.origin
         const streamUrl = new URL('/api/notifications/stream', baseUrl)
 
-        const source = new EventSource(streamUrl.toString(), { withCredentials: true })
-        const handleStreamMessage = () => {
-            queryClient.invalidateQueries({ queryKey: notificationKeys.all })
+        // After the HttpOnly cookie migration, the accessToken is invisible to JavaScript.
+        // The browser sends it automatically via credentials: 'include' (cookie-based auth).
+        // We no longer read from localStorage or inject an Authorization header.
+        let abortController: AbortController | null = new AbortController()
+
+        const connectStream = async () => {
+            try {
+                const response = await fetch(streamUrl.toString(), {
+                    credentials: 'include',  // sends HttpOnly accessToken cookie automatically
+                    signal: abortController!.signal,
+                })
+
+                if (!response.ok || !response.body) return
+
+                const reader = response.body.getReader()
+                const decoder = new TextDecoder()
+
+                while (true) {
+                    const { done, value } = await reader.read()
+                    if (done) break
+
+                    const text = decoder.decode(value, { stream: true })
+                    // Any SSE event data received → refresh notifications
+                    if (text.includes('data:')) {
+                        queryClient.invalidateQueries({ queryKey: notificationKeys.all })
+                    }
+                }
+            } catch (err) {
+                // AbortError is expected on cleanup; ignore it
+                if (err instanceof DOMException && err.name === 'AbortError') return
+                console.warn('Notification stream error, falling back to polling', err)
+            }
         }
 
-        source.addEventListener('notification', handleStreamMessage)
-        source.onmessage = handleStreamMessage
+        connectStream()
 
         return () => {
-            source.close()
+            abortController?.abort()
+            abortController = null
         }
     }, [options.enabled, queryClient])
 }

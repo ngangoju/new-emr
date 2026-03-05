@@ -26,7 +26,7 @@ export const useSocketEvent = (event: string, callback: (data: any) => void) => 
         const subscribe = () => {
             if (event.includes(':')) {
                 // If event name implies specific topic (e.g. queue:update)
-                socket.send({ action: 'subscribe', topic: event });
+                socket.emit(event, { action: 'subscribe', topic: event });
             }
         }
 

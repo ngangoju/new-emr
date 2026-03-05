@@ -24,6 +24,8 @@ export interface QueueEntry {
   waitTimeMinutes: number
   phoneNumber?: string
   consultationType?: string
+  mewsScore?: number
+  acuityColor?: 'GREEN' | 'YELLOW' | 'ORANGE' | 'RED'
 }
 
 export interface CreateQueueEntry {
@@ -39,7 +41,7 @@ export function useQueue(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: ['queue', 'active'],
     queryFn: async () => {
-      const { data } = await api.get<QueueEntry[]>('/queue/active')
+      const { data } = await api.get<QueueEntry[]>('/api/triage/queue')
       return data
     },
     refetchInterval: 30000,
@@ -52,8 +54,8 @@ export function useQueueStats() {
     queryKey: ['queue', 'stats'],
     queryFn: async () => {
       const [waiting, seen] = await Promise.all([
-        api.get<number>('/queue/waiting/count'),
-        api.get<number>('/queue/seen/count')
+        api.get<number>('/api/queue/waiting/count'),
+        api.get<number>('/api/queue/seen/count')
       ])
       return {
         waitingCount: waiting.data,
@@ -68,7 +70,7 @@ export function useAddToQueue() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (dto: CreateQueueEntry) => {
-      const { data } = await api.post<QueueEntry>('/queue', dto)
+      const { data } = await api.post<QueueEntry>('/api/queue', dto)
       return data
     },
     onSuccess: () => {
@@ -82,7 +84,7 @@ export function useCallNextPatient() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async () => {
-      const { data } = await api.post<QueueEntry>('/queue/call-next')
+      const { data } = await api.post<QueueEntry>('/api/queue/call-next')
       return data;
     },
     onSuccess: (data) => {
@@ -98,11 +100,11 @@ export function useUpdateQueueStatus() {
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
       let response;
       if (status === 'IN_PROGRESS') {
-        response = await api.post<QueueEntry>(`/queue/${id}/start`)
+        response = await api.post<QueueEntry>(`/api/queue/${id}/start`)
       } else if (status === 'COMPLETED') {
-        response = await api.post<QueueEntry>(`/queue/${id}/complete`)
+        response = await api.post<QueueEntry>(`/api/queue/${id}/complete`)
       } else if (status === 'NO_SHOW') {
-        response = await api.post<QueueEntry>(`/queue/${id}/no-show`)
+        response = await api.post<QueueEntry>(`/api/queue/${id}/no-show`)
       } else {
         throw new Error(`Unsupported status: ${status}`)
       }

@@ -21,7 +21,7 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { ReportDateRangePicker } from '@/components/reports/ReportDateRangePicker'
-import { useRevenueReport } from '@/hooks/useHmisReports'
+import { useRevenueReport, useExportReport } from '@/hooks/useHmisReports'
 import { Badge } from '@/components/ui/badge'
 import {
   Table,
@@ -45,6 +45,8 @@ export default function RevenueReportPage() {
   const endDate = date?.to ? format(date.to, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd')
 
   const { data: report, isLoading, isError } = useRevenueReport(startDate, endDate)
+  const exportReport = useExportReport()
+  const isExporting = exportReport.isPending
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -81,7 +83,12 @@ export default function RevenueReportPage() {
         </div>
         <div className="flex items-center gap-2">
           <ReportDateRangePicker date={date} setDate={setDate} disabled={isLoading} />
-          <Button variant="outline" disabled={isLoading}>
+          <Button 
+            variant="outline" 
+            disabled={isLoading || isExporting}
+            onClick={() => exportReport.mutate({ reportType: 'financial', format: 'csv' })}
+          >
+            {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
             Export
           </Button>
         </div>
@@ -176,7 +183,7 @@ export default function RevenueReportPage() {
                         tickFormatter={(value) => `${value / 1000}k`}
                       />
                       <Tooltip 
-                        formatter={(value: number | undefined) => [value !== undefined ? formatCurrency(value) : '-', 'Amount']}
+                        formatter={(value) => [typeof value === 'number' ? formatCurrency(value) : String(value), 'Amount']}
                         contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                       />
                       <Bar 
@@ -217,7 +224,7 @@ export default function RevenueReportPage() {
                           <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                         ))}
                       </Pie>
-                      <Tooltip formatter={(value: number | undefined) => value !== undefined ? formatCurrency(value) : '-'} />
+                      <Tooltip formatter={(value: any) => typeof value === 'number' ? formatCurrency(value) : value} />
                     </PieChart>
                   </ResponsiveContainer>
                   <div className="mt-4 grid grid-cols-2 gap-2 text-xs">

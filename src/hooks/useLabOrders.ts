@@ -3,6 +3,7 @@ import toast from 'react-hot-toast'
 import { api } from '@/lib/api'
 import type { LabOrder, LabResult } from '@/types/lab'
 import type { LabResultFinalizeRequest, LabResultSubmissionResponse } from '@/types/lab'
+import type { FinalizeStructuredResultPayload, LabPanelDefinition } from '@/types/lab'
 
 export interface CreateLabOrderPayload {
   patientId: string
@@ -42,10 +43,23 @@ export function useLabOrders() {
 
   return {
     pending,
+    inProgress: pending.filter((order) => order.status === 'in_progress'),
     completed,
+    rejected: pending.filter((order) => order.status === 'rejected'),
     stats: stats || { pending: 0, completed: 0, pendingToday: 0, completedToday: 0 },
     loading: loadingPending || loadingCompleted
   }
+}
+
+export function useLabPanelDefinition(panelId: string) {
+  return useQuery({
+    queryKey: ['lab-panels', panelId],
+    queryFn: async () => {
+      const { data } = await api.get<LabPanelDefinition>(`/api/lab-panels/${panelId}`)
+      return data
+    },
+    enabled: !!panelId,
+  })
 }
 
 export function useLabResult(orderId: string) {
@@ -124,4 +138,78 @@ export function useUploadResult() {
   })
 
   return { uploadResult, uploading: isPending }
+}
+
+export function useFinalizeStructuredResult() {
+  const queryClient = useQueryClient()
+
+  const { mutateAsync: finalizeStructuredResult, isPending } = useMutation({
+    mutationFn: async ({
+      orderId,
+      payload,
+    }: {
+      orderId: string
+      payload: FinalizeStructuredResultPayload
+    }) => {
+      const { data } = await api.post<LabResultSubmissionResponse>(
+        `/api/lab-orders/${orderId}/results/structured`,
+        payload,
+      )
+      return data
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['lab-orders'] })
+      queryClient.invalidateQueries({ queryKey: ['notifications'] })
+      toast.success('Lab result finalized as structured panel.')
+      void api.post('/api/notifications', {
+        type: 'LAB_RESULT_READY',
+        entityType: 'LAB_ORDER',
+        entityId: variables.orderId,
+        recipientRole: 'DOCTOR',
+      })
+    },
+  })
+
+  return { finalizeStructuredResult, finalizing: isPending }
+}
+
+export function useUpdateLabOrderStatus() {
+  const queryClient = useQueryClient()
+
+  const { mutateAsync: updateStatus, isPending } = useMutation({
+    mutationFn: async ({ orderId, status }: { orderId: string; status: LabOrder['status'] }) => {
+      const { data } = await api.patch<LabOrder>(`/lab-orders/${orderId}/status`, { status })
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['lab-orders'] })
+    },
+  })
+
+  return { updateStatus, updatingStatus: isPending }
+}
+
+export function useRejectSample() {
+  const queryClient = useQueryClient()
+
+  const { mutateAsync: rejectSample, isPending } = useMutation({
+    mutationFn: async ({ orderId, reason }: { orderId: string; reason: string }) => {
+      const { data } = await api.post<LabOrder>(`/lab-orders/${orderId}/reject`, { reason })
+      await api.post('/api/notifications', {
+        type: 'LAB_SAMPLE_REJECTED',
+        entityType: 'LAB_ORDER',
+        entityId: orderId,
+        recipientRole: 'NURSE',
+        body: reason,
+      })
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['lab-orders'] })
+      queryClient.invalidateQueries({ queryKey: ['notifications'] })
+      toast.success('Sample rejected and nurse notified.')
+    },
+  })
+
+  return { rejectSample, rejecting: isPending }
 }

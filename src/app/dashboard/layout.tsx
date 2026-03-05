@@ -4,7 +4,7 @@ import { useEffect, Suspense, useState } from "react"
 import { motion } from "framer-motion"
 import { Spinner } from "@/components/ui/spinner"
 import { usePathname, useRouter } from "next/navigation"
-import { AUTH_EVENTS, getAccessToken, getUserRole, isAuthInitialized, onAuthInitialized } from "@/lib/utils/auth"
+import { AUTH_EVENTS, getSessionUser, getUserRole, isAuthInitialized, onAuthInitialized } from "@/lib/utils/auth"
 import { canAccessDashboardRoute, getRoleDefaultDashboardRoute, normalizeUserRole } from "@/lib/authz/policy"
 
 import { Header } from "@/components/layout/Header"
@@ -22,8 +22,8 @@ export default function DashboardLayout({
 
   useEffect(() => {
     const ensureAuthenticated = () => {
-      const token = getAccessToken()
-      if (!token) {
+      const sessionUser = getSessionUser()
+      if (!sessionUser) {
         router.replace('/login')
         return
       }
