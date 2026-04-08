@@ -70,10 +70,19 @@ export function useFulfillDrugRequest() {
     const queryClient = useQueryClient()
 
     return useMutation({
-        mutationFn: async ({ id, notes }: { id: string; notes?: string }) => {
+        mutationFn: async ({
+            id,
+            notes,
+            dispenseAllocations,
+        }: {
+            id: string
+            notes?: string
+            dispenseAllocations?: Array<{ inventoryId: string; quantity: number; drugName?: string }>
+        }) => {
             const { data } = await api.patch<DrugRequest>(`/api/pharmacy/requests/${id}`, {
                 status: 'fulfilled',
                 notes,
+                dispenseAllocations,
             })
             return data
         },
@@ -90,10 +99,11 @@ export function useDenyDrugRequest() {
     const queryClient = useQueryClient()
 
     return useMutation({
-        mutationFn: async ({ id, reason }: { id: string; reason: string }) => {
+        mutationFn: async ({ id, reason, notes }: { id: string; reason: string; notes?: string }) => {
             const { data } = await api.patch<DrugRequest>(`/api/pharmacy/requests/${id}`, {
                 status: 'denied',
-                notes: reason,
+                notes,
+                denialReason: reason,
             })
             return data
         },

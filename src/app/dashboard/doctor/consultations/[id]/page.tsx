@@ -13,6 +13,7 @@ import Link from 'next/link'
 import { ArrowLeft, CheckCircle, Edit, Save, X } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import { Input } from '@/components/ui/input'
+import { DoctorTreatmentWorkspace } from '@/components/doctor/DoctorTreatmentWorkspace'
 
 export default function ConsultationDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   // Extract id from the new Next.js 15 params Promise
@@ -110,6 +111,15 @@ export default function ConsultationDetailsPage({ params }: { params: Promise<{ 
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="md:col-span-2 space-y-6">
+          <DoctorTreatmentWorkspace
+            patientId={consultation.patientId}
+            patientName={consultation.patientName}
+            consultationId={consultation.id}
+            consultationStatus={consultation.status}
+            consultationNotes={consultation.notes}
+            context="consultation"
+          />
+
           <Card>
             <CardHeader className="bg-muted/30 pb-4">
               <CardTitle className="flex items-center justify-between text-lg">

@@ -47,6 +47,20 @@ export function useCreateImagingOrder() {
     })
 }
 
+export function useAcknowledgeImagingOrder() {
+    const queryClient = useQueryClient()
+    return useMutation({
+        mutationFn: async (orderId: string) => {
+            const { data } = await api.put<ImagingOrder>(`/imaging/orders/${orderId}/acknowledge`)
+            return data
+        },
+        onSuccess: (data) => {
+            queryClient.invalidateQueries({ queryKey: ['imaging-orders'] })
+            queryClient.invalidateQueries({ queryKey: ['workflow', 'patient', data.patientId] })
+        }
+    })
+}
+
 export function useImagingResult(orderId: string) {
     return useQuery({
         queryKey: ['imaging-result', orderId],

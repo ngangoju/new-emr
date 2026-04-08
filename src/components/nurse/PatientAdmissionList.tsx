@@ -4,11 +4,14 @@ import React, { useState } from 'react'
 import { useRole } from '@/hooks/useRole'
 import {
   useCurrentAdmissions,
+  useAdmissionDischargePrep,
   useDischargePatient,
   useWards,
   useAvailableBeds,
-  useTransferPatient
+  useTransferPatient,
+  useUpdateAdmissionDischargePrep
 } from '@/hooks/useAdmissions'
+import { useDischargeReadiness } from '@/hooks/useWorkflow'
 import {
   Table,
   TableBody,
@@ -26,7 +29,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger
 } from '@/components/ui/dialog'
 import {
   Select,
@@ -38,7 +40,9 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { MedicationAdministrationDialog } from '@/components/nurse/MedicationAdministrationDialog'
 import {
   Users,
   LogOut,
@@ -46,10 +50,11 @@ import {
   Loader2,
   Bed,
   Building2,
-  Calendar,
   User,
   Eye,
-  EyeOff
+  EyeOff,
+  ClipboardCheck,
+  Syringe
 } from 'lucide-react'
 import {
   format,
@@ -118,7 +123,7 @@ function getAdmissionDisplayId(
 
 export function PatientAdmissionList() {
   const { hasPermission } = useRole()
-  const { data: admissions, isLoading, refetch } = useCurrentAdmissions()
+  const { data: admissions, isLoading } = useCurrentAdmissions()
   const { data: wards } = useWards()
   const { data: availableBeds } = useAvailableBeds()
   const dischargePatient = useDischargePatient()
@@ -126,11 +131,20 @@ export function PatientAdmissionList() {
 
   const [dischargeDialogOpen, setDischargeDialogOpen] = useState(false)
   const [transferDialogOpen, setTransferDialogOpen] = useState(false)
+  const [prepDialogOpen, setPrepDialogOpen] = useState(false)
+  const [medicationDialogOpen, setMedicationDialogOpen] = useState(false)
   const [selectedAdmission, setSelectedAdmission] = useState<Admission | null>(null)
   const [dischargeNotes, setDischargeNotes] = useState('')
   const [transferWardId, setTransferWardId] = useState('')
   const [transferBedId, setTransferBedId] = useState('')
   const [revealedIds, setRevealedIds] = useState<RevealedIdsMap>({})
+  const { data: dischargePrep } = useAdmissionDischargePrep(selectedAdmission?.id || '')
+  const { data: dischargeReadiness } = useDischargeReadiness(selectedAdmission?.id || '')
+  const updateDischargePrep = useUpdateAdmissionDischargePrep(selectedAdmission?.id || '')
+  const [medicationReconciliationCompleted, setMedicationReconciliationCompleted] = useState(false)
+  const [patientEducationCompleted, setPatientEducationCompleted] = useState(false)
+  const [dischargeInstructions, setDischargeInstructions] = useState('')
+  const [nursingProgressNotes, setNursingProgressNotes] = useState('')
 
   const toggleIdReveal = (id: string) => {
     setRevealedIds(prev => ({
@@ -141,6 +155,11 @@ export function PatientAdmissionList() {
 
   const canDischarge = hasPermission('CAN_DISCHARGE') || hasPermission('admission:discharge')
   const canTransfer = hasPermission('CAN_TRANSFER') || hasPermission('admission:transfer')
+  const canDocumentMedicationAdministration =
+    hasPermission('route:/dashboard/nurse/admissions')
+    || hasPermission('menu:/dashboard/nurse/admissions')
+    || canDischarge
+    || canTransfer
 
   const handleDischarge = async () => {
     if (!selectedAdmission) return
@@ -187,6 +206,38 @@ export function PatientAdmissionList() {
     setTransferWardId(admission.wardId)
     setTransferDialogOpen(true)
   }
+
+  const openPrepDialog = (admission: Admission) => {
+    setSelectedAdmission(admission)
+    setPrepDialogOpen(true)
+  }
+
+  const openMedicationDialog = (admission: Admission) => {
+    setSelectedAdmission(admission)
+    setMedicationDialogOpen(true)
+  }
+
+  const handleSavePrep = async () => {
+    if (!selectedAdmission) return
+    try {
+      await updateDischargePrep.mutateAsync({
+        medicationReconciliationCompleted,
+        patientEducationCompleted,
+        dischargeInstructions,
+        nursingProgressNotes,
+      })
+      setPrepDialogOpen(false)
+    } catch (error) {
+      console.error('Discharge prep error:', error)
+    }
+  }
+
+  React.useEffect(() => {
+    setMedicationReconciliationCompleted(Boolean(dischargePrep?.medicationReconciliationCompleted))
+    setPatientEducationCompleted(Boolean(dischargePrep?.patientEducationCompleted))
+    setDischargeInstructions(dischargePrep?.dischargeInstructions || '')
+    setNursingProgressNotes(dischargePrep?.nursingProgressNotes || '')
+  }, [dischargePrep])
 
   // Filter beds by selected ward for transfer
   const transferBeds = transferWardId 
@@ -297,6 +348,26 @@ export function PatientAdmissionList() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
+                        {canDocumentMedicationAdministration && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openMedicationDialog(admission)}
+                          >
+                            <Syringe className="h-4 w-4 mr-1" />
+                            MAR
+                          </Button>
+                        )}
+                        {canDischarge && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openPrepDialog(admission)}
+                          >
+                            <ClipboardCheck className="h-4 w-4 mr-1" />
+                            Prep
+                          </Button>
+                        )}
                         {canDischarge && (
                           <Button
                             variant="outline"
@@ -373,6 +444,90 @@ export function PatientAdmissionList() {
               ) : (
                 'Confirm Discharge'
               )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <MedicationAdministrationDialog
+        admission={selectedAdmission}
+        open={medicationDialogOpen}
+        onOpenChange={setMedicationDialogOpen}
+      />
+
+      <Dialog open={prepDialogOpen} onOpenChange={setPrepDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Discharge Preparation</DialogTitle>
+            <DialogDescription>
+              Complete the nurse-owned discharge tasks before final discharge clearance.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="med-rec"
+                checked={medicationReconciliationCompleted}
+                disabled
+                onCheckedChange={() => undefined}
+              />
+              <Label htmlFor="med-rec">Medication reconciliation completed by doctor</Label>
+            </div>
+            {dischargePrep?.medicationHandoffSummary ? (
+              <div className="space-y-2">
+                <Label>Medication Handoff Summary</Label>
+                <div className="max-h-40 overflow-y-auto rounded-md border bg-muted/30 p-3 text-sm whitespace-pre-wrap">
+                  {dischargePrep.medicationHandoffSummary}
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Medication reconciliation is completed in the doctor discharge workspace and will appear here once finalized.
+              </p>
+            )}
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="education"
+                checked={patientEducationCompleted}
+                onCheckedChange={(checked) => setPatientEducationCompleted(Boolean(checked))}
+              />
+              <Label htmlFor="education">Patient education completed</Label>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="dischargeInstructions">Discharge Instructions</Label>
+              <Textarea
+                id="dischargeInstructions"
+                value={dischargeInstructions}
+                onChange={(event) => setDischargeInstructions(event.target.value)}
+                placeholder="Medication use, return precautions, transport and follow-up guidance..."
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="nursingProgressNotes">Nursing Progress Notes</Label>
+              <Textarea
+                id="nursingProgressNotes"
+                value={nursingProgressNotes}
+                onChange={(event) => setNursingProgressNotes(event.target.value)}
+                placeholder="Shift handoff, patient education details, discharge prep notes..."
+              />
+            </div>
+            {dischargeReadiness && (
+              <div className="rounded-lg border bg-muted p-3">
+                <p className="text-sm font-medium">Current blockers</p>
+                <div className="mt-2 space-y-1">
+                  {dischargeReadiness.blockers.length ? dischargeReadiness.blockers.map((blocker) => (
+                    <p key={blocker} className="text-sm text-muted-foreground">{blocker}</p>
+                  )) : <p className="text-sm text-emerald-700">No blockers right now.</p>}
+                </div>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPrepDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSavePrep} disabled={updateDischargePrep.isPending}>
+              {updateDischargePrep.isPending ? 'Saving...' : 'Save Preparation'}
             </Button>
           </DialogFooter>
         </DialogContent>

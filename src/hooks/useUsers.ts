@@ -44,7 +44,7 @@ interface UseUsersOptions {
 
 export function useUsers(filters: UseUsersFilters = {}, options: UseUsersOptions = {}): UseUsersResult {
   const role = getUserRole()
-  const usersEndpointAllowedRoles = new Set(['ADMIN', 'DOCTOR', 'NURSE', 'RECEPTIONIST', 'CLINICAL_DIRECTOR', 'MANAGER', 'HUMAN_RESOURCE'])
+  const usersEndpointAllowedRoles = new Set(['ADMIN', 'HUMAN_RESOURCE', 'MANAGER'])
   const canReadUsers = !!role && usersEndpointAllowedRoles.has(role)
   const { enabled = true } = options
 
@@ -52,7 +52,7 @@ export function useUsers(filters: UseUsersFilters = {}, options: UseUsersOptions
     queryKey: ['users'],
     enabled: enabled && canReadUsers,
     queryFn: async () => {
-      const { data } = await apiRequest<User[]>('GET', '/users')
+      const { data } = await apiRequest<User[]>('GET', '/api/users')
       return data
     }
   })
@@ -99,7 +99,7 @@ export function useCreateUser() {
 
   const { mutateAsync: createUser, isPending: isCreating } = useMutation({
     mutationFn: async (input: CreateUserInput) => {
-      const { data } = await apiRequest<User>('POST', '/users', input)
+      const { data } = await apiRequest<User>('POST', '/api/users', input)
       return data
     },
     onSuccess: () => {
@@ -115,7 +115,7 @@ export function useUpdateUser() {
 
   const { mutateAsync: updateUser, isPending: isUpdating } = useMutation({
     mutationFn: async ({ id, input }: { id: string; input: UpdateUserInput }) => {
-      const { data } = await apiRequest<User>('PUT', `/users/${id}`, input)
+      const { data } = await apiRequest<User>('PUT', `/api/users/${id}`, input)
       return data
     },
     onSuccess: () => {

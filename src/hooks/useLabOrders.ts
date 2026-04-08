@@ -103,6 +103,23 @@ export function useCreateLabOrder() {
   })
 }
 
+export function useAcknowledgeLabOrder() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (orderId: string) => {
+      const { data } = await api.put<LabOrder>(`/lab-orders/${orderId}/acknowledge`)
+      return data
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['lab-orders'] })
+      queryClient.invalidateQueries({ queryKey: ['patient', data.patientId, 'lab-results'] })
+      queryClient.invalidateQueries({ queryKey: ['workflow', 'patient', data.patientId] })
+      toast.success('Lab result acknowledged.')
+    },
+  })
+}
+
 export function useUploadResult() {
   const queryClient = useQueryClient()
 

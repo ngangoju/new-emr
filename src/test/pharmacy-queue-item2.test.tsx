@@ -35,8 +35,16 @@ vi.mock('@/hooks/useDrugRequests', () => ({
     ],
     isLoading: false,
   }),
+  useApproveDrugRequest: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useFulfillDrugRequest: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useDenyDrugRequest: () => ({ mutateAsync: vi.fn(), isPending: false }),
+}))
+
+vi.mock('@/hooks/useInventory', () => ({
+  useInventoryEntries: () => ({
+    data: [],
+    isLoading: false,
+  }),
 }))
 
 describe('Item 2 pharmacy queue full prescription context', () => {

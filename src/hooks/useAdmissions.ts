@@ -7,6 +7,12 @@ import type {
     Ward,
     Bed,
     Admission,
+    AdmissionDischargePrep,
+    AdmissionMedicationReconciliation,
+    MedicationAdministration,
+    MedicationScheduleEntry,
+    CreateMedicationAdministrationDto,
+    SaveAdmissionMedicationReconciliationDto,
     CreateAdmissionDto,
     AdmissionFilters,
     TransferPatientDto
@@ -141,17 +147,9 @@ export function useDischargePatient() {
 
     return useMutation({
         mutationFn: async ({ id, dischargeNotes, overrideReason }: { id: string; dischargeNotes?: string; overrideReason?: string }) => {
-            if (overrideReason) {
-                const { data } = await api.post<Admission>(
-                    `/api/admissions/${id}/discharge`,
-                    { overrideReason }
-                )
-                return data
-            }
-
             const { data } = await api.patch<Admission>(
                 `/api/admissions/${id}/discharge`,
-                { dischargeNotes }
+                overrideReason ? { adminOverrideReason: overrideReason, dischargeNotes } : { dischargeNotes }
             )
             return data
         },
@@ -163,6 +161,110 @@ export function useDischargePatient() {
         },
         onError: (error: unknown) => {
             toast.error(getApiErrorMessage(error, 'Failed to discharge patient'))
+        }
+    })
+}
+
+export function useAdmissionDischargePrep(id: string) {
+    return useQuery({
+        queryKey: ['admissions', id, 'discharge-prep'],
+        queryFn: async () => {
+            const { data } = await api.get<AdmissionDischargePrep>(`/api/admissions/${id}/discharge-prep`)
+            return data
+        },
+        enabled: !!id,
+    })
+}
+
+export function useUpdateAdmissionDischargePrep(id: string) {
+    const queryClient = useQueryClient()
+
+    return useMutation({
+        mutationFn: async (dto: Partial<AdmissionDischargePrep>) => {
+            const { data } = await api.patch<AdmissionDischargePrep>(`/api/admissions/${id}/discharge-prep`, dto)
+            return data
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['admissions', id, 'discharge-prep'] })
+            queryClient.invalidateQueries({ queryKey: ['workflow', 'admission', id, 'discharge-readiness'] })
+            queryClient.invalidateQueries({ queryKey: ['admissions'] })
+            toast.success('Discharge preparation updated')
+        },
+        onError: (error: unknown) => {
+            toast.error(getApiErrorMessage(error, 'Failed to update discharge preparation'))
+        }
+    })
+}
+
+export function useAdmissionMedicationAdministrations(id: string) {
+    return useQuery({
+        queryKey: ['admissions', id, 'medication-administrations'],
+        queryFn: async () => {
+            const { data } = await api.get<MedicationAdministration[]>(`/api/admissions/${id}/medication-administrations`)
+            return data
+        },
+        enabled: !!id,
+    })
+}
+
+export function useAdmissionMedicationSchedule(id: string) {
+    return useQuery({
+        queryKey: ['admissions', id, 'medication-schedule'],
+        queryFn: async () => {
+            const { data } = await api.get<MedicationScheduleEntry[]>(`/api/admissions/${id}/medication-schedule`)
+            return data
+        },
+        enabled: !!id,
+    })
+}
+
+export function useAdmissionMedicationReconciliation(id: string) {
+    return useQuery({
+        queryKey: ['admissions', id, 'medication-reconciliation'],
+        queryFn: async () => {
+            const { data } = await api.get<AdmissionMedicationReconciliation>(`/api/admissions/${id}/medication-reconciliation`)
+            return data
+        },
+        enabled: !!id,
+    })
+}
+
+export function useSaveAdmissionMedicationReconciliation(id: string) {
+    const queryClient = useQueryClient()
+
+    return useMutation({
+        mutationFn: async (dto: SaveAdmissionMedicationReconciliationDto) => {
+            const { data } = await api.put<AdmissionMedicationReconciliation>(`/api/admissions/${id}/medication-reconciliation`, dto)
+            return data
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['admissions', id, 'medication-reconciliation'] })
+            queryClient.invalidateQueries({ queryKey: ['admissions', id, 'discharge-prep'] })
+            queryClient.invalidateQueries({ queryKey: ['workflow', 'admission', id, 'discharge-readiness'] })
+            toast.success('Medication reconciliation saved')
+        },
+        onError: (error: unknown) => {
+            toast.error(getApiErrorMessage(error, 'Failed to save medication reconciliation'))
+        }
+    })
+}
+
+export function useRecordMedicationAdministration(id: string) {
+    const queryClient = useQueryClient()
+
+    return useMutation({
+        mutationFn: async (dto: CreateMedicationAdministrationDto) => {
+            const { data } = await api.post<MedicationAdministration>(`/api/admissions/${id}/medication-administrations`, dto)
+            return data
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['admissions', id, 'medication-administrations'] })
+            queryClient.invalidateQueries({ queryKey: ['admissions', id, 'discharge-prep'] })
+            queryClient.invalidateQueries({ queryKey: ['workflow', 'admission', id, 'discharge-readiness'] })
+            toast.success('Medication administration recorded')
+        },
+        onError: (error: unknown) => {
+            toast.error(getApiErrorMessage(error, 'Failed to record medication administration'))
         }
     })
 }

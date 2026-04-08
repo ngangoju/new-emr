@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import { PharmacyDashboardStats, InventorySummary, StockAlert, PaginatedInventoryResponse } from '@/types/pharmacy';
+import { PharmacyDashboardStats, InventorySummary, StockAlert, PaginatedInventoryResponse, InventoryEntry } from '@/types/pharmacy';
 
 // Fallback data for when the API fails
 const fallbackDashboardStats: PharmacyDashboardStats = {
@@ -92,6 +92,21 @@ export function useInventoryCategories() {
         return data ?? [];
       } catch (error) {
         console.warn('Failed to fetch inventory categories:', error);
+        return [];
+      }
+    },
+  });
+}
+
+export function useInventoryEntries() {
+  return useQuery({
+    queryKey: ['inventory', 'entries'],
+    queryFn: async () => {
+      try {
+        const { data } = await api.get<InventoryEntry[]>('/api/pharmacy/inventory');
+        return data ?? [];
+      } catch (error) {
+        console.warn('Failed to fetch pharmacy inventory entries:', error);
         return [];
       }
     },

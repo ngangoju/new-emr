@@ -30,6 +30,7 @@ import { AdminDischargeOverrideModal } from './AdminDischargeOverrideModal'
 import { useInvoices } from '@/hooks/useInvoices'
 import { useCreatePayment } from '@/hooks/usePayments'
 import { useAdmissions, useDischargePatient } from '@/hooks/useAdmissions'
+import { useDischargeReadiness } from '@/hooks/useWorkflow'
 import { useRole } from '@/hooks/useRole'
 import { DoctorSelector } from '@/components/shared/DoctorSelector'
 import type { Invoice, PaymentMethod } from '@/types/billing'
@@ -111,12 +112,20 @@ export function BillingDashboard() {
   }
 
   const activeAdmission = patientAdmissions[0]
+  const { data: dischargeReadiness } = useDischargeReadiness(activeAdmission?.id || '')
   const patientDue = selectedInvoice?.patientDue ?? 0
   const isAdmin = isRole('ADMIN')
   const hasOutstandingBalance = patientDue > 0
   const canDischargeWithoutOverride = !hasOutstandingBalance
   const canAdminOverrideDischarge = hasOutstandingBalance && isAdmin
-  const shouldDisableDischarge = !activeAdmission || creating || dischargePatientMutation.isPending || (hasOutstandingBalance && !isAdmin)
+  const hasWorkflowBlockers = !!dischargeReadiness && dischargeReadiness.blockers.some(
+    (blocker) => blocker !== 'Outstanding billing balance remains',
+  )
+  const shouldDisableDischarge = !activeAdmission
+    || creating
+    || dischargePatientMutation.isPending
+    || hasWorkflowBlockers
+    || (hasOutstandingBalance && !isAdmin)
   const dischargeButtonLabel = canAdminOverrideDischarge ? 'Override & Discharge' : 'Discharge Patient'
   const nonAdminOutstandingTooltip = `Outstanding balance: ${patientDue} RWF — contact billing`
 
@@ -260,6 +269,18 @@ export function BillingDashboard() {
           </DialogHeader>
 
           <div className="space-y-4">
+            {dischargeReadiness && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 space-y-2">
+                <p className="text-sm font-semibold text-amber-900">Discharge readiness</p>
+                <p className="text-sm text-amber-800">Current owner: {dischargeReadiness.ownerRole.replaceAll('_', ' ')}</p>
+                {dischargeReadiness.blockers.length ? dischargeReadiness.blockers.map((blocker) => (
+                  <p key={blocker} className="text-sm text-amber-800">• {blocker}</p>
+                )) : (
+                  <p className="text-sm text-emerald-700">No workflow blockers.</p>
+                )}
+              </div>
+            )}
+
             <div>
               <Label>Payment Method</Label>
               <PaymentMethodsSelect value={paymentMethod} onChange={setPaymentMethod} />

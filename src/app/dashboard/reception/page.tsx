@@ -4,7 +4,7 @@ import React from 'react'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { UserPlus, Users, Calendar, Clock, Search, Activity } from 'lucide-react'
+import { UserPlus, Users, Calendar, Clock, Activity, ClipboardCheck } from 'lucide-react'
 import Link from 'next/link'
 import { useRole } from '@/hooks/useRole'
 import { useQueueStats } from '@/hooks/useQueue'
@@ -14,6 +14,7 @@ import { TriageQueue } from '@/components/clinical/TriageQueue'
 import { CheckInModal } from '@/components/shared/CheckInModal'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { ReceptionIntakeWorkspace } from '@/components/reception/ReceptionIntakeWorkspace'
 
 export default function ReceptionPage() {
   const router = useRouter()
@@ -51,21 +52,13 @@ export default function ReceptionPage() {
       bgColor: "bg-green-50"
     },
     {
-      title: "Admit Patient",
-      description: "Register a patient to a ward and bed",
-      icon: Activity,
+      title: "Pre-Admission Intake",
+      description: "Prepare bed request details for nursing review",
+      icon: ClipboardCheck,
       href: "/dashboard/reception/admit",
       color: "text-orange-600",
       bgColor: "bg-orange-50"
     },
-    {
-      title: "Patient Records",
-      description: "Search and view historic patient files",
-      icon: Search,
-      href: "/dashboard/doctor/patients",
-      color: "text-purple-600",
-      bgColor: "bg-purple-50"
-    }
   ]
 
   return (
@@ -97,6 +90,8 @@ export default function ReceptionPage() {
         open={isCheckInModalOpen} 
         onOpenChange={setIsCheckInModalOpen} 
       />
+
+      <ReceptionIntakeWorkspace />
 
       <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
         <div className="xl:col-span-3">
@@ -133,10 +128,10 @@ export default function ReceptionPage() {
               <Button
                 variant="outline"
                 className="w-full justify-start gap-3 h-12 border-slate-200"
-                onClick={() => router.push('/dashboard/doctor/patients')}
+                onClick={() => router.push('/dashboard/reception/admit')}
               >
-                <Users className="h-4 w-4 text-primary" />
-                Recent Patients
+                <ClipboardCheck className="h-4 w-4 text-primary" />
+                Pre-Admission Review
               </Button>
               <Button
                 variant="outline"
