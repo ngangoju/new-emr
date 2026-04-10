@@ -187,6 +187,9 @@ export function useUpdateAdmissionDischargePrep(id: string) {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['admissions', id, 'discharge-prep'] })
             queryClient.invalidateQueries({ queryKey: ['workflow', 'admission', id, 'discharge-readiness'] })
+            queryClient.invalidateQueries({ queryKey: ['workflow', 'admission', id, 'after-visit-summary'] })
+            queryClient.invalidateQueries({ queryKey: ['workflow', 'admission', id, 'after-visit-document'] })
+            queryClient.invalidateQueries({ queryKey: ['workflow', 'admission', id, 'after-visit-document-preview'] })
             queryClient.invalidateQueries({ queryKey: ['admissions'] })
             toast.success('Discharge preparation updated')
         },
@@ -241,6 +244,9 @@ export function useSaveAdmissionMedicationReconciliation(id: string) {
             queryClient.invalidateQueries({ queryKey: ['admissions', id, 'medication-reconciliation'] })
             queryClient.invalidateQueries({ queryKey: ['admissions', id, 'discharge-prep'] })
             queryClient.invalidateQueries({ queryKey: ['workflow', 'admission', id, 'discharge-readiness'] })
+            queryClient.invalidateQueries({ queryKey: ['workflow', 'admission', id, 'after-visit-summary'] })
+            queryClient.invalidateQueries({ queryKey: ['workflow', 'admission', id, 'after-visit-document'] })
+            queryClient.invalidateQueries({ queryKey: ['workflow', 'admission', id, 'after-visit-document-preview'] })
             toast.success('Medication reconciliation saved')
         },
         onError: (error: unknown) => {
@@ -261,6 +267,9 @@ export function useRecordMedicationAdministration(id: string) {
             queryClient.invalidateQueries({ queryKey: ['admissions', id, 'medication-administrations'] })
             queryClient.invalidateQueries({ queryKey: ['admissions', id, 'discharge-prep'] })
             queryClient.invalidateQueries({ queryKey: ['workflow', 'admission', id, 'discharge-readiness'] })
+            queryClient.invalidateQueries({ queryKey: ['workflow', 'admission', id, 'after-visit-summary'] })
+            queryClient.invalidateQueries({ queryKey: ['workflow', 'admission', id, 'after-visit-document'] })
+            queryClient.invalidateQueries({ queryKey: ['workflow', 'admission', id, 'after-visit-document-preview'] })
             toast.success('Medication administration recorded')
         },
         onError: (error: unknown) => {

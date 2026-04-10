@@ -12,6 +12,7 @@ import {
   useUpdateAdmissionDischargePrep
 } from '@/hooks/useAdmissions'
 import { useDischargeReadiness } from '@/hooks/useWorkflow'
+import { usePrintableAfterVisitDocument } from '@/hooks/useWorkflow'
 import {
   Table,
   TableBody,
@@ -29,6 +30,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  CompactModalShell,
 } from '@/components/ui/dialog'
 import {
   Select,
@@ -140,6 +142,7 @@ export function PatientAdmissionList() {
   const [revealedIds, setRevealedIds] = useState<RevealedIdsMap>({})
   const { data: dischargePrep } = useAdmissionDischargePrep(selectedAdmission?.id || '')
   const { data: dischargeReadiness } = useDischargeReadiness(selectedAdmission?.id || '')
+  const { data: prepPacketDocument } = usePrintableAfterVisitDocument(selectedAdmission?.id || '')
   const updateDischargePrep = useUpdateAdmissionDischargePrep(selectedAdmission?.id || '')
   const [medicationReconciliationCompleted, setMedicationReconciliationCompleted] = useState(false)
   const [patientEducationCompleted, setPatientEducationCompleted] = useState(false)
@@ -401,14 +404,16 @@ export function PatientAdmissionList() {
 
       {/* Discharge Dialog */}
       <Dialog open={dischargeDialogOpen} onOpenChange={setDischargeDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Discharge Patient</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to discharge this patient?
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
+        <CompactModalShell>
+          <div className="px-6 py-4 border-b">
+            <DialogHeader className="pr-8">
+              <DialogTitle>Discharge Patient</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to discharge this patient?
+              </DialogDescription>
+            </DialogHeader>
+          </div>
+          <div className="flex-1 overflow-y-auto p-6 space-y-4">
             {selectedAdmission && (
               <div className="bg-muted p-4 rounded-lg space-y-2">
                 <p><strong>Patient:</strong> {getAdmissionDisplayName(selectedAdmission)}</p>
@@ -427,7 +432,7 @@ export function PatientAdmissionList() {
               />
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="px-6 py-4 bg-slate-50 border-t shrink-0">
             <Button variant="outline" onClick={() => setDischargeDialogOpen(false)}>
               Cancel
             </Button>
@@ -446,7 +451,7 @@ export function PatientAdmissionList() {
               )}
             </Button>
           </DialogFooter>
-        </DialogContent>
+        </CompactModalShell>
       </Dialog>
 
       <MedicationAdministrationDialog
@@ -456,14 +461,16 @@ export function PatientAdmissionList() {
       />
 
       <Dialog open={prepDialogOpen} onOpenChange={setPrepDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Discharge Preparation</DialogTitle>
-            <DialogDescription>
-              Complete the nurse-owned discharge tasks before final discharge clearance.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
+        <CompactModalShell className="sm:!max-w-[700px]">
+          <div className="px-6 py-4 border-b">
+            <DialogHeader className="pr-8">
+              <DialogTitle>Discharge Preparation</DialogTitle>
+              <DialogDescription>
+                Complete the nurse-owned discharge tasks before final discharge clearance.
+              </DialogDescription>
+            </DialogHeader>
+          </div>
+          <div className="flex-1 overflow-y-auto p-6 space-y-4">
             <div className="flex items-center space-x-2">
               <Checkbox
                 id="med-rec"
@@ -521,8 +528,42 @@ export function PatientAdmissionList() {
                 </div>
               </div>
             )}
+            {prepPacketDocument ? (
+              <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Discharge Packet Awareness</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
+                    prepPacketDocument.medicationReconciledAt
+                      ? 'bg-emerald-100 text-emerald-800'
+                      : 'bg-amber-100 text-amber-800'
+                  }`}>
+                    {prepPacketDocument.medicationReconciledAt
+                      ? `Reconciliation complete${prepPacketDocument.medicationReconciledByName ? ` by ${prepPacketDocument.medicationReconciledByName}` : ''}`
+                      : 'Medication reconciliation incomplete'}
+                  </span>
+                  {prepPacketDocument.reissueRequired ? (
+                    <span className="inline-flex items-center rounded-full bg-amber-100 text-amber-800 px-2.5 py-0.5 text-[11px] font-semibold">
+                      Packet reissue pending — reception action needed
+                    </span>
+                  ) : prepPacketDocument.lastExportedVersion ? (
+                    <span className="inline-flex items-center rounded-full bg-emerald-100 text-emerald-800 px-2.5 py-0.5 text-[11px] font-semibold">
+                      Packet matches export v{prepPacketDocument.lastExportedVersion}
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center rounded-full bg-slate-100 text-slate-700 px-2.5 py-0.5 text-[11px] font-semibold">
+                      No packet exported yet
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {prepPacketDocument.reissueRequired
+                    ? 'Nursing edits saved here may generate additional packet changes. Reception will handle the reissue before checkout.'
+                    : 'If you add or change discharge instructions, reception may need to re-export the packet.'}
+                </p>
+              </div>
+            ) : null}
           </div>
-          <DialogFooter>
+          <DialogFooter className="px-6 py-4 bg-slate-50 border-t shrink-0">
             <Button variant="outline" onClick={() => setPrepDialogOpen(false)}>
               Cancel
             </Button>
@@ -530,19 +571,21 @@ export function PatientAdmissionList() {
               {updateDischargePrep.isPending ? 'Saving...' : 'Save Preparation'}
             </Button>
           </DialogFooter>
-        </DialogContent>
+        </CompactModalShell>
       </Dialog>
 
       {/* Transfer Dialog */}
       <Dialog open={transferDialogOpen} onOpenChange={setTransferDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Transfer Patient</DialogTitle>
-            <DialogDescription>
-              Transfer patient to a different bed or ward
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
+        <CompactModalShell>
+          <div className="px-6 py-4 border-b">
+            <DialogHeader className="pr-8">
+              <DialogTitle>Transfer Patient</DialogTitle>
+              <DialogDescription>
+                Transfer patient to a different bed or ward
+              </DialogDescription>
+            </DialogHeader>
+          </div>
+          <div className="flex-1 overflow-y-auto p-6 space-y-4">
             {selectedAdmission && (
               <div className="bg-muted p-4 rounded-lg space-y-2">
                 <p><strong>Patient:</strong> {getAdmissionDisplayName(selectedAdmission)}</p>
@@ -598,7 +641,7 @@ export function PatientAdmissionList() {
               />
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="px-6 py-4 bg-slate-50 border-t shrink-0">
             <Button variant="outline" onClick={() => setTransferDialogOpen(false)}>
               Cancel
             </Button>
@@ -616,7 +659,7 @@ export function PatientAdmissionList() {
               )}
             </Button>
           </DialogFooter>
-        </DialogContent>
+        </CompactModalShell>
       </Dialog>
     </>
   )

@@ -5,10 +5,13 @@ import toast from 'react-hot-toast'
 import { api } from '@/lib/api'
 import type { Admission } from '@/types/admission'
 import type {
+  AfterVisitDocumentAuditEntry,
+  AfterVisitDocumentPreview,
   DischargeReadiness,
   GeneratedAfterVisitSummary,
   PatientIntakeRecord,
   PrintableAfterVisitDocument,
+  SimulatePreviewInput,
   UpdatePatientIntakeRecordInput,
   VisitWorkflowStatus,
 } from '@/types/workflow'
@@ -114,16 +117,34 @@ export function usePrintableAfterVisitDocument(admissionId: string) {
   })
 }
 
+export function useAfterVisitDocumentHistory(admissionId: string) {
+  return useQuery({
+    queryKey: ['workflow', 'admission', admissionId, 'after-visit-document-history'],
+    queryFn: async () => {
+      const { data } = await api.get<AfterVisitDocumentAuditEntry[]>(
+        `/api/workflow/admissions/${admissionId}/after-visit-document/history`,
+      )
+      return data
+    },
+    enabled: !!admissionId,
+  })
+}
+
 export function useExportAfterVisitDocument(admissionId: string) {
+  const queryClient = useQueryClient()
+
   return useMutation({
-    mutationFn: async ({ format = 'html' }: { format?: ExportAfterVisitFormat } = {}) => {
+    mutationFn: async ({ format = 'html', reissueReason }: { format?: ExportAfterVisitFormat; reissueReason?: string } = {}) => {
       const { data } = await api.get<WorkflowExportResponse>(
         `/api/workflow/admissions/${admissionId}/after-visit-document/export`,
-        { params: { format } },
+        { params: { format, reissueReason } },
       )
       return data
     },
     onSuccess: (payload) => {
+      queryClient.invalidateQueries({ queryKey: ['workflow', 'admission', admissionId, 'after-visit-document'] })
+      queryClient.invalidateQueries({ queryKey: ['workflow', 'admission', admissionId, 'after-visit-document-preview'] })
+      queryClient.invalidateQueries({ queryKey: ['workflow', 'admission', admissionId, 'after-visit-document-history'] })
       const fileName = payload.fileName || `after-visit-document.${payload.format}`
       if (payload.format === 'pdf') {
         triggerBase64Download(fileName, payload.contentType, payload.download)
@@ -162,7 +183,44 @@ export function useApproveClinicalDischarge(admissionId: string) {
       queryClient.invalidateQueries({ queryKey: ['admissions', admissionId, 'discharge-prep'] })
       queryClient.invalidateQueries({ queryKey: ['admissions'] })
       queryClient.invalidateQueries({ queryKey: ['workflow', 'admission', admissionId] })
+      queryClient.invalidateQueries({ queryKey: ['workflow', 'admission', admissionId, 'after-visit-summary'] })
+      queryClient.invalidateQueries({ queryKey: ['workflow', 'admission', admissionId, 'after-visit-document'] })
+      queryClient.invalidateQueries({ queryKey: ['workflow', 'admission', admissionId, 'after-visit-document-preview'] })
       queryClient.invalidateQueries({ queryKey: ['workflow', 'patient', data.patientId] })
+    },
+  })
+}
+
+/**
+ * Fetches the persisted (non-mutating) preview of the discharge packet.
+ * Safe to call from nurse and reception \u2014 uses GET, never simulates unsaved state.
+ */
+export function useAfterVisitDocumentPreview(admissionId: string) {
+  return useQuery({
+    queryKey: ['workflow', 'admission', admissionId, 'after-visit-document-preview'],
+    queryFn: async () => {
+      const { data } = await api.get<AfterVisitDocumentPreview>(
+        `/api/workflow/admissions/${admissionId}/after-visit-document/preview`,
+      )
+      return data
+    },
+    enabled: !!admissionId,
+  })
+}
+
+/**
+ * Simulates the packet impact of unsaved reconciliation edits.
+ * Calls POST /preview \u2014 used only inside the doctor reconciliation modal.
+ * Preview responses are never written to audit records or export history.
+ */
+export function useSimulateAfterVisitDocumentPreview(admissionId: string) {
+  return useMutation({
+    mutationFn: async (input: SimulatePreviewInput) => {
+      const { data } = await api.post<AfterVisitDocumentPreview>(
+        `/api/workflow/admissions/${admissionId}/after-visit-document/preview`,
+        input,
+      )
+      return data
     },
   })
 }

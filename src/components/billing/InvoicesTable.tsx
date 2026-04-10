@@ -32,6 +32,7 @@ import { useState } from 'react'
 interface InvoicesTableProps {
   invoices: Invoice[]
   onProcessPayment?: (invoice: Invoice) => void
+  onViewDetails?: (invoice: Invoice) => void
   onInvoiceVoidRequested?: () => void
 }
 
@@ -41,6 +42,7 @@ const MIN_DISCOUNT_REASON_LENGTH = 8
 export function InvoicesTable({
   invoices,
   onProcessPayment,
+  onViewDetails,
   onInvoiceVoidRequested,
 }: InvoicesTableProps) {
   const { hasPermission, isRole, isLoading: roleLoading } = useRole()
@@ -249,7 +251,12 @@ export function InvoicesTable({
                     {format(invoice.createdAt, 'MMM dd, yyyy')}
                   </TableCell>
                   <TableCell className="space-x-2">
-                    <Button variant="outline" size="sm" title="View Details">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      title="View Details"
+                      onClick={() => onViewDetails?.(invoice)}
+                    >
                       <FileText className="h-4 w-4" />
                     </Button>
                     {statusValue !== 'PAID' && invoice.paymentStatus !== 'PAID' && (

@@ -61,8 +61,19 @@ export interface PrintableAfterVisitDocument {
   documentTitle: string
   documentReference: string
   generatedAt: string
+  documentVersion?: number | null
+  documentStatus?: string | null
+  lastExportedVersion?: number | null
+  lastExportedAt?: string | null
+  reissueRequired?: boolean | null
   hashAlgorithm?: string | null
   auditHash?: string | null
+  recordedHashAlgorithm?: string | null
+  recordedAuditHash?: string | null
+  recordedAt?: string | null
+  recordedByName?: string | null
+  recordedByRole?: string | null
+  auditHashMatchesRecorded?: boolean | null
   admittedAt?: string | null
   dischargedAt?: string | null
   clinicalDischargeApprovedAt?: string | null
@@ -85,6 +96,31 @@ export interface PrintableAfterVisitDocument {
   nursingDischargePreparedAt?: string | null
   medicationsToContinue: AfterVisitMedicationItem[]
   medicationsToStop: AfterVisitMedicationItem[]
+  changesSinceLastExport?: string[] | null
+  changeDetailsSinceLastExport?: AfterVisitDocumentChangeDetail[] | null
+}
+
+export interface AfterVisitDocumentChangeDetail {
+  label: string
+  previousValue: string
+  currentValue: string
+}
+
+export interface AfterVisitDocumentAuditEntry {
+  id: string
+  documentReference: string
+  versionNumber?: number | null
+  status?: string | null
+  exportFormat: string
+  fileName?: string | null
+  contentType: string
+  hashAlgorithm: string
+  auditHash: string
+  recordedAt: string
+  supersededAt?: string | null
+  reissueReason?: string | null
+  recordedByName?: string | null
+  recordedByRole?: string | null
 }
 
 export interface PatientIntakeRecord {
@@ -144,4 +180,64 @@ export interface DischargeReadiness {
   completedCheckpoints: string[]
   pendingCheckpoints: string[]
   blockers: string[]
+  /** Structured packet lifecycle state — present only when backend emits the new fields */
+  packetStatus?: PacketStatus
+  /** Structured handoff ownership state */
+  handoffStatus?: HandoffStatus
+  /** Typed role that currently owns the discharge handoff */
+  responsibleRole?: DischargeHandoffRole
+}
+
+// ---------------------------------------------------------------------------
+// Packet lifecycle + handoff status types
+// ---------------------------------------------------------------------------
+
+/** Whether the current chart content matches the latest exported discharge packet. */
+export type PacketStatus = 'NO_EXPORT_YET' | 'MATCHES_LAST_EXPORT' | 'REISSUE_REQUIRED'
+
+/** Which role is the active owner of the next discharge step. */
+export type HandoffStatus =
+  | 'DOCTOR_ACTION'
+  | 'NURSE_ACTION'
+  | 'BILLING_ACTION'
+  | 'RECEPTION_ACTION'
+  | 'READY_TO_REISSUE'
+  | 'READY_TO_PRINT'
+
+/** Discrete typed role used by the structured readiness/ownership model. */
+export type DischargeHandoffRole = 'DOCTOR' | 'NURSE' | 'CASHIER' | 'RECEPTIONIST' | 'COMPLETE'
+
+/** Whether the preview was computed from persisted chart state or a simulated unsaved payload. */
+export type PreviewMode = 'CURRENT_CHART' | 'SIMULATED_DRAFT'
+
+/** Whether the preview source was the last-saved reconciliation or an unsaved draft submitted by the caller. */
+export type PreviewSource = 'persisted' | 'unsaved_reconciliation'
+
+/**
+ * Wrapper DTO returned by the preview endpoints.
+ * `document` carries the full printable packet shape (identical to PrintableAfterVisitDocument),
+ * while the sibling fields carry preview-specific metadata that must never appear on an exported doc.
+ */
+export interface AfterVisitDocumentPreview {
+  document: PrintableAfterVisitDocument
+  previewMode: PreviewMode
+  previewSource: PreviewSource
+  packetStatus: PacketStatus
+  handoffStatus: HandoffStatus
+  responsibleRole: string
+  requiredActions: string[]
+}
+
+/**
+ * Input for the POST /preview endpoint that simulates the packet impact of
+ * unsaved reconciliation decisions before the doctor saves them.
+ */
+export interface SimulatePreviewInput {
+  reconciliationItems?: Array<{
+    drugRequestId: string
+    drugRequestItemIndex: number
+    decision: string
+    decisionNote?: string
+  }>
+  additionalInstructions?: string
 }

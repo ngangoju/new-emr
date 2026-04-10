@@ -25,6 +25,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  CompactModalShell,
 } from '@/components/ui/dialog'
 import {
   Select,
@@ -492,13 +493,16 @@ export function DrugRequestQueue() {
         open={!!selectedRequest && !showApproveDialog && !showFulfillDialog && !showDenyDialog}
         onOpenChange={() => setSelectedRequest(null)}
       >
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Drug Request Details</DialogTitle>
-            <DialogDescription>
-              Request ID: {selectedRequest?.id}
-            </DialogDescription>
-          </DialogHeader>
+        <CompactModalShell className="sm:!max-w-2xl">
+          <div className="px-6 py-4 border-b">
+            <DialogHeader className="pr-8">
+              <DialogTitle>Drug Request Details</DialogTitle>
+              <DialogDescription>
+                Request ID: {selectedRequest?.id}
+              </DialogDescription>
+            </DialogHeader>
+          </div>
+          <div className="flex-1 overflow-y-auto p-6">
           {selectedRequest && (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -648,7 +652,8 @@ export function DrugRequestQueue() {
               )}
             </div>
           )}
-        </DialogContent>
+          </div>
+        </CompactModalShell>
       </Dialog>
 
       {/* Approve Dialog */}
@@ -661,14 +666,16 @@ export function DrugRequestQueue() {
           }
         }}
       >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Verify Drug Request</DialogTitle>
-            <DialogDescription>
-              Confirm pharmacist review for {selectedRequest?.patientName} before dispensing.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
+        <CompactModalShell className="sm:!max-w-2xl">
+          <div className="px-6 py-4 border-b">
+            <DialogHeader className="pr-8">
+              <DialogTitle>Verify Drug Request</DialogTitle>
+              <DialogDescription>
+                Confirm pharmacist review for {selectedRequest?.patientName} before dispensing.
+              </DialogDescription>
+            </DialogHeader>
+          </div>
+          <div className="flex-1 overflow-y-auto p-6 space-y-4">
             {selectedRequestHasStockRisk ? (
               <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800">
                 <div className="flex items-start gap-2">
@@ -718,7 +725,7 @@ export function DrugRequestQueue() {
               />
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="px-6 py-4 bg-slate-50 border-t shrink-0">
             <Button
               variant="outline"
               onClick={() => {
@@ -736,7 +743,7 @@ export function DrugRequestQueue() {
               {approving ? 'Verifying...' : 'Confirm Verification'}
             </Button>
           </DialogFooter>
-        </DialogContent>
+        </CompactModalShell>
       </Dialog>
 
       {/* Fulfill Dialog */}
@@ -750,14 +757,16 @@ export function DrugRequestQueue() {
           }
         }}
       >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Fulfill Drug Request</DialogTitle>
-            <DialogDescription>
-              Mark this request as fulfilled for {selectedRequest?.patientName}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
+        <CompactModalShell className="sm:!max-w-2xl">
+          <div className="px-6 py-4 border-b">
+            <DialogHeader className="pr-8">
+              <DialogTitle>Fulfill Drug Request</DialogTitle>
+              <DialogDescription>
+                Mark this request as fulfilled for {selectedRequest?.patientName}
+              </DialogDescription>
+            </DialogHeader>
+          </div>
+          <div className="flex-1 overflow-y-auto p-6 space-y-4">
             {selectedRequestHasStockRisk ? (
               <div className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800">
                 <div className="flex items-start gap-2">
@@ -836,7 +845,7 @@ export function DrugRequestQueue() {
               />
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="px-6 py-4 bg-slate-50 border-t shrink-0">
             <Button
               variant="outline"
               onClick={() => {
@@ -854,7 +863,7 @@ export function DrugRequestQueue() {
               {fulfilling ? 'Processing...' : 'Confirm Fulfillment'}
             </Button>
           </DialogFooter>
-        </DialogContent>
+        </CompactModalShell>
       </Dialog>
 
       {/* Deny Dialog */}
@@ -868,14 +877,16 @@ export function DrugRequestQueue() {
           }
         }}
       >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Deny Drug Request</DialogTitle>
-            <DialogDescription>
-              Please provide a reason for denying this request for {selectedRequest?.patientName}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
+        <CompactModalShell>
+          <div className="px-6 py-4 border-b">
+            <DialogHeader className="pr-8">
+              <DialogTitle>Deny Drug Request</DialogTitle>
+              <DialogDescription>
+                Please provide a reason for denying this request for {selectedRequest?.patientName}
+              </DialogDescription>
+            </DialogHeader>
+          </div>
+          <div className="flex-1 overflow-y-auto p-6 space-y-4">
             <div>
               <Label>Items Requested</Label>
               <Table>
@@ -909,7 +920,7 @@ export function DrugRequestQueue() {
               />
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="px-6 py-4 bg-slate-50 border-t shrink-0">
             <Button
               variant="outline"
               onClick={() => {
@@ -928,7 +939,7 @@ export function DrugRequestQueue() {
               {denying ? 'Processing...' : 'Confirm Denial'}
             </Button>
           </DialogFooter>
-        </DialogContent>
+        </CompactModalShell>
       </Dialog>
     </div>
   )

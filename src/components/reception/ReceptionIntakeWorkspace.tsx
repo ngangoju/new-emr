@@ -16,6 +16,7 @@ import { WorkflowStatusCard } from '@/components/workflow/WorkflowStatusCard'
 import {
   useGeneratedAfterVisitSummary,
   usePatientIntake,
+  usePrintableAfterVisitDocument,
   useUpsertPatientIntake,
   useWorkflowStatus,
 } from '@/hooks/useWorkflow'
@@ -30,6 +31,7 @@ export function ReceptionIntakeWorkspace() {
   const upsertIntake = useUpsertPatientIntake(patientId)
   const activeAdmissionId = workflowStatus?.activeAdmissionId || ''
   const { data: generatedPacket, isLoading: generatedPacketLoading } = useGeneratedAfterVisitSummary(activeAdmissionId)
+  const { data: receptionPacketDocument } = usePrintableAfterVisitDocument(activeAdmissionId)
 
   const [eligibilityStatus, setEligibilityStatus] = useState('PENDING')
   const [eligibilityNotes, setEligibilityNotes] = useState('')
@@ -302,6 +304,40 @@ export function ReceptionIntakeWorkspace() {
                   {packetSourceAdmissionId === activeAdmissionId ? 'Refresh From Clinical Packet' : 'Import Clinical Packet'}
                 </Button>
               </div>
+
+              {receptionPacketDocument ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Packet Status</span>
+                  {receptionPacketDocument.lastExportedVersion ? (
+                    receptionPacketDocument.reissueRequired ? (
+                      <span className="inline-flex items-center rounded-full bg-amber-100 text-amber-800 px-2.5 py-0.5 text-[11px] font-semibold">
+                        Reissue pending — changed since v{receptionPacketDocument.lastExportedVersion}
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center rounded-full bg-emerald-100 text-emerald-800 px-2.5 py-0.5 text-[11px] font-semibold">
+                        Export v{receptionPacketDocument.lastExportedVersion} is current
+                      </span>
+                    )
+                  ) : receptionPacketDocument.documentVersion ? (
+                    <span className="inline-flex items-center rounded-full bg-blue-100 text-blue-800 px-2.5 py-0.5 text-[11px] font-semibold">
+                      Draft ready — no export yet
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center rounded-full bg-slate-100 text-slate-700 px-2.5 py-0.5 text-[11px] font-semibold">
+                      No packet generated
+                    </span>
+                  )}
+                  {intake?.intakeStatus === 'CHECKED_OUT' ? (
+                    <span className="inline-flex items-center rounded-full bg-emerald-100 text-emerald-800 px-2.5 py-0.5 text-[11px] font-semibold">
+                      Checkout complete
+                    </span>
+                  ) : intake?.checkedInAt ? (
+                    <span className="inline-flex items-center rounded-full bg-slate-100 text-slate-700 px-2.5 py-0.5 text-[11px] font-semibold">
+                      Checkout pending
+                    </span>
+                  ) : null}
+                </div>
+              ) : null}
 
               {generatedPacket ? (
                 <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">

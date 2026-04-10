@@ -9,6 +9,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  CompactModalShell,
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -61,15 +62,17 @@ export function AdminDischargeOverrideModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Admin Discharge Override</DialogTitle>
-          <DialogDescription>
-            Outstanding balance: <span className="font-semibold">{humanReadableOutstandingAmount}</span>
-          </DialogDescription>
-        </DialogHeader>
+      <CompactModalShell>
+        <div className="px-6 py-4 border-b">
+          <DialogHeader className="pr-8">
+            <DialogTitle>Admin Discharge Override</DialogTitle>
+            <DialogDescription>
+              Outstanding balance: <span className="font-semibold">{humanReadableOutstandingAmount}</span>
+            </DialogDescription>
+          </DialogHeader>
+        </div>
 
-        <div className="space-y-2">
+        <div className="flex-1 overflow-y-auto p-6 space-y-2">
           <Label htmlFor="admin-discharge-override-reason">Override Reason</Label>
           <Textarea
             id="admin-discharge-override-reason"
@@ -83,7 +86,7 @@ export function AdminDischargeOverrideModal({
           </p>
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="px-6 py-4 bg-slate-50 border-t shrink-0">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={dischargePatientMutation.isPending}>
             Cancel
           </Button>
@@ -91,7 +94,7 @@ export function AdminDischargeOverrideModal({
             {dischargePatientMutation.isPending ? 'Submitting Override...' : 'Confirm Override & Discharge'}
           </Button>
         </DialogFooter>
-      </DialogContent>
+      </CompactModalShell>
     </Dialog>
   )
 }

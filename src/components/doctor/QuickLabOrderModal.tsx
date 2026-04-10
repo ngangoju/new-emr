@@ -14,6 +14,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  CompactModalShell,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -99,48 +100,51 @@ export function QuickLabOrderModal({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-2xl">
-        <DialogHeader>
-          <div className="flex items-center justify-between gap-3">
-            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-              <FlaskConical className="mr-1 h-3 w-3" />
-              Quick Lab Order
-            </Badge>
-            {patientName ? (
-              <span className="text-sm text-muted-foreground">
-                Patient: <span className="font-medium">{patientName}</span>
-              </span>
-            ) : null}
-          </div>
-          <DialogTitle>Order Lab Tests</DialogTitle>
-          <DialogDescription>
-            Select common panels or enter custom tests without leaving the treatment workspace.
-          </DialogDescription>
-        </DialogHeader>
+      <CompactModalShell className="sm:!max-w-2xl">
+        <div className="px-6 py-4 border-b">
+          <DialogHeader className="pr-8">
+            <div className="flex items-center justify-between gap-3 mb-2">
+              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                <FlaskConical className="mr-1 h-3 w-3" />
+                Quick Lab Order
+              </Badge>
+              {patientName ? (
+                <span className="text-sm text-muted-foreground">
+                  Patient: <span className="font-medium">{patientName}</span>
+                </span>
+              ) : null}
+            </div>
+            <DialogTitle>Order Lab Tests</DialogTitle>
+            <DialogDescription>
+              Select common panels or enter custom tests without leaving the treatment workspace.
+            </DialogDescription>
+          </DialogHeader>
+        </div>
 
-        <div className="space-y-5 py-2">
+        <div className="flex-1 overflow-y-auto p-6 space-y-5 bg-slate-50/50">
           <div className="space-y-3">
-            <Label className="text-sm font-semibold">Common Tests</Label>
+            <Label className="text-sm font-semibold text-slate-700">Common Tests</Label>
             <div className="grid gap-3 sm:grid-cols-2">
               {COMMON_LAB_TESTS.map((test) => (
-                <label key={test} className="flex items-start gap-3 rounded-lg border p-3 text-sm">
+                <label key={test} className="flex items-start gap-3 rounded-xl border bg-white p-3.5 text-sm shadow-sm hover:border-slate-300 transition-colors cursor-pointer">
                   <Checkbox
                     checked={selectedTests.includes(test)}
                     onCheckedChange={() => toggleTest(test)}
                     className="mt-0.5"
                   />
-                  <span>{test}</span>
+                  <span className="font-medium text-slate-700">{test}</span>
                 </label>
               ))}
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="custom-tests" className="text-sm font-semibold">
+            <Label htmlFor="custom-tests" className="text-sm font-semibold text-slate-700">
               Additional Tests
             </Label>
             <Input
               id="custom-tests"
+              className="bg-white"
               placeholder="Enter custom tests, separated by commas"
               value={customTests}
               onChange={(event) => setCustomTests(event.target.value)}
@@ -148,7 +152,7 @@ export function QuickLabOrderModal({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="clinical-note" className="text-sm font-semibold">
+            <Label htmlFor="clinical-note" className="text-sm font-semibold text-slate-700">
               Clinical Indication
             </Label>
             <Textarea
@@ -156,27 +160,27 @@ export function QuickLabOrderModal({
               value={clinicalNote}
               onChange={(event) => setClinicalNote(event.target.value)}
               placeholder="Optional context for the lab team and downstream clinical review."
-              className="min-h-24"
+              className="min-h-24 bg-white"
             />
           </div>
 
-          <div className="rounded-lg border bg-muted/30 p-3">
-            <p className="text-sm font-medium">Order Preview</p>
-            <p className="mt-1 text-sm text-muted-foreground">
+          <div className="rounded-xl border bg-white p-4 shadow-sm">
+            <p className="text-sm font-semibold text-slate-900">Order Preview</p>
+            <p className="mt-1.5 text-sm text-slate-600 leading-relaxed">
               {allTests.length ? allTests.join(', ') : 'No tests selected yet.'}
             </p>
           </div>
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="px-6 py-4 bg-slate-50 border-t shrink-0">
           <Button variant="outline" onClick={() => handleClose(false)} disabled={createLabOrder.isPending}>
             Cancel
           </Button>
-          <Button onClick={handleSubmit} disabled={createLabOrder.isPending || allTests.length === 0}>
+          <Button onClick={handleSubmit} disabled={createLabOrder.isPending || allTests.length === 0} className="bg-blue-600 hover:bg-blue-700">
             {createLabOrder.isPending ? 'Placing Order...' : 'Place Lab Order'}
           </Button>
         </DialogFooter>
-      </DialogContent>
+      </CompactModalShell>
     </Dialog>
   )
 }

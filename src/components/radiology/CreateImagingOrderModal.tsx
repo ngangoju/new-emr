@@ -13,6 +13,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  CompactModalShell,
 } from '@/components/ui/dialog'
 import {
   Select,
@@ -117,26 +118,28 @@ export function CreateImagingOrderModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px]">
-        <DialogHeader>
-          <div className="flex items-center justify-between mb-2">
-            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-              <ImageIcon className="h-3 w-3 mr-1" />
-              New Imaging Order
-            </Badge>
-            {patientName && (
-              <span className="text-sm text-muted-foreground">
-                Patient: <span className="font-medium">{patientName}</span>
-              </span>
-            )}
-          </div>
-          <DialogTitle className="text-xl font-bold">Order Imaging Study</DialogTitle>
-          <DialogDescription>
-            Specify the imaging modality, anatomical region, and clinical indication for the radiologist.
-          </DialogDescription>
-        </DialogHeader>
+      <CompactModalShell className="sm:!max-w-[600px]">
+        <div className="px-6 py-4 border-b">
+          <DialogHeader className="pr-8">
+            <div className="flex items-center justify-between mb-2">
+              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                <ImageIcon className="h-3 w-3 mr-1" />
+                New Imaging Order
+              </Badge>
+              {patientName && (
+                <span className="text-sm text-muted-foreground">
+                  Patient: <span className="font-medium">{patientName}</span>
+                </span>
+              )}
+            </div>
+            <DialogTitle className="text-xl font-bold">Order Imaging Study</DialogTitle>
+            <DialogDescription>
+              Specify the imaging modality, anatomical region, and clinical indication for the radiologist.
+            </DialogDescription>
+          </DialogHeader>
+        </div>
 
-        <div className="space-y-5 py-4">
+        <div className="flex-1 overflow-y-auto p-6 space-y-5 bg-slate-50/50">
           {/* Imaging Type Selection */}
           <div className="space-y-2">
             <Label htmlFor="imaging-type" className="font-semibold text-sm flex items-center gap-2">
@@ -162,12 +165,12 @@ export function CreateImagingOrderModal({
 
           {/* Body Part */}
           <div className="space-y-2">
-            <Label htmlFor="body-part" className="font-semibold text-sm">
+            <Label htmlFor="body-part" className="font-semibold text-sm text-slate-700">
               Anatomical Region
             </Label>
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2 min-w-0">
               <Select value={bodyPart} onValueChange={setBodyPart}>
-                <SelectTrigger id="body-part" className="flex-1">
+                <SelectTrigger id="body-part" className="flex-1 min-w-0 bg-white">
                   <SelectValue placeholder="Select or type body part..." />
                 </SelectTrigger>
                 <SelectContent>
@@ -182,7 +185,7 @@ export function CreateImagingOrderModal({
                 placeholder="Or type custom..." 
                 value={bodyPart}
                 onChange={(e) => setBodyPart(e.target.value)}
-                className="flex-1"
+                className="flex-1 min-w-0 bg-white"
               />
             </div>
           </div>
@@ -244,7 +247,7 @@ export function CreateImagingOrderModal({
           </div>
         </div>
 
-        <DialogFooter className="gap-2">
+        <DialogFooter className="px-6 py-4 bg-slate-50 border-t shrink-0 flex-row justify-end space-x-2">
           <Button variant="outline" onClick={handleCancel} disabled={isSubmitting}>
             Cancel
           </Button>
@@ -256,7 +259,7 @@ export function CreateImagingOrderModal({
             {isSubmitting ? 'Creating Order...' : 'Create Imaging Order'}
           </Button>
         </DialogFooter>
-      </DialogContent>
+      </CompactModalShell>
     </Dialog>
   )
 }

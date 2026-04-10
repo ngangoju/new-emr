@@ -12,6 +12,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  CompactModalShell,
 } from '@/components/ui/dialog'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -242,33 +243,37 @@ export function LabDashboard() {
       </div>
 
       <Dialog open={Boolean(selectedOrder)} onOpenChange={(open) => !open && setSelectedOrder(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Structured Result Entry</DialogTitle>
-            <DialogDescription>
-              {selectedOrder
-                ? `Order ${selectedOrder.id} · ${selectedOrder.patientName} · ${selectedOrder.testType}`
-                : 'Structured result entry'}
-            </DialogDescription>
-          </DialogHeader>
+        <CompactModalShell className="sm:!max-w-[600px]">
+          <div className="px-6 py-4 border-b">
+            <DialogHeader className="pr-8">
+              <DialogTitle>Structured Result Entry</DialogTitle>
+              <DialogDescription>
+                {selectedOrder
+                  ? `Order ${selectedOrder.id} · ${selectedOrder.patientName} · ${selectedOrder.testType}`
+                  : 'Structured result entry'}
+              </DialogDescription>
+            </DialogHeader>
+          </div>
 
-          {selectedOrder && (
-            <LabTestPanelForm
-              panelId={selectedOrder.panelId || selectedOrder.testType}
-              values={panelValues}
-              onValuesChange={setPanelValues}
-              onCriticalParametersChange={(codes) => {
-                setCriticalParameters(
-                  codes.map((code) => ({
-                    code,
-                    name: code,
-                  })),
-                )
-              }}
-            />
-          )}
+          <div className="flex-1 overflow-y-auto p-6">
+            {selectedOrder && (
+              <LabTestPanelForm
+                panelId={selectedOrder.panelId || selectedOrder.testType}
+                values={panelValues}
+                onValuesChange={setPanelValues}
+                onCriticalParametersChange={(codes) => {
+                  setCriticalParameters(
+                    codes.map((code) => ({
+                      code,
+                      name: code,
+                    })),
+                  )
+                }}
+              />
+            )}
+          </div>
 
-          <DialogFooter>
+          <DialogFooter className="px-6 py-4 bg-slate-50 border-t shrink-0">
             <Button variant="outline" onClick={() => setSelectedOrder(null)}>
               Cancel
             </Button>
@@ -276,7 +281,7 @@ export function LabDashboard() {
               Finalize Result
             </Button>
           </DialogFooter>
-        </DialogContent>
+        </CompactModalShell>
       </Dialog>
 
       {selectedOrder && (
@@ -296,14 +301,16 @@ export function LabDashboard() {
       )}
 
       <Dialog open={Boolean(rejectingOrder)} onOpenChange={(open) => !open && setRejectingOrder(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Reject Sample</DialogTitle>
-            <DialogDescription>
-              Enter a mandatory reason. This sends a notification to the ordering nurse.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-2">
+        <CompactModalShell>
+          <div className="px-6 py-4 border-b">
+            <DialogHeader className="pr-8">
+              <DialogTitle>Reject Sample</DialogTitle>
+              <DialogDescription>
+                Enter a mandatory reason. This sends a notification to the ordering nurse.
+              </DialogDescription>
+            </DialogHeader>
+          </div>
+          <div className="flex-1 overflow-y-auto p-6 space-y-2">
             <Label htmlFor="reject-reason">Reason</Label>
             <Input
               id="reject-reason"
@@ -312,7 +319,7 @@ export function LabDashboard() {
               placeholder="e.g. Hemolyzed specimen"
             />
           </div>
-          <DialogFooter>
+          <DialogFooter className="px-6 py-4 bg-slate-50 border-t shrink-0">
             <Button variant="outline" onClick={() => setRejectingOrder(null)}>
               Cancel
             </Button>
@@ -320,7 +327,7 @@ export function LabDashboard() {
               {rejecting ? 'Rejecting...' : 'Confirm Reject'}
             </Button>
           </DialogFooter>
-        </DialogContent>
+        </CompactModalShell>
       </Dialog>
     </>
   )

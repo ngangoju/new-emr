@@ -11,6 +11,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  CompactModalShell,
 } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
 import { useUpdateConsultation } from '@/hooks/api/useConsultations'
@@ -62,22 +63,26 @@ export function ClinicalAddendumModal({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-xl">
-        <DialogHeader>
-          <DialogTitle>Add Clinical Addendum</DialogTitle>
-          <DialogDescription>
-            Record a handoff note, shift update, or clarifying addendum on the current encounter.
-          </DialogDescription>
-        </DialogHeader>
+      <CompactModalShell className="sm:!max-w-xl">
+        <div className="px-6 py-4 border-b">
+          <DialogHeader className="pr-8">
+            <DialogTitle>Add Clinical Addendum</DialogTitle>
+            <DialogDescription>
+              Record a handoff note, shift update, or clarifying addendum on the current encounter.
+            </DialogDescription>
+          </DialogHeader>
+        </div>
 
-        <Textarea
-          value={note}
-          onChange={(event) => setNote(event.target.value)}
-          placeholder="Document the update you want the next clinician to see."
-          className="min-h-40"
-        />
+        <div className="p-6">
+          <Textarea
+            value={note}
+            onChange={(event) => setNote(event.target.value)}
+            placeholder="Document the update you want the next clinician to see."
+            className="min-h-40 bg-white"
+          />
+        </div>
 
-        <DialogFooter>
+        <DialogFooter className="px-6 py-4 bg-slate-50 border-t shrink-0">
           <Button variant="outline" onClick={() => handleClose(false)} disabled={updateConsultation.isPending}>
             Cancel
           </Button>
@@ -85,7 +90,7 @@ export function ClinicalAddendumModal({
             {updateConsultation.isPending ? 'Saving...' : 'Save Addendum'}
           </Button>
         </DialogFooter>
-      </DialogContent>
+      </CompactModalShell>
     </Dialog>
   )
 }

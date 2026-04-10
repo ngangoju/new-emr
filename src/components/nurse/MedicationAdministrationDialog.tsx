@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react'
 import { format, isToday, parseISO } from 'date-fns'
-import { AlertCircle, ClipboardList, Pill, Syringe, TimerReset } from 'lucide-react'
+import { AlertCircle, CheckCircle2, Clock, ClipboardList, Pill, ScanLine, Syringe, TimerReset, X } from 'lucide-react'
 import {
   useAdmissionMedicationAdministrations,
   useAdmissionMedicationSchedule,
@@ -18,13 +18,12 @@ import type {
 import type { DrugRequest, DrugRequestItem } from '@/types/pharmacy'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Dialog,
-  DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  WorkspaceModalShell,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -258,8 +257,8 @@ export function MedicationAdministrationDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl">
-        <DialogHeader>
+      <WorkspaceModalShell>
+        <DialogHeader className="px-6 py-4 border-b pr-14">
           <DialogTitle className="flex items-center gap-2">
             <Syringe className="h-5 w-5" />
             Medication Administration Record
@@ -269,338 +268,387 @@ export function MedicationAdministrationDialog({
           </DialogDescription>
         </DialogHeader>
 
+        {/* ─── Scrollable Body ─── */}
         {admission && (
-          <div className="grid gap-3 md:grid-cols-4">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardDescription>Overdue Doses</CardDescription>
-                <CardTitle className="text-2xl">{scheduleCounts.overdue}</CardTitle>
-              </CardHeader>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardDescription>Due Now</CardDescription>
-                <CardTitle className="text-2xl">{scheduleCounts.due}</CardTitle>
-              </CardHeader>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardDescription>Administered Today</CardDescription>
-                <CardTitle className="text-2xl">{administeredTodayCount}</CardTitle>
-              </CardHeader>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardDescription>Waiting On Pharmacy</CardDescription>
-                <CardTitle className="text-2xl">{waitingPharmacyCount}</CardTitle>
-              </CardHeader>
-            </Card>
-          </div>
-        )}
+          <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-6 bg-slate-50/50">
 
-        <div className="grid gap-4 lg:grid-cols-[1.2fr_1fr]">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Document Medication Event</CardTitle>
-              <CardDescription>
-                Record each administration, refusal, hold, or missed dose against the dispensed pharmacy line.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2 rounded-lg border bg-blue-50/50 p-4 border-blue-200">
-                <div className="space-y-2">
-                  <Label htmlFor="scanned-patient" className="text-blue-900 font-semibold flex items-center gap-2">
-                    Patient Wristband Scan
-                  </Label>
-                  <Input 
-                    id="scanned-patient"
-                    placeholder="Scan patient wristband..."
-                    value={scannedPatientBarcode}
-                    onChange={e => setScannedPatientBarcode(e.target.value)}
-                    className="border-blue-300 focus-visible:ring-blue-500"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="scanned-medication" className="text-blue-900 font-semibold flex items-center gap-2">
-                    Medication Barcode Scan
-                  </Label>
-                  <Input 
-                    id="scanned-medication"
-                    placeholder="Scan dispensed medication batch..."
-                    value={scannedMedicationBarcode}
-                    onChange={e => setScannedMedicationBarcode(e.target.value)}
-                    className="border-blue-300 focus-visible:ring-blue-500"
-                  />
-                </div>
+            {/* ── KPI Stats Row ── */}
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+              <div className="rounded-xl border bg-white p-4 shadow-sm">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Overdue</p>
+                <p className="mt-2 text-3xl font-bold tabular-nums text-foreground">{scheduleCounts.overdue}</p>
               </div>
+              <div className="rounded-xl border bg-white p-4 shadow-sm">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Due Now</p>
+                <p className="mt-2 text-3xl font-bold tabular-nums text-foreground">{scheduleCounts.due}</p>
+              </div>
+              <div className="rounded-xl border bg-white p-4 shadow-sm">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Given Today</p>
+                <p className="mt-2 text-3xl font-bold tabular-nums text-foreground">{administeredTodayCount}</p>
+              </div>
+              <div className="rounded-xl border bg-white p-4 shadow-sm">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Pharmacy Queue</p>
+                <p className="mt-2 text-3xl font-bold tabular-nums text-foreground">{waitingPharmacyCount}</p>
+              </div>
+            </div>
 
-              {medicationOptions.length === 0 ? (
-                <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
-                  No dispensed medications are ready for this patient yet. Pharmacy needs to fulfill the order first.
-                </div>
-              ) : (
-                <>
-                  <div className="space-y-2">
-                    <Label htmlFor="medication-line">Medication Line</Label>
-                    <Select value={selectedMedicationKey} onValueChange={setSelectedMedicationKey}>
-                      <SelectTrigger id="medication-line">
-                        <SelectValue placeholder="Select a dispensed medication line" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {medicationOptions.map((option) => (
-                          <SelectItem key={option.key} value={option.key}>
-                            {option.item.drugName} · {option.item.dose || 'No dose'} · {option.item.route || 'Route N/A'}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+            {/* ── Two Column Layout ── */}
+            <div className="grid gap-6 lg:grid-cols-[1.25fr_1fr]">
+
+              {/* ── Left: Documentation Form ── */}
+              <div className="flex flex-col gap-6 min-w-0">
+
+                {/* BCMA Barcode Scanning */}
+                <div className="rounded-xl border bg-card p-5 shadow-sm">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                      <ScanLine className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-card-foreground">Barcode Verification</p>
+                      <p className="text-[11px] text-muted-foreground">Scan patient wristband and medication barcode before recording</p>
+                    </div>
                   </div>
-
-                  {selectedMedication && (
-                    <div className="rounded-lg border bg-muted/30 p-3 text-sm">
-                      <div className="font-medium">{selectedMedication.item.drugName}</div>
-                      <div className="mt-1 text-muted-foreground">
-                        {selectedMedication.item.dose || 'Dose not documented'} · {selectedMedication.item.route || 'Route not documented'} · {selectedMedication.item.frequency || 'Frequency not documented'}
-                      </div>
-                      <div className="mt-2 text-xs text-muted-foreground">
-                        Dispensed from request {selectedMedication.request.requestedAtFormatted || formatDateTime(selectedMedication.request.requestedAt)}
-                      </div>
-                      {selectedScheduleEntry && (
-                        <div className="mt-3 flex flex-wrap items-center gap-2">
-                          <Badge variant="outline" className={cn(getScheduleBadgeClass(selectedScheduleEntry.taskStatus))}>
-                            {SCHEDULE_LABELS[selectedScheduleEntry.taskStatus]}
-                          </Badge>
-                          {selectedScheduleEntry.nextDueAt && (
-                            <span className="text-xs text-muted-foreground">
-                              Next dose {formatDateTime(selectedScheduleEntry.nextDueAt)}
-                            </span>
-                          )}
-                          {selectedScheduleEntry.remainingDoseCount != null && (
-                            <span className="text-xs text-muted-foreground">
-                              {selectedScheduleEntry.remainingDoseCount} dose(s) remaining
-                            </span>
-                          )}
-                        </div>
-                      )}
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="scanned-patient" className="text-xs font-semibold">
+                        Patient Wristband
+                      </Label>
+                      <Input 
+                        id="scanned-patient"
+                        placeholder="Scan wristband..."
+                        value={scannedPatientBarcode}
+                        onChange={e => setScannedPatientBarcode(e.target.value)}
+                        className="h-9 text-sm"
+                      />
                     </div>
-                  )}
-
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="administration-status">Outcome</Label>
-                      <Select
-                        value={administrationStatus}
-                        onValueChange={(value) => setAdministrationStatus(value as MedicationAdministrationStatus)}
-                      >
-                        <SelectTrigger id="administration-status">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {Object.entries(OUTCOME_LABELS).map(([value, label]) => (
-                            <SelectItem key={value} value={value}>
-                              {label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="quantity">Quantity</Label>
-                      <Input
-                        id="quantity"
-                        type="number"
-                        min={1}
-                        value={quantity}
-                        onChange={(event) => setQuantity(Math.max(Number(event.target.value) || 1, 1))}
+                    <div className="space-y-1.5">
+                      <Label htmlFor="scanned-medication" className="text-xs font-semibold">
+                        Medication Barcode
+                      </Label>
+                      <Input 
+                        id="scanned-medication"
+                        placeholder="Scan medication..."
+                        value={scannedMedicationBarcode}
+                        onChange={e => setScannedMedicationBarcode(e.target.value)}
+                        className="h-9 text-sm"
                       />
                     </div>
                   </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="administered-at">Administration Time</Label>
-                    <Input
-                      id="administered-at"
-                      type="datetime-local"
-                      value={administeredAt}
-                      onChange={(event) => setAdministeredAt(event.target.value)}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="reason">
-                      Reason {administrationStatus !== 'administered' ? '(required)' : '(optional)'}
-                    </Label>
-                    <Textarea
-                      id="reason"
-                      value={reason}
-                      onChange={(event) => setReason(event.target.value)}
-                      placeholder={
-                        administrationStatus === 'administered'
-                          ? 'Optional explanation or bedside context...'
-                          : 'Explain why this dose was held, refused, or missed...'
-                      }
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="notes">Nursing Notes</Label>
-                    <Textarea
-                      id="notes"
-                      value={notes}
-                      onChange={(event) => setNotes(event.target.value)}
-                      placeholder="Patient response, education given, follow-up plan, shift handoff details..."
-                    />
-                  </div>
-
-                  <Button
-                    className="w-full"
-                    size="lg"
-                    onClick={handleRecord}
-                    disabled={
-                      recordAdministration.isPending
-                      || !selectedMedication
-                      || (administrationStatus !== 'administered' && !reason.trim())
-                      || (administrationStatus === 'administered' && (!scannedPatientBarcode || !scannedMedicationBarcode))
-                    }
-                  >
-                    {recordAdministration.isPending ? 'Recording...' : 'Record Medication Event'}
-                  </Button>
-                  
-                  {administrationStatus === 'administered' && (!scannedPatientBarcode || !scannedMedicationBarcode) && (
-                     <div className="text-sm text-center text-amber-600 font-medium">
-                       Patient and medication barcodes must be scanned to document an administration.
-                     </div>
-                  )}
-                </>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Dose Queue</CardTitle>
-              <CardDescription>
-                Due and upcoming medication tasks generated from the dispensed order schedule.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {sortedSchedule.length === 0 ? (
-                <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
-                  No medication schedule is available for this admission yet.
                 </div>
-              ) : (
-                <div className="max-h-[220px] space-y-3 overflow-y-auto pr-1">
-                  {sortedSchedule.map((entry) => {
-                    const entryKey = `${entry.drugRequestId}:${entry.drugRequestItemIndex}`
-                    return (
-                    <button
-                      key={entryKey}
-                      type="button"
-                      onClick={() => setSelectedMedicationKey(entryKey)}
-                      className={cn(
-                        'w-full rounded-lg border p-3 text-left transition-colors hover:bg-muted/40',
-                        selectedMedicationKey === entryKey && 'border-primary bg-primary/5'
-                      )}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <div className="font-medium">{entry.drugName}</div>
-                          <div className="text-sm text-muted-foreground">
-                            {[entry.dose, entry.route, entry.frequency].filter(Boolean).join(' · ') || 'Legacy medication line'}
-                          </div>
-                        </div>
-                        <Badge variant="outline" className={cn(getScheduleBadgeClass(entry.taskStatus))}>
-                          {SCHEDULE_LABELS[entry.taskStatus]}
-                        </Badge>
-                      </div>
-                      <div className="mt-3 grid gap-2 text-sm text-muted-foreground">
-                        {entry.nextDueAt && (
-                          <div className="flex items-center gap-2">
-                            <TimerReset className="h-4 w-4" />
-                            <span>{formatDateTime(entry.nextDueAt)}</span>
-                          </div>
-                        )}
-                        <div className="flex items-center gap-2">
-                          <ClipboardList className="h-4 w-4" />
-                          <span>
-                            {entry.documentedDoseCount} documented
-                            {entry.totalPlannedDoses != null ? ` / ${entry.totalPlannedDoses} planned` : ''}
-                          </span>
-                        </div>
-                        {entry.lastAdministrationStatus && (
-                          <div className="flex items-center gap-2">
-                            <Pill className="h-4 w-4" />
-                            <span>Last event: {OUTCOME_LABELS[entry.lastAdministrationStatus]}</span>
-                          </div>
-                        )}
-                        {!entry.nextDueAt && entry.taskStatus === 'as_needed' && (
-                          <div className="flex items-start gap-2">
-                            <AlertCircle className="mt-0.5 h-4 w-4" />
-                            <span>PRN medication. Document when clinically indicated.</span>
-                          </div>
-                        )}
-                      </div>
-                    </button>
-                  )})}
-                </div>
-              )}
-            </CardContent>
-          </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Recent Medication Events</CardTitle>
-              <CardDescription>
-                The latest bedside medication documentation for this admission.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {administrations.length === 0 ? (
-                <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
-                  No medication administration events documented for this admission yet.
-                </div>
-              ) : (
-                <div className="max-h-[190px] space-y-3 overflow-y-auto pr-1">
-                  {administrations.map((record) => (
-                    <div key={record.id} className="rounded-lg border p-3">
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <div className="font-medium">{record.drugName}</div>
-                          <div className="text-sm text-muted-foreground">
-                            {record.dose || 'Dose N/A'} · {record.route || 'Route N/A'} · Qty {record.quantity}
-                          </div>
-                        </div>
-                        <Badge variant="outline" className={cn(getStatusBadgeClass(record.administrationStatus))}>
-                          {OUTCOME_LABELS[record.administrationStatus]}
-                        </Badge>
-                      </div>
-                      <div className="mt-3 grid gap-2 text-sm text-muted-foreground">
-                        <div className="flex items-center gap-2">
-                          <ClipboardList className="h-4 w-4" />
-                          <span>{formatDateTime(record.administeredAt)}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Pill className="h-4 w-4" />
-                          <span>{record.documentedByName || 'Nurse documentation'}</span>
-                        </div>
-                        {record.reason && (
-                          <div className="flex items-start gap-2">
-                            <AlertCircle className="mt-0.5 h-4 w-4" />
-                            <span>{record.reason}</span>
-                          </div>
-                        )}
-                        {record.notes && (
-                          <p className="rounded bg-muted/50 p-2 text-foreground">{record.notes}</p>
-                        )}
-                      </div>
+                {/* Administration Form */}
+                <div className="rounded-xl border bg-card p-6 shadow-sm">
+                  <div className="flex items-center gap-3 mb-5">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
+                      <ClipboardList className="h-4 w-4" />
                     </div>
-                  ))}
+                    <div>
+                      <p className="text-sm font-semibold text-card-foreground">Document Medication Event</p>
+                      <p className="text-[11px] text-muted-foreground">Record administration, refusal, hold, or missed dose</p>
+                    </div>
+                  </div>
+
+                  {medicationOptions.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50/50 p-10 text-center">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-slate-100 mb-3 text-slate-300">
+                        <Pill className="h-5 w-5" />
+                      </div>
+                      <p className="text-sm font-medium text-slate-600">No dispensed medications</p>
+                      <p className="text-[11px] text-slate-400 mt-1 max-w-[240px] leading-relaxed">Pharmacy needs to fulfill the order before you can document administration events.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="medication-line" className="text-xs font-semibold text-slate-700">Medication Line</Label>
+                        <Select value={selectedMedicationKey} onValueChange={setSelectedMedicationKey}>
+                          <SelectTrigger id="medication-line" className="h-10">
+                            <SelectValue placeholder="Select a dispensed medication line" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {medicationOptions.map((option) => (
+                              <SelectItem key={option.key} value={option.key}>
+                                {option.item.drugName} · {option.item.dose || 'No dose'} · {option.item.route || 'Route N/A'}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {selectedMedication && (
+                        <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-4">
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className="font-semibold text-slate-900">{selectedMedication.item.drugName}</p>
+                              <p className="mt-1 text-sm text-slate-500">
+                                {selectedMedication.item.dose || 'Dose N/A'} · {selectedMedication.item.route || 'Route N/A'} · {selectedMedication.item.frequency || 'Freq N/A'}
+                              </p>
+                            </div>
+                            {selectedScheduleEntry && (
+                              <Badge variant="outline" className={cn('shrink-0', getScheduleBadgeClass(selectedScheduleEntry.taskStatus))}>
+                                {SCHEDULE_LABELS[selectedScheduleEntry.taskStatus]}
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-400">
+                            <span>Dispensed {selectedMedication.request.requestedAtFormatted || formatDateTime(selectedMedication.request.requestedAt)}</span>
+                            {selectedScheduleEntry?.nextDueAt && (
+                              <span>Next dose {formatDateTime(selectedScheduleEntry.nextDueAt)}</span>
+                            )}
+                            {selectedScheduleEntry?.remainingDoseCount != null && (
+                              <span>{selectedScheduleEntry.remainingDoseCount} dose(s) left</span>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="grid gap-3 sm:grid-cols-3">
+                        <div className="space-y-1.5">
+                          <Label htmlFor="administration-status" className="text-xs font-semibold text-slate-700">Outcome</Label>
+                          <Select
+                            value={administrationStatus}
+                            onValueChange={(value) => setAdministrationStatus(value as MedicationAdministrationStatus)}
+                          >
+                            <SelectTrigger id="administration-status" className="h-10">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {Object.entries(OUTCOME_LABELS).map(([value, label]) => (
+                                <SelectItem key={value} value={value}>
+                                  {label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label htmlFor="quantity" className="text-xs font-semibold text-slate-700">Quantity</Label>
+                          <Input
+                            id="quantity"
+                            type="number"
+                            min={1}
+                            className="h-10"
+                            value={quantity}
+                            onChange={(event) => setQuantity(Math.max(Number(event.target.value) || 1, 1))}
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label htmlFor="administered-at" className="text-xs font-semibold text-slate-700">Time</Label>
+                          <Input
+                            id="administered-at"
+                            type="datetime-local"
+                            className="h-10"
+                            value={administeredAt}
+                            onChange={(event) => setAdministeredAt(event.target.value)}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <Label htmlFor="reason" className="text-xs font-semibold text-slate-700">
+                          Reason {administrationStatus !== 'administered' ? <span className="text-rose-500">(required)</span> : <span className="text-slate-400">(optional)</span>}
+                        </Label>
+                        <Textarea
+                          id="reason"
+                          rows={2}
+                          value={reason}
+                          onChange={(event) => setReason(event.target.value)}
+                          placeholder={
+                            administrationStatus === 'administered'
+                              ? 'Optional explanation or bedside context...'
+                              : 'Explain why this dose was held, refused, or missed...'
+                          }
+                          className="resize-none text-sm"
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <Label htmlFor="notes" className="text-xs font-semibold text-slate-700">Nursing Notes</Label>
+                        <Textarea
+                          id="notes"
+                          rows={2}
+                          value={notes}
+                          onChange={(event) => setNotes(event.target.value)}
+                          placeholder="Patient response, education given, follow-up plan..."
+                          className="resize-none text-sm"
+                        />
+                      </div>
+
+                      <Button
+                        className="w-full h-10 mt-2"
+                        onClick={handleRecord}
+                        disabled={
+                          recordAdministration.isPending
+                          || !selectedMedication
+                          || (administrationStatus !== 'administered' && !reason.trim())
+                          || (administrationStatus === 'administered' && (!scannedPatientBarcode || !scannedMedicationBarcode))
+                        }
+                      >
+                        {recordAdministration.isPending ? 'Recording...' : 'Record Medication Event'}
+                      </Button>
+                      
+                      {administrationStatus === 'administered' && (!scannedPatientBarcode || !scannedMedicationBarcode) && (
+                         <div className="flex items-center justify-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs font-medium text-amber-800">
+                           <AlertCircle className="h-3.5 w-3.5 shrink-0 text-amber-600" />
+                           Both barcodes must be scanned to document an administration.
+                         </div>
+                      )}
+                    </div>
+                  )}
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      </DialogContent>
+              </div>
+
+              {/* ── Right: Queue + History ── */}
+              <div className="flex flex-col gap-6 min-w-0">
+
+                {/* Dose Queue */}
+                <div className="flex flex-col rounded-xl border bg-card shadow-sm">
+                  <div className="flex items-center justify-between px-6 py-4 border-b">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
+                        <Clock className="h-4 w-4" />
+                      </div>
+                      <p className="text-sm font-semibold text-card-foreground">Dose Queue</p>
+                    </div>
+                    <Badge variant="secondary" className="text-[10px] uppercase font-bold tracking-widest">
+                      {sortedSchedule.length} {sortedSchedule.length === 1 ? 'Task' : 'Tasks'}
+                    </Badge>
+                  </div>
+                  <div className="p-4">
+                    {sortedSchedule.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center bg-muted/30">
+                        <div className="mb-3 text-muted-foreground">
+                          <Clock className="h-6 w-6" />
+                        </div>
+                        <p className="text-sm font-medium text-foreground">No scheduled tasks</p>
+                        <p className="text-xs text-muted-foreground mt-1">Medication schedule will appear once pharmacy fulfills orders.</p>
+                      </div>
+                    ) : (
+                      <div className="max-h-[300px] space-y-2 overflow-y-auto pr-2 custom-scrollbar">
+                        {sortedSchedule.map((entry) => {
+                          const entryKey = `${entry.drugRequestId}:${entry.drugRequestItemIndex}`
+                          return (
+                          <button
+                            key={entryKey}
+                            type="button"
+                            onClick={() => setSelectedMedicationKey(entryKey)}
+                            className={cn(
+                              'w-full rounded-lg border p-3.5 text-left transition-colors hover:bg-accent hover:text-accent-foreground',
+                              selectedMedicationKey === entryKey 
+                                ? 'border-primary bg-primary/5 ring-1 ring-primary/20'
+                                : 'border-border'
+                            )}
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <p className="font-semibold text-slate-900 text-sm truncate">{entry.drugName}</p>
+                                <p className="text-xs text-slate-500 mt-0.5 truncate">
+                                  {[entry.dose, entry.route, entry.frequency].filter(Boolean).join(' · ') || 'Legacy medication line'}
+                                </p>
+                              </div>
+                              <Badge variant="outline" className={cn('shrink-0 text-[10px]', getScheduleBadgeClass(entry.taskStatus))}>
+                                {SCHEDULE_LABELS[entry.taskStatus]}
+                              </Badge>
+                            </div>
+                            <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-400">
+                              {entry.nextDueAt && (
+                                <span className="flex items-center gap-1">
+                                  <TimerReset className="h-3 w-3" />
+                                  {formatDateTime(entry.nextDueAt)}
+                                </span>
+                              )}
+                              <span className="flex items-center gap-1">
+                                <ClipboardList className="h-3 w-3" />
+                                {entry.documentedDoseCount} documented{entry.totalPlannedDoses != null ? ` / ${entry.totalPlannedDoses}` : ''}
+                              </span>
+                              {entry.lastAdministrationStatus && (
+                                <span className="flex items-center gap-1">
+                                  <Pill className="h-3 w-3" />
+                                  Last: {OUTCOME_LABELS[entry.lastAdministrationStatus]}
+                                </span>
+                              )}
+                              {!entry.nextDueAt && entry.taskStatus === 'as_needed' && (
+                                <span className="flex items-center gap-1 text-violet-500">
+                                  <AlertCircle className="h-3 w-3" />
+                                  PRN — document when indicated
+                                </span>
+                              )}
+                            </div>
+                          </button>
+                        )})}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Recent Events */}
+                <div className="flex flex-col rounded-xl border bg-card shadow-sm">
+                  <div className="flex items-center justify-between px-6 py-4 border-b">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
+                        <CheckCircle2 className="h-4 w-4" />
+                      </div>
+                      <p className="text-sm font-semibold text-card-foreground">Recent Events</p>
+                    </div>
+                    <Badge variant="secondary" className="text-[10px] uppercase font-bold tracking-widest">
+                      {administrations.length} {administrations.length === 1 ? 'Record' : 'Records'}
+                    </Badge>
+                  </div>
+                  <div className="p-4">
+                    {administrations.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center bg-muted/30">
+                        <div className="mb-3 text-muted-foreground">
+                          <CheckCircle2 className="h-6 w-6" />
+                        </div>
+                        <p className="text-sm font-medium text-foreground">No events documented</p>
+                        <p className="text-xs text-muted-foreground mt-1">Record your first administration event above.</p>
+                      </div>
+                    ) : (
+                      <div className="max-h-[260px] space-y-2 overflow-y-auto pr-2 custom-scrollbar">
+                        {administrations.map((record) => (
+                          <div key={record.id} className="rounded-lg border p-3.5 hover:bg-accent/50 transition-colors">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <p className="font-semibold text-slate-900 text-sm truncate">{record.drugName}</p>
+                                <p className="text-xs text-slate-500 mt-0.5">
+                                  {record.dose || 'Dose N/A'} · {record.route || 'Route N/A'} · Qty {record.quantity}
+                                </p>
+                              </div>
+                              <Badge variant="outline" className={cn('shrink-0 text-[10px]', getStatusBadgeClass(record.administrationStatus))}>
+                                {OUTCOME_LABELS[record.administrationStatus]}
+                              </Badge>
+                            </div>
+                            <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-400">
+                              <span className="flex items-center gap-1">
+                                <ClipboardList className="h-3 w-3" />
+                                {formatDateTime(record.administeredAt)}
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <Pill className="h-3 w-3" />
+                                {record.documentedByName || 'Nurse'}
+                              </span>
+                            </div>
+                            {record.reason && (
+                              <p className="mt-2 text-xs text-slate-500 bg-slate-50 rounded-lg px-3 py-2 border border-slate-100">
+                                <span className="font-medium text-slate-600">Reason:</span> {record.reason}
+                              </p>
+                            )}
+                            {record.notes && (
+                              <p className="mt-2 text-xs text-slate-600 bg-indigo-50/50 rounded-lg px-3 py-2 border border-indigo-100/50">
+                                {record.notes}
+                              </p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </WorkspaceModalShell>
     </Dialog>
   )
 }

@@ -10,11 +10,11 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
-  DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  WorkspaceModalShell,
 } from '@/components/ui/dialog'
 import { useAddMedication, useDryRunSafetyCheck, type AddMedicationPayload, type ConsultationMedication } from '@/hooks/api/useConsultations'
 
@@ -125,25 +125,27 @@ export function QuickMedicationOrderModal({
   return (
     <>
       <Dialog open={open} onOpenChange={handleClose}>
-        <DialogContent className="max-w-4xl">
-          <DialogHeader>
-            <div className="flex items-center justify-between gap-3">
-              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                Structured Medication Entry
-              </Badge>
-              {patientName ? (
-                <span className="text-sm text-muted-foreground">
-                  Patient: <span className="font-medium">{patientName}</span>
-                </span>
-              ) : null}
-            </div>
-            <DialogTitle>Prescribe Medication</DialogTitle>
-            <DialogDescription>
-              Search the formulary, run safety checks, and save prescriptions directly to this encounter.
-            </DialogDescription>
-          </DialogHeader>
+        <WorkspaceModalShell className="lg:!max-w-[1000px]">
+          <div className="px-6 py-4 border-b shrink-0">
+            <DialogHeader className="pr-10">
+              <div className="flex items-center justify-between gap-3 mb-2">
+                <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                  Structured Medication Entry
+                </Badge>
+                {patientName ? (
+                  <span className="text-sm text-muted-foreground">
+                    Patient: <span className="font-medium">{patientName}</span>
+                  </span>
+                ) : null}
+              </div>
+              <DialogTitle>Prescribe Medication</DialogTitle>
+              <DialogDescription>
+                Search the formulary, run safety checks, and save prescriptions directly to this encounter.
+              </DialogDescription>
+            </DialogHeader>
+          </div>
 
-          <div className="space-y-6 py-2">
+          <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/50">
             <StructuredMedicationEntry
               onAdd={handleAddMedication}
               isLoading={addMedication.isPending || dryRunSafetyCheck.isPending}
@@ -158,12 +160,12 @@ export function QuickMedicationOrderModal({
             </div>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="px-6 py-4 bg-slate-50 border-t shrink-0">
             <Button variant="outline" onClick={() => handleClose(false)}>
               Close
             </Button>
           </DialogFooter>
-        </DialogContent>
+        </WorkspaceModalShell>
       </Dialog>
 
       <AllergyInteractionOverrideModal

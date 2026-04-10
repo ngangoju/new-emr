@@ -45,7 +45,7 @@ import { useAdmissions } from '@/hooks/useAdmissions'
 import { useInvoices } from '@/hooks/useInvoices'
 import { useAcknowledgeLabOrder } from '@/hooks/useLabOrders'
 import { useAcknowledgeImagingOrder, usePatientImagingOrders } from '@/hooks/useImaging'
-import { useApproveClinicalDischarge, useDischargeReadiness, useWorkflowStatus } from '@/hooks/useWorkflow'
+import { useApproveClinicalDischarge, useAfterVisitDocumentPreview, useDischargeReadiness, useWorkflowStatus } from '@/hooks/useWorkflow'
 import { formatDateTime } from '@/lib/utils/date'
 
 type DoctorTreatmentWorkspaceProps = {
@@ -135,6 +135,7 @@ export function DoctorTreatmentWorkspace({
   )
   const activeAdmission = admissions[0]
   const { data: dischargeReadiness, isLoading: readinessLoading } = useDischargeReadiness(activeAdmission?.id || '')
+  const { data: packetPreview } = useAfterVisitDocumentPreview(activeAdmission?.id || '')
   const approveClinicalDischarge = useApproveClinicalDischarge(activeAdmission?.id || '')
   const { data: medications = [], isLoading: medicationsLoading } = useConsultationMedications(consultationId || '')
   const [isLabModalOpen, setIsLabModalOpen] = useState(false)
@@ -599,11 +600,44 @@ export function DoctorTreatmentWorkspace({
                       <Badge variant={dischargeReadiness.ready ? 'default' : 'secondary'}>
                         {dischargeReadiness.ready ? 'Clinically Ready' : 'Not Ready Yet'}
                       </Badge>
-                      <Badge variant="outline">Owner: {formatRole(dischargeReadiness.ownerRole)}</Badge>
+                      <Badge variant="outline">Owner: {formatRole(dischargeReadiness.responsibleRole || dischargeReadiness.ownerRole)}</Badge>
                       {dischargeApproved ? (
                         <Badge variant="default">Doctor Approved</Badge>
                       ) : null}
                     </div>
+
+                    {packetPreview ? (
+                      <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Packet Handoff</p>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge className={`border-none text-xs ${
+                            packetPreview.packetStatus === 'REISSUE_REQUIRED'
+                              ? 'bg-amber-100 text-amber-800'
+                              : packetPreview.packetStatus === 'MATCHES_LAST_EXPORT'
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : 'bg-slate-100 text-slate-700'
+                          }`}>
+                            {packetPreview.packetStatus.replaceAll('_', ' ')}
+                          </Badge>
+                          <Badge variant="outline" className="text-xs">
+                            {packetPreview.handoffStatus.replaceAll('_', ' ')}
+                          </Badge>
+                          <Badge variant="outline" className="text-xs">
+                            Owner: {packetPreview.responsibleRole.replaceAll('_', ' ')}
+                          </Badge>
+                        </div>
+                        {packetPreview.requiredActions.length > 0 ? (
+                          <div className="flex flex-wrap gap-1.5">
+                            {packetPreview.requiredActions.map((action) => (
+                              <span key={action} className="rounded-full bg-blue-50 border border-blue-200 px-2.5 py-0.5 text-[11px] font-medium text-blue-900">
+                                {action}
+                              </span>
+                            ))}
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : null}
+
                     {consultationStatus === 'DRAFT' ? (
                       <p className="text-muted-foreground">
                         Finalize the encounter to satisfy the physician sign-off portion of discharge readiness.

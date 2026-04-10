@@ -11,6 +11,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  CompactModalShell,
 } from '@/components/ui/dialog'
 import { useFinalizeStructuredResult } from '@/hooks/useLabOrders'
 import type { LabPanelParameter } from '@/types/lab'
@@ -73,51 +74,58 @@ export function FinalizeResultModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Finalize Result</DialogTitle>
-          <DialogDescription>
-            Submit structured parameter values and complete the lab order.
-          </DialogDescription>
-        </DialogHeader>
+      <CompactModalShell>
+        <div className="px-6 py-4 border-b">
+          <DialogHeader className="pr-8">
+            <DialogTitle>Finalize Result</DialogTitle>
+            <DialogDescription>
+              Submit structured parameter values and complete the lab order.
+            </DialogDescription>
+          </DialogHeader>
+        </div>
 
-        {hasCritical && (
-          <div className="space-y-3 rounded-md border border-red-200 bg-red-50 p-3">
-            <p className="text-sm font-semibold text-red-700">Critical parameters detected</p>
-            <ul className="space-y-2 text-sm text-red-700">
-              {criticalParameters.map((parameter) => (
-                <li key={parameter.code} className="space-y-1">
-                  <p>{parameter.name}</p>
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      id={`ack-${parameter.code}`}
-                      checked={Boolean(acknowledged[parameter.code])}
-                      onCheckedChange={(checked) =>
-                        setAcknowledged((current) => ({
-                          ...current,
-                          [parameter.code]: Boolean(checked),
-                        }))
-                      }
-                    />
-                    <Label htmlFor={`ack-${parameter.code}`}>
-                      Acknowledge critical value for {parameter.name}
-                    </Label>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
+        <div className="flex-1 overflow-y-auto p-6 space-y-4">
+          {hasCritical && (
+            <div className="space-y-3 rounded-md border border-red-200 bg-red-50 p-4">
+              <p className="text-sm font-semibold text-red-700">Critical parameters detected</p>
+              <ul className="space-y-3 text-sm text-red-700">
+                {criticalParameters.map((parameter) => (
+                  <li key={parameter.code} className="space-y-2 border-t border-red-100 pt-2 first:border-0 first:pt-0">
+                    <p className="font-medium">{parameter.name}</p>
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        id={`ack-${parameter.code}`}
+                        checked={Boolean(acknowledged[parameter.code])}
+                        onCheckedChange={(checked) =>
+                          setAcknowledged((current) => ({
+                            ...current,
+                            [parameter.code]: Boolean(checked),
+                          }))
+                        }
+                      />
+                      <Label htmlFor={`ack-${parameter.code}`}>
+                        Acknowledge critical value for {parameter.name}
+                      </Label>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {!hasCritical && (
+            <p className="text-sm text-slate-600">Review all values before finalizing.</p>
+          )}
+        </div>
 
-        <DialogFooter>
+        <DialogFooter className="px-6 py-4 bg-slate-50 border-t shrink-0">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={handleSubmit} disabled={finalizing || (hasCritical && !allCriticalAcknowledged)}>
+          <Button onClick={handleSubmit} disabled={finalizing || (hasCritical && !allCriticalAcknowledged)} className="bg-blue-600 hover:bg-blue-700">
             {finalizing ? 'Finalizing...' : 'Confirm Finalize'}
           </Button>
         </DialogFooter>
-      </DialogContent>
+      </CompactModalShell>
     </Dialog>
   )
 }
