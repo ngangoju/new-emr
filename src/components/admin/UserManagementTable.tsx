@@ -24,7 +24,7 @@ import {
 import { Button } from '@/components/ui/button'
 
 import { Checkbox } from '@/components/ui/checkbox'
-import { Edit3, Plus, Trash2, UserX } from 'lucide-react'
+import { Edit3, Plus, Trash2, UserX, Pencil } from 'lucide-react'
 
 import {
   Dialog,

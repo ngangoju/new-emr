@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Search, ChevronDown, ChevronRight, Check, Users, Calendar, DollarSign, FileText, Pill, Microscope, Settings, Shield, LayoutDashboard } from 'lucide-react'
+import { Search, ChevronDown, ChevronRight, Check, Users, Calendar, DollarSign, FileText, Pill, Microscope, Settings, Shield, LayoutDashboard, Bed } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 // Define permission groups with human-readable labels
@@ -19,6 +19,17 @@ const PERMISSION_GROUPS = [
     permissions: [
       { id: 'read:patient', label: 'View Patients', description: 'View patient list and details' },
       { id: 'write:patient', label: 'Manage Patients', description: 'Create, edit, and delete patient records' },
+    ],
+  },
+  {
+    id: 'admissions',
+    label: 'Admissions',
+    icon: Bed,
+    description: 'Manage patient inpatient admissions',
+    permissions: [
+      { id: 'admission:create', label: 'Admit Patients', description: 'Admit patients to a ward and bed' },
+      { id: 'admission:discharge', label: 'Discharge Patients', description: 'Discharge or cancel admissions' },
+      { id: 'admission:transfer', label: 'Transfer Patients', description: 'Transfer patients between beds and wards' },
     ],
   },
   {
