@@ -22,7 +22,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
-import { Edit3, Trash2, UserX, Plus } from 'lucide-react'
+import { Pencil, Trash2, UserX, Plus } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -35,12 +35,12 @@ import toast from 'react-hot-toast'
 
 export function UserManagementTable() {
   const [search, setSearch] = useState('')
-  const [roleFilter, setRoleFilter] = useState('')
-  const [statusFilter, setStatusFilter] = useState('')
+  const [roleFilter, setRoleFilter] = useState('ALL')
+  const [statusFilter, setStatusFilter] = useState('ALL')
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
-  
+
   // Create user form state
   const [newUser, setNewUser] = useState<CreateUserInput>({
     username: '',
@@ -58,7 +58,11 @@ export function UserManagementTable() {
     role: 'user',
   })
 
-  const filters = { search, role: roleFilter, status: statusFilter }
+  const filters = {
+    search,
+    role: roleFilter === 'ALL' ? undefined : roleFilter,
+    status: statusFilter === 'ALL' ? undefined : statusFilter
+  }
   const { filteredUsers } = useUsers(filters)
   const { createUser, isCreating } = useCreateUser()
   const { updateUser, isUpdating } = useUpdateUser()
@@ -137,21 +141,23 @@ export function UserManagementTable() {
           </Button>
         </div>
         <div className="flex gap-4">
-          <Select value={roleFilter || undefined} onValueChange={(val) => setRoleFilter(val || '')}>
+          <Select value={roleFilter} onValueChange={setRoleFilter}>
             <SelectTrigger className="w-40">
               <SelectValue placeholder="All Roles" />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="ALL">All Roles</SelectItem>
               {roles.map(role => (
                 <SelectItem key={role} value={role}>{role}</SelectItem>
               ))}
             </SelectContent>
           </Select>
-          <Select value={statusFilter || undefined} onValueChange={(val) => setStatusFilter(val || '')}>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-40">
               <SelectValue placeholder="All Statuses" />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="ALL">All Statuses</SelectItem>
               {statuses.map(status => (
                 <SelectItem key={status} value={status}>{status}</SelectItem>
               ))}
@@ -196,17 +202,17 @@ export function UserManagementTable() {
                     <DropdownMenuContent align="end">
                       <DropdownMenuLabel>Actions</DropdownMenuLabel>
                       <DropdownMenuItem onClick={() => handleEditOpen(user)}>
-                        <Edit3 className="mr-2 h-4 w-4" />
+                        <Pencil className="mr-2 h-4 w-4" />
                         Edit
                       </DropdownMenuItem>
-                      <DropdownMenuItem 
+                      <DropdownMenuItem
                         onClick={() => handleDisable(user)}
                         className="text-destructive focus:text-destructive"
                       >
                         <UserX className="mr-2 h-4 w-4" />
                         {user.status === 'active' ? 'Disable' : 'Enable'}
                       </DropdownMenuItem>
-                      <DropdownMenuItem 
+                      <DropdownMenuItem
                         onClick={() => handleDelete(user)}
                         className="text-destructive focus:text-destructive"
                       >
@@ -234,7 +240,7 @@ export function UserManagementTable() {
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <label className="text-sm font-medium">Username</label>
-              <Input 
+              <Input
                 placeholder="Enter username"
                 value={newUser.username}
                 onChange={(e) => setNewUser({ ...newUser, username: e.target.value })}
@@ -242,7 +248,7 @@ export function UserManagementTable() {
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Full Name</label>
-              <Input 
+              <Input
                 placeholder="Enter full name"
                 value={newUser.name}
                 onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
@@ -250,7 +256,7 @@ export function UserManagementTable() {
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Email</label>
-              <Input 
+              <Input
                 type="email"
                 placeholder="Enter email address"
                 value={newUser.email}
@@ -259,8 +265,8 @@ export function UserManagementTable() {
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Role</label>
-              <Select 
-                value={newUser.role} 
+              <Select
+                value={newUser.role}
                 onValueChange={(val) => setNewUser({ ...newUser, role: val as CreateUserInput['role'] })}
               >
                 <SelectTrigger>
@@ -282,7 +288,7 @@ export function UserManagementTable() {
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Password</label>
-              <Input 
+              <Input
                 type="password"
                 placeholder="Enter password"
                 value={newUser.password}
@@ -294,8 +300,8 @@ export function UserManagementTable() {
             <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>
               Cancel
             </Button>
-            <Button 
-              onClick={handleCreateUser} 
+            <Button
+              onClick={handleCreateUser}
               disabled={isCreating || !newUser.username || !newUser.name || !newUser.email || !newUser.password}
             >
               {isCreating ? 'Creating...' : 'Create User'}
@@ -317,23 +323,23 @@ export function UserManagementTable() {
             <div className="space-y-4 py-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium">Username</label>
-                <Input 
+                <Input
                   value={editForm.username}
                   onChange={(e) => setEditForm({ ...editForm, username: e.target.value })}
-                  placeholder="Username" 
+                  placeholder="Username"
                 />
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium">Email</label>
-                <Input 
+                <Input
                   value={editForm.email}
                   onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
-                  placeholder="Email" 
+                  placeholder="Email"
                 />
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium">Role</label>
-                <Select 
+                <Select
                   value={editForm.role}
                   onValueChange={(val) => setEditForm({ ...editForm, role: val as UpdateUserInput['role'] })}
                 >
@@ -357,8 +363,8 @@ export function UserManagementTable() {
             </div>
           )}
           <DialogFooter>
-            <Button 
-              onClick={handleUpdateUser} 
+            <Button
+              onClick={handleUpdateUser}
               disabled={isUpdating || !editForm.username || !editForm.email}
             >
               {isUpdating ? 'Saving...' : 'Save Changes'}

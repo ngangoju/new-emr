@@ -72,7 +72,7 @@ const defaultFormState: CreateTariffInput = {
 export default function TariffManagementPage() {
   const router = useRouter()
   const [search, setSearch] = useState('')
-  const [categoryFilter, setCategoryFilter] = useState('')
+  const [categoryFilter, setCategoryFilter] = useState('ALL')
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
@@ -97,7 +97,7 @@ export default function TariffManagementPage() {
   }, [router])
 
   // Fetch tariffs
-  const { data: tariffs = [], isLoading } = useTariffs({ search, category: categoryFilter || undefined })
+  const { data: tariffs = [], isLoading } = useTariffs({ search, category: categoryFilter === 'ALL' ? undefined : categoryFilter })
 
   // Mutations
   const { createTariff, isCreating } = useCreateTariff()
@@ -120,7 +120,7 @@ export default function TariffManagementPage() {
         const matchCode = tariff.billingCode?.toLowerCase().includes(query)
         if (!matchName && !matchCode) return false
       }
-      if (categoryFilter && tariff.category !== categoryFilter) return false
+      if (categoryFilter !== 'ALL' && tariff.category !== categoryFilter) return false
       return true
     })
   }, [tariffs, search, categoryFilter])
@@ -149,7 +149,7 @@ export default function TariffManagementPage() {
       setCreateDialogOpen(false)
       setFormData(defaultFormState)
     } catch (error) {
-      toast.error('Failed to create tariff')
+      // Handled by global interceptor
     }
   }
 
@@ -196,7 +196,7 @@ export default function TariffManagementPage() {
       setSelectedTariff(null)
       setFormData(defaultFormState)
     } catch (error) {
-      toast.error('Failed to update tariff')
+      // Handled by global interceptor
     }
   }
 
@@ -214,7 +214,7 @@ export default function TariffManagementPage() {
       setDeleteDialogOpen(false)
       setSelectedTariff(null)
     } catch (error) {
-      toast.error('Failed to delete tariff')
+      // Handled by global interceptor
     }
   }
 
@@ -223,7 +223,7 @@ export default function TariffManagementPage() {
     setFormData({
       serviceName: tariff.serviceName,
       billingCode: tariff.billingCode || '',
-      category: tariff.category,
+      category: tariff.category || '',
       basePrice: tariff.basePrice,
       privatePrice: tariff.privatePrice,
       rssbMmiPrice: tariff.rssbMmiPrice,
@@ -268,16 +268,19 @@ export default function TariffManagementPage() {
           return
         }
 
-        await bulkCreateTariffs(tariffsToCreate)
-        toast.success(`Successfully imported ${tariffsToCreate.length} tariffs`)
-
-        // Reset file input
-        if (fileInputRef.current) fileInputRef.current.value = ''
+        try {
+          await bulkCreateTariffs(tariffsToCreate)
+          toast.success(`Successfully imported ${tariffsToCreate.length} tariffs`)
+          // Reset file input
+          if (fileInputRef.current) fileInputRef.current.value = ''
+        } catch (error) {
+          // Handled by global interceptor, we just need to catch it here to prevent the outer catch
+        }
       }
       reader.readAsBinaryString(file)
     } catch (error) {
       console.error('Import error:', error)
-      toast.error('Failed to import tariffs. Please check the file format.')
+      toast.error('Failed to read import file. Please check the file format.')
     }
   }
 
@@ -375,7 +378,7 @@ export default function TariffManagementPage() {
             className="pl-9"
           />
         </div>
-        <Select value={categoryFilter || "ALL"} onValueChange={(val) => setCategoryFilter(val === "ALL" ? "" : val)}>
+        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
           <SelectTrigger className="w-48">
             <SelectValue placeholder="All Categories" />
           </SelectTrigger>
