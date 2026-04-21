@@ -22,8 +22,10 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
+
 import { Checkbox } from '@/components/ui/checkbox'
 import { Edit3, Plus, Trash2, UserX } from 'lucide-react'
+
 import {
   Dialog,
   DialogContent,
@@ -363,7 +365,7 @@ export function UserManagementTable() {
                     <DropdownMenuContent align="end">
                       <DropdownMenuLabel>Actions</DropdownMenuLabel>
                       <DropdownMenuItem onClick={() => handleEditOpen(user)}>
-                        <Edit3 className="mr-2 h-4 w-4" />
+                        <Pencil className="mr-2 h-4 w-4" />
                         Edit
                       </DropdownMenuItem>
                       <DropdownMenuItem
