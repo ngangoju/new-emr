@@ -10,8 +10,9 @@ import {
   DialogContent, 
   DialogDescription, 
   DialogFooter, 
-  DialogHeader, 
-  DialogTitle 
+  DialogHeader,
+  DialogTitle,
+  CompactModalShell
 } from '@/components/ui/dialog'
 import { 
   AlertTriangle, 
@@ -63,19 +64,21 @@ export function ReasonForAmendmentModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
-        <DialogHeader>
-          <DialogTitle className="flex items-center space-x-2">
-            <AlertTriangle className="h-5 w-5 text-amber-500" />
-            <span>Reason for Amendment</span>
-          </DialogTitle>
-          <DialogDescription>
-            You are modifying a field that was entered by another clinician. 
-            Please provide a reason for this change.
-          </DialogDescription>
-        </DialogHeader>
+      <CompactModalShell className="sm:!max-w-[500px]">
+        <div className="px-6 py-4 border-b">
+          <DialogHeader className="pr-8">
+            <DialogTitle className="flex items-center space-x-2">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              <span>Reason for Amendment</span>
+            </DialogTitle>
+            <DialogDescription>
+              You are modifying a field that was entered by another clinician. 
+              Please provide a reason for this change.
+            </DialogDescription>
+          </DialogHeader>
+        </div>
 
-        <div className="space-y-4 py-4">
+        <div className="flex-1 overflow-y-auto p-6 space-y-4">
           <div className="bg-amber-50 border border-amber-200 rounded-md p-4">
             <div className="flex items-start gap-3">
               <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5" />
@@ -133,7 +136,7 @@ export function ReasonForAmendmentModal({
           </div>
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="px-6 py-4 bg-slate-50 border-t shrink-0">
           <Button 
             variant="outline" 
             onClick={handleCancel}
@@ -150,7 +153,7 @@ export function ReasonForAmendmentModal({
             {isLoading ? 'Saving...' : 'Confirm Change'}
           </Button>
         </DialogFooter>
-      </DialogContent>
+      </CompactModalShell>
     </Dialog>
   )
 }

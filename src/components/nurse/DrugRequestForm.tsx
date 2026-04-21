@@ -23,6 +23,7 @@ import { PatientSearchCombobox } from '@/components/billing/PatientSearchCombobo
 import { MedicationSearchCombobox } from '@/components/pharmacy/MedicationSearchCombobox'
 import { useCreateDrugRequest } from '@/hooks/useDrugRequests'
 import { useRole } from '@/hooks/useRole'
+import { maskIdentifier, maskPhoneNumber } from '@/lib/utils/masking'
 
 import type { Patient } from '@/types/patient'
 import type { Medication, DrugRequestItem } from '@/types/pharmacy'
@@ -290,7 +291,7 @@ export function DrugRequestForm() {
                     <Badge variant="outline">{getPatientInsuranceProvider(patient)}</Badge>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    ID: {patient.nationalId || 'N/A'} | Phone: {patient.phone || (patient as unknown as { phoneNumber?: string }).phoneNumber || 'N/A'}
+                    ID: {maskIdentifier(patient.nationalId) || patient.nationalId || 'N/A'} | Phone: {maskPhoneNumber(patient.phone) || patient.phone || (patient as unknown as { phoneNumber?: string }).phoneNumber || 'N/A'}
                   </p>
                   {getPatientAllergies(patient).length > 0 && (
                     <p className="text-sm text-amber-600 font-medium">

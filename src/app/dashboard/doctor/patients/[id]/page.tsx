@@ -2,6 +2,7 @@
 
 import React from 'react'
 import { useParams, useRouter } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -34,6 +35,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { DoctorTreatmentWorkspace } from '@/components/doctor/DoctorTreatmentWorkspace'
 
 type ConsultationView = Consultation & {
   doctorName?: string
@@ -44,6 +46,7 @@ type ConsultationView = Consultation & {
 export default function PatientDetailPage() {
   const params = useParams()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const id = params.id as string
   const { hasPermission } = useRole()
 
@@ -58,6 +61,11 @@ export default function PatientDetailPage() {
   const updatePatientMutation = useUpdatePatient()
 
   const consultations: ConsultationView[] = (consultationsData || []) as ConsultationView[]
+  const sortedConsultations = [...consultations].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+  )
+  const latestConsultation = sortedConsultations[0]
+  const initialTab = searchParams.get('tab') || 'overview'
   const createEncounterMutation = useCreateEncounter()
 
   const getErrorMessage = (error: unknown, fallback: string) => {
@@ -310,7 +318,7 @@ export default function PatientDetailPage() {
       </Dialog>
 
       {/* Main Content Tabs */}
-      <Tabs defaultValue="overview" className="space-y-4">
+      <Tabs defaultValue={initialTab} className="space-y-4">
         <TabsList className="h-12 p-1 bg-muted/50">
           <TabsTrigger value="overview" className="h-10">Overview</TabsTrigger>
           <TabsTrigger value="consultations" className="h-10">Consultations</TabsTrigger>
@@ -321,6 +329,15 @@ export default function PatientDetailPage() {
 
         {/* Overview Tab */}
         <TabsContent value="overview" className="space-y-6">
+          <DoctorTreatmentWorkspace
+            patientId={patient.id}
+            patientName={`${patient.firstName} ${patient.lastName}`}
+            consultationId={latestConsultation?.id}
+            consultationStatus={latestConsultation?.status}
+            consultationNotes={latestConsultation?.notes}
+            context="patient"
+          />
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Vitals & Stats */}
             <Card className="md:col-span-2">
@@ -472,7 +489,7 @@ export default function PatientDetailPage() {
                     } : undefined}
                   />
                 ) : (
-                  consultations.map((consultation) => (
+                  sortedConsultations.map((consultation) => (
                     <div key={consultation.id} className="flex gap-4 pb-8 border-b last:border-0 last:pb-0">
                       <div className="flex flex-col items-center">
                         <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">

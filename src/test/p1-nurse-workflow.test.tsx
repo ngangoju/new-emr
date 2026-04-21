@@ -2,12 +2,14 @@ import React from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { useAdmissionMedicationSchedule } from '@/hooks/useAdmissions'
 import { useCreateConsultation } from '@/hooks/api/useConsultations'
 import { useCreatePatientVitals } from '@/hooks/api/usePatients'
 
 vi.mock('@/lib/api', () => ({
   api: {
     post: vi.fn(),
+    get: vi.fn(),
   },
 }))
 
@@ -28,6 +30,7 @@ async function getApiMock() {
   const { api } = await import('@/lib/api')
   return api as unknown as {
     post: ReturnType<typeof vi.fn>
+    get: ReturnType<typeof vi.fn>
   }
 }
 
@@ -82,5 +85,22 @@ describe('P1 nurse workflow endpoints', () => {
       '/patients/PAT-3/vitals',
       expect.objectContaining({ temperature: 37.1, bloodPressure: '118/76', heartRate: 78 }),
     )
+  })
+
+  it('loads admission medication schedule from the eMAR endpoint', async () => {
+    const apiMock = await getApiMock()
+    apiMock.get.mockResolvedValueOnce({ data: [{ drugName: 'Amoxicillin', taskStatus: 'due' }] })
+
+    const { result } = renderHook(() => useAdmissionMedicationSchedule('ADM-1'), {
+      wrapper: createWrapper(),
+    })
+
+    let refetchResult: Awaited<ReturnType<typeof result.current.refetch>> | undefined
+    await act(async () => {
+      refetchResult = await result.current.refetch()
+    })
+
+    expect(apiMock.get).toHaveBeenCalledWith('/api/admissions/ADM-1/medication-schedule')
+    expect(refetchResult?.data).toEqual([{ drugName: 'Amoxicillin', taskStatus: 'due' }])
   })
 })

@@ -23,6 +23,7 @@ import { TariffSearchCombobox } from '@/components/billing/TariffSearchCombobox'
 import { DoctorSelector } from '@/components/shared/DoctorSelector'
 import { useCreateInvoice } from '@/hooks/useInvoices'
 import { useRole } from '@/hooks/useRole'
+import { maskIdentifier, maskPhoneNumber } from '@/lib/utils/masking'
 
 import type { Patient } from '@/types/patient'
 import type { Tariff } from '@/types/billing'
@@ -266,7 +267,7 @@ export function NurseBilling() {
                     <Badge variant="outline">{patient.insurance?.provider || 'CASH'}</Badge>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    ID: {patient.nationalId} | Phone: {patient.phone}
+                    ID: {maskIdentifier(patient.nationalId) || patient.nationalId || 'N/A'} | Phone: {maskPhoneNumber(patient.phone) || patient.phone || 'N/A'}
                   </p>
                 </div>
               </div>

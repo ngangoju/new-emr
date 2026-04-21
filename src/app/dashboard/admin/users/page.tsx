@@ -2,15 +2,15 @@
 
 import React from 'react'
 import { PageHeader } from '@/components/layout/PageHeader'
-import { UserManagementTable } from '@/components/admin/UserManagementTable'
+import { UserManagementTable } from '../../../../components/admin/UserManagementTable'
 import { useRole } from '@/hooks/useRole'
 import { canAccessDashboardRoute } from '@/lib/authz/policy'
 import { ForbiddenAccess } from '@/components/auth/ForbiddenAccess'
 
 export default function AdminUsersPage() {
-  const { role, isLoading } = useRole()
+  const { role, roles, permissions, isLoading } = useRole()
 
-  if (!isLoading && !canAccessDashboardRoute(role, '/dashboard/admin')) {
+  if (!isLoading && !canAccessDashboardRoute(role, '/dashboard/admin', { roles, permissions })) {
     return <ForbiddenAccess />
   }
 

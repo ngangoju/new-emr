@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -27,7 +27,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Plus, Trash2, Save, CreditCard } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { PaymentMethodsSelect } from './PaymentMethodsSelect'
-import { useCreatePayment } from '@/hooks/usePayments'
+import { useCreateMobileMoneyPayment, useCreatePayment, useMobileMoneyTransaction } from '@/hooks/usePayments'
 import { useCreateInvoice, useInvoicePreview } from '@/hooks/useInvoices'
 import { PatientSearchCombobox } from './PatientSearchCombobox'
 import { TariffSearchCombobox } from './TariffSearchCombobox'
@@ -121,6 +121,8 @@ export function InvoiceGenerator({ trigger }: { trigger: React.ReactNode }) {
   const [items, setItems] = useState<InvoiceItem[]>([])
   const [discount, setDiscount] = useState(0)
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CASH')
+  const [momoPhoneNumber, setMomoPhoneNumber] = useState('')
+  const [activeMomoTransactionId, setActiveMomoTransactionId] = useState<string | null>(null)
   const [paymentAmount, setPaymentAmount] = useState(0)
   const [transactionId, setTransactionId] = useState('')
   const [paidBy, setPaidBy] = useState('')
@@ -128,6 +130,9 @@ export function InvoiceGenerator({ trigger }: { trigger: React.ReactNode }) {
   const [notes, setNotes] = useState('')
   const [createdInvoiceId, setCreatedInvoiceId] = useState<string | null>(null)
   const { createPayment, creating: paymentProcessing } = useCreatePayment()
+  const { createMobileMoneyPayment, creatingMobileMoneyPayment } = useCreateMobileMoneyPayment()
+  const { data: momoTransaction } = useMobileMoneyTransaction(activeMomoTransactionId || undefined, !!activeMomoTransactionId)
+  const lastMomoStatusRef = useRef<string | null>(null)
   const { mutateAsync: createInvoice, isPending: creatingInvoice } = useCreateInvoice()
 
   const previewPayload = patient.id ? {
@@ -148,6 +153,33 @@ export function InvoiceGenerator({ trigger }: { trigger: React.ReactNode }) {
   const subtotal = items.reduce((sum, item) => sum + item.total, 0)
   const patientDue = preview ? preview.patientDue : (getPatientShare(subtotal, patient) - discount)
   const insuranceDue = preview ? preview.insuranceDue : (subtotal - patientDue - discount)
+
+  useEffect(() => {
+    setMomoPhoneNumber(patient.phone || '')
+  }, [patient.id, patient.phone])
+
+  useEffect(() => {
+    if (!momoTransaction) return
+    if (lastMomoStatusRef.current === momoTransaction.status) return
+
+    lastMomoStatusRef.current = momoTransaction.status
+
+    if (momoTransaction.status === 'SUCCESSFUL' && momoTransaction.paymentId) {
+      toast.success('Mobile Money payment approved and recorded.')
+      setOpen(false)
+      setPaymentAmount(0)
+      setTransactionId('')
+      setPaidBy('')
+      setReceiptNumber('')
+      setNotes('')
+      setActiveMomoTransactionId(null)
+      return
+    }
+
+    if (momoTransaction.status === 'FAILED' || momoTransaction.status === 'EXPIRED') {
+      toast.error(momoTransaction.failureReason || 'Mobile Money payment was not completed.')
+    }
+  }, [momoTransaction])
 
   const addItem = (tariff: Tariff) => {
     const unitPrice = getEffectivePrice(tariff, patient)
@@ -206,6 +238,8 @@ export function InvoiceGenerator({ trigger }: { trigger: React.ReactNode }) {
       
       setCreatedInvoiceId(result.id)
       setPaymentAmount(result.patientDue) // Default to full patient share
+      setActiveMomoTransactionId(null)
+      lastMomoStatusRef.current = null
       toast.success('Invoice draft generated.')
       setActiveTab('payment')
     } catch (e) {
@@ -234,6 +268,25 @@ export function InvoiceGenerator({ trigger }: { trigger: React.ReactNode }) {
     }
 
     try {
+      if (paymentMethod === 'MOBILE_MONEY') {
+        if (!momoPhoneNumber.trim()) {
+          toast.error('Mobile Money phone number is required.')
+          return
+        }
+
+        const transaction = await createMobileMoneyPayment({
+          invoiceId: createdInvoiceId,
+          amount: paymentAmount,
+          phoneNumber: momoPhoneNumber.trim(),
+          paidBy: paidBy.trim(),
+          notes: notes.trim() || undefined,
+        })
+
+        setActiveMomoTransactionId(transaction.id)
+        lastMomoStatusRef.current = transaction.status
+        return
+      }
+
       await createPayment({
         invoiceId: createdInvoiceId,
         amount: paymentAmount,
@@ -377,6 +430,19 @@ export function InvoiceGenerator({ trigger }: { trigger: React.ReactNode }) {
                 onChange={setPaymentMethod}
               />
             </div>
+            {paymentMethod === 'MOBILE_MONEY' ? (
+              <div>
+                <Label>Mobile Money Number</Label>
+                <Input
+                  value={momoPhoneNumber}
+                  onChange={(e) => setMomoPhoneNumber(e.target.value)}
+                  placeholder="e.g. 2507XXXXXXXX"
+                />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Sandbox tip: use the registered test MSISDN for the MoMo account you want to prompt.
+                </p>
+              </div>
+            ) : null}
             <div>
               <Label>Amount (RWF)</Label>
               <Input 
@@ -418,6 +484,34 @@ export function InvoiceGenerator({ trigger }: { trigger: React.ReactNode }) {
                 placeholder="Additional payment notes"
               />
             </div>
+            {paymentMethod === 'MOBILE_MONEY' && momoTransaction ? (
+              <div className={`rounded-lg border p-4 ${
+                momoTransaction.status === 'SUCCESSFUL'
+                  ? 'border-emerald-200 bg-emerald-50'
+                  : momoTransaction.status === 'FAILED' || momoTransaction.status === 'EXPIRED'
+                    ? 'border-rose-200 bg-rose-50'
+                    : 'border-blue-200 bg-blue-50'
+              }`}>
+                <p className="text-sm font-semibold">
+                  MoMo status: {momoTransaction.status.replaceAll('_', ' ')}
+                </p>
+                <p className="mt-1 text-sm">
+                  Number: {momoTransaction.phoneNumber} · Ref: {momoTransaction.referenceId}
+                </p>
+                {momoTransaction.externalStatus ? (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Gateway status: {momoTransaction.externalStatus}
+                  </p>
+                ) : null}
+                {momoTransaction.failureReason ? (
+                  <p className="mt-2 text-xs text-rose-700">{momoTransaction.failureReason}</p>
+                ) : momoTransaction.status === 'PENDING' ? (
+                  <p className="mt-2 text-xs text-blue-700">
+                    Waiting for the patient to approve the Mobile Money prompt on their phone.
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
             <div className="flex gap-2">
               <Button 
                 variant="outline" 
@@ -427,9 +521,18 @@ export function InvoiceGenerator({ trigger }: { trigger: React.ReactNode }) {
                 <Save className="h-4 w-4 mr-2" />
                 {creatingInvoice ? 'Creating...' : createdInvoiceId ? 'Invoice Created' : 'Generate Invoice'}
               </Button>
-              <Button onClick={handlePay} disabled={paymentProcessing || !createdInvoiceId}>
+              <Button
+                onClick={handlePay}
+                disabled={paymentProcessing || creatingMobileMoneyPayment || momoTransaction?.status === 'PENDING' || !createdInvoiceId}
+              >
                 <CreditCard className="h-4 w-4 mr-2" />
-                {paymentProcessing ? 'Processing...' : 'Process Payment'}
+                {paymentProcessing
+                  ? 'Processing...'
+                  : creatingMobileMoneyPayment
+                    ? 'Sending MoMo Request...'
+                    : paymentMethod === 'MOBILE_MONEY'
+                      ? (momoTransaction?.status === 'PENDING' ? 'Waiting for Approval...' : 'Send MoMo Prompt')
+                      : 'Process Payment'}
               </Button>
             </div>
           </TabsContent>

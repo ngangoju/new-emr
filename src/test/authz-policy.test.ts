@@ -52,6 +52,76 @@ describe('frontend authz policy', () => {
         expect(canAccessDashboardRoute('RECEPTIONIST', '/dashboard/reception')).toBe(true)
     })
 
+    it('allows dashboard routes from route permissions when provided', () => {
+        expect(
+            canAccessDashboardRoute('RECEPTIONIST', '/dashboard/admin', {
+                permissions: ['route:/dashboard/admin'],
+            }),
+        ).toBe(true)
+    })
+
+    it('allows nested dashboard routes from matched route prefix permission', () => {
+        expect(
+            canAccessDashboardRoute('NURSE', '/dashboard/nurse/admissions', {
+                permissions: ['route:/dashboard/nurse'],
+            }),
+        ).toBe(true)
+    })
+
+    it('keeps legacy fallback when dynamic permissions are absent', () => {
+        expect(
+            canAccessDashboardRoute('ADMIN', '/dashboard/admin', {
+                permissions: [],
+            }),
+        ).toBe(true)
+
+        expect(
+            canAccessDashboardRoute('RECEPTIONIST', '/dashboard/admin', {
+                permissions: [],
+            }),
+        ).toBe(false)
+    })
+
+    it('uses deterministic dynamic-first behavior when route permissions are present', () => {
+        // Legacy ADMIN would allow /dashboard/admin, but route permissions only allow lab.
+        expect(
+            canAccessDashboardRoute('ADMIN', '/dashboard/admin', {
+                permissions: ['route:/dashboard/lab'],
+            }),
+        ).toBe(false)
+
+        // Legacy RECEPTIONIST would deny /dashboard/admin, but route permission explicitly grants it.
+        expect(
+            canAccessDashboardRoute('RECEPTIONIST', '/dashboard/admin', {
+                permissions: ['route:/dashboard/admin'],
+            }),
+        ).toBe(true)
+    })
+
+    it('filters navigation by menu permissions when provided', () => {
+        const dynamicAllowedNav = getDashboardNavigationForRole('RECEPTIONIST', {
+            permissions: ['menu:/dashboard/admin', 'menu:/dashboard/notifications'],
+        })
+        expect(dynamicAllowedNav.some((item) => item.href === '/dashboard/admin')).toBe(true)
+        expect(dynamicAllowedNav.some((item) => item.href === '/dashboard/notifications')).toBe(true)
+        expect(dynamicAllowedNav.some((item) => item.href === '/dashboard/reception')).toBe(false)
+
+        const dynamicDeniedNav = getDashboardNavigationForRole('ADMIN', {
+            permissions: ['menu:/dashboard/lab'],
+        })
+        expect(dynamicDeniedNav.some((item) => item.href === '/dashboard/admin')).toBe(false)
+        expect(dynamicDeniedNav.some((item) => item.href === '/dashboard/lab')).toBe(true)
+    })
+
+    it('keeps deterministic menu-first behavior when menu permissions exist', () => {
+        const nav = getDashboardNavigationForRole('ADMIN', {
+            permissions: ['menu:/dashboard/lab'],
+        })
+
+        expect(nav.some((item) => item.href === '/dashboard/lab')).toBe(true)
+        expect(nav.some((item) => item.href === '/dashboard/admin')).toBe(false)
+    })
+
     it('returns role-specific default dashboard route for restricted roles', () => {
         expect(getRoleDefaultDashboardRoute('CASHIER')).toBe('/dashboard/billing')
         expect(getRoleDefaultDashboardRoute('DOCTOR')).toBe('/dashboard')

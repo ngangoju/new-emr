@@ -73,9 +73,14 @@ export default function CashierClosePage() {
       await createCashClose({
         shiftDate,
         cashierId: cashierId.trim() || undefined,
+        force: !!selectedSummary,
       })
-    } catch {
-      // handled by interceptors + hook
+    } catch (error: any) {
+      if (error?.response?.data?.message) {
+        toast.error(error.response.data.message)
+      } else {
+        toast.error('Failed to generate cash close report.')
+      }
     }
   }
 
@@ -176,7 +181,11 @@ export default function CashierClosePage() {
 
           <div className="flex items-end">
             <Button onClick={handleGenerate} disabled={creatingCashClose} className="w-full">
-              {creatingCashClose ? 'Generating...' : 'Generate Close Report'}
+              {creatingCashClose
+                ? 'Generating...'
+                : selectedSummary
+                  ? 'Regenerate Close Report'
+                  : 'Generate Close Report'}
             </Button>
           </div>
         </CardContent>

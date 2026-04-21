@@ -3,10 +3,13 @@ export interface User {
   username: string;
   name: string;
   email: string;
-  role: 'admin' | 'doctor' | 'nurse' | 'receptionist' | 'cashier' | 'lab_tech' | 'pharmacist' | 'auditor' | 'billing' | 'user';
+  role: string;
+  roles?: string[];
   status: 'active' | 'inactive' | 'suspended';
   profilePictureUrl?: string;
   lastLogin?: string;
+  permissions?: string[];
+  active?: boolean;
   createdAt: string;
 }
 
@@ -14,7 +17,7 @@ export interface CreateUserInput {
   username: string;
   name: string;
   email: string;
-  role: User['role'];
+  role: string;
   password: string;
 }
 
@@ -22,7 +25,8 @@ export interface UpdateUserInput {
   username: string;
   name: string;
   email: string;
-  role: User['role'];
+  role: string;
+  active?: boolean;
 }
 
 export interface UserProfile {

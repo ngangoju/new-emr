@@ -129,6 +129,53 @@ function DialogDescription({
   )
 }
 
+function WorkspaceModalShell({
+  children,
+  className,
+}: {
+  children: React.ReactNode
+  className?: string
+}) {
+  return (
+    <DialogContent
+      showCloseButton={false}
+      className={cn(
+        "w-[96vw] sm:!max-w-[900px] lg:!max-w-[1200px] p-0 flex flex-col overflow-hidden bg-white shadow-2xl rounded-xl !max-h-[95dvh]",
+        className
+      )}
+    >
+      {/* We use our own close button in the corner to avoid pr-12 complications 
+          across varying header designs in workspace modals */}
+      <DialogPrimitive.Close className="absolute top-5 right-5 z-50 flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-900 transition-colors focus:outline-none focus:ring-2 focus:ring-slate-400">
+        <XIcon className="h-4 w-4" />
+        <span className="sr-only">Close</span>
+      </DialogPrimitive.Close>
+      {children}
+    </DialogContent>
+  )
+}
+
+function CompactModalShell({
+  children,
+  className,
+}: {
+  children: React.ReactNode
+  className?: string
+}) {
+  return (
+    <DialogContent
+      showCloseButton={false}
+      className={cn("sm:!max-w-[500px] p-0 flex flex-col overflow-hidden bg-white shadow-lg rounded-xl !max-h-[95dvh]", className)}
+    >
+      <DialogPrimitive.Close className="absolute top-4 right-4 z-50 flex h-7 w-7 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-900 transition-colors focus:outline-none focus:ring-2 focus:ring-slate-400">
+        <XIcon className="h-4 w-4" />
+        <span className="sr-only">Close</span>
+      </DialogPrimitive.Close>
+      {children}
+    </DialogContent>
+  )
+}
+
 export {
   Dialog,
   DialogClose,
@@ -140,4 +187,6 @@ export {
   DialogPortal,
   DialogTitle,
   DialogTrigger,
+  WorkspaceModalShell,
+  CompactModalShell,
 }

@@ -1,4 +1,5 @@
-import { ROLE_PERMISSIONS, normalizeRole, type UserRole } from '@/lib/utils/auth'
+import { getSessionUser, ROLE_PERMISSIONS, normalizeRole, type UserRole } from '@/lib/utils/auth'
+import { getEffectiveRoles, type CapabilityContext } from '@/lib/authz/capability'
 
 type FrontendFeaturePolicyMap = {
     [K in keyof typeof ROLE_PERMISSIONS]: readonly UserRole[]
@@ -16,7 +17,7 @@ const DASHBOARD_PUBLIC_ROUTES = ['/dashboard', '/dashboard/profile', '/dashboard
 export const DASHBOARD_ROUTE_POLICIES: readonly DashboardRoutePolicy[] = [
     {
         routePrefix: '/dashboard/reception',
-        allowedRoles: ['ADMIN', 'RECEIPTION', 'RECEPTIONIST', 'CUSTOMER_CARE'],
+        allowedRoles: ['ADMIN', 'RECEPTIONIST', 'CUSTOMER_CARE'],
     },
     {
         routePrefix: '/dashboard/nurse',
@@ -28,7 +29,7 @@ export const DASHBOARD_ROUTE_POLICIES: readonly DashboardRoutePolicy[] = [
     },
     {
         routePrefix: '/dashboard/doctor/patients',
-        allowedRoles: ['ADMIN', 'DOCTOR', 'NURSE', 'RECEIPTION', 'RECEPTIONIST', 'CUSTOMER_CARE', 'CHIEF_NURSE', 'CLINICAL_DIRECTOR'],
+        allowedRoles: ['ADMIN', 'DOCTOR', 'NURSE', 'RECEPTIONIST', 'CUSTOMER_CARE', 'CHIEF_NURSE', 'CLINICAL_DIRECTOR'],
     },
     {
         routePrefix: '/dashboard/doctor/consultations',
@@ -36,11 +37,11 @@ export const DASHBOARD_ROUTE_POLICIES: readonly DashboardRoutePolicy[] = [
     },
     {
         routePrefix: '/dashboard/doctor/schedule',
-        allowedRoles: ['ADMIN', 'DOCTOR', 'NURSE', 'CHIEF_NURSE', 'CLINICAL_DIRECTOR', 'RECEIPTION', 'RECEPTIONIST'],
+        allowedRoles: ['ADMIN', 'DOCTOR', 'NURSE', 'CHIEF_NURSE', 'CLINICAL_DIRECTOR', 'RECEPTIONIST'],
     },
     {
         routePrefix: '/dashboard/schedule',
-        allowedRoles: ['ADMIN', 'DOCTOR', 'NURSE', 'CHIEF_NURSE', 'CLINICAL_DIRECTOR', 'RECEIPTION', 'RECEPTIONIST'],
+        allowedRoles: ['ADMIN', 'DOCTOR', 'NURSE', 'CHIEF_NURSE', 'CLINICAL_DIRECTOR', 'RECEPTIONIST'],
     },
     {
         routePrefix: '/dashboard/doctor/records',
@@ -114,7 +115,6 @@ export const DASHBOARD_NAV_ITEMS: readonly DashboardNavItem[] = [
 ] as const
 
 const ROLE_DEFAULT_DASHBOARD_ROUTES: Partial<Record<UserRole, string>> = {
-    RECEIPTION: '/dashboard/reception',
     RECEPTIONIST: '/dashboard/reception',
     'CUSTOMER_CARE': '/dashboard/reception',
     NURSE: '/dashboard/nurse',
@@ -145,6 +145,32 @@ function matchesRoutePrefix(pathname: string, routePrefix: string): boolean {
     return normalizedPath === normalizedRoutePrefix || normalizedPath.startsWith(`${normalizedRoutePrefix}/`)
 }
 
+function getPermissionPathsByPrefix(
+    permissions: readonly string[] | null | undefined,
+    prefix: 'route:' | 'menu:',
+): string[] {
+    if (!permissions || permissions.length === 0) {
+        return []
+    }
+
+    const paths = new Set<string>()
+
+    for (const permission of permissions) {
+        if (!permission.startsWith(prefix)) {
+            continue
+        }
+
+        const path = permission.slice(prefix.length)
+        if (!path.startsWith('/')) {
+            continue
+        }
+
+        paths.add(normalizePath(path))
+    }
+
+    return [...paths]
+}
+
 export function normalizeUserRole(role?: string | null): UserRole | null {
     return normalizeRole(role);
 }
@@ -157,7 +183,11 @@ export function canRoleAccessFeature(
     return FRONTEND_FEATURE_POLICY[feature].includes(role)
 }
 
-export function canAccessDashboardRoute(role: UserRole | null, pathname: string): boolean {
+export function canAccessDashboardRoute(
+    role: UserRole | null,
+    pathname: string,
+    context: Omit<CapabilityContext, 'role'> = {},
+): boolean {
     const normalizedPath = normalizePath(pathname)
     const isDashboardPath = normalizedPath === '/dashboard' || normalizedPath.startsWith('/dashboard/')
 
@@ -173,11 +203,31 @@ export function canAccessDashboardRoute(role: UserRole | null, pathname: string)
         matchesRoutePrefix(normalizedPath, policy.routePrefix),
     )
 
-    if (!matchedPolicy || !role) {
+    if (!matchedPolicy) {
         return false
     }
 
-    return matchedPolicy.allowedRoles.includes(role)
+    const sessionUser = getSessionUser()
+    const resolvedRoles = context.roles ?? sessionUser?.roles ?? []
+    const resolvedPermissions = context.permissions ?? sessionUser?.permissions ?? []
+    const routePermissionPaths = getPermissionPathsByPrefix(resolvedPermissions, 'route:')
+
+    if (routePermissionPaths.length > 0) {
+        return routePermissionPaths.some((routePermissionPath) =>
+            matchesRoutePrefix(normalizedPath, routePermissionPath),
+        )
+    }
+
+    const effectiveRoles = getEffectiveRoles({
+        role,
+        roles: resolvedRoles,
+    })
+
+    if (effectiveRoles.length === 0) {
+        return false
+    }
+
+    return effectiveRoles.some((candidateRole) => matchedPolicy.allowedRoles.includes(candidateRole))
 }
 
 export function getRoleDefaultDashboardRoute(role: UserRole | null): string {
@@ -185,14 +235,26 @@ export function getRoleDefaultDashboardRoute(role: UserRole | null): string {
     return ROLE_DEFAULT_DASHBOARD_ROUTES[role] ?? '/dashboard'
 }
 
-export function getDashboardNavigationForRole(role: UserRole | null): DashboardNavItem[] {
+export function getDashboardNavigationForRole(
+    role: UserRole | null,
+    context: Omit<CapabilityContext, 'role'> = {},
+): DashboardNavItem[] {
+    const sessionUser = getSessionUser()
+    const resolvedPermissions = context.permissions ?? sessionUser?.permissions ?? []
+    const menuPermissionPaths = getPermissionPathsByPrefix(resolvedPermissions, 'menu:')
+    const hasMenuPermissionPolicies = menuPermissionPaths.length > 0
+
     return DASHBOARD_NAV_ITEMS.filter((item) => {
-        const shouldHideDashboardMenu = role ? getRoleDefaultDashboardRoute(role) !== '/dashboard' : false
+        const shouldHideDashboardMenu = !hasMenuPermissionPolicies && role ? getRoleDefaultDashboardRoute(role) !== '/dashboard' : false
 
         if (item.href === '/dashboard' && shouldHideDashboardMenu) {
             return false
         }
 
-        return canAccessDashboardRoute(role, item.href)
+        if (hasMenuPermissionPolicies) {
+            return menuPermissionPaths.includes(normalizePath(item.href))
+        }
+
+        return canAccessDashboardRoute(role, item.href, context)
     })
 }

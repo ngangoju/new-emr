@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/popover'
 import { usePatients } from '@/hooks/api/usePatients'
 import type { Patient } from '@/types/patient'
+import { maskIdentifier, maskPhoneNumber } from '@/lib/utils/masking'
 
 interface PatientSearchComboboxProps {
   value: string
@@ -47,9 +48,10 @@ export function PatientSearchCombobox({ value, onSelect }: PatientSearchCombobox
     const phone = patient.phone?.trim()
     const phoneNumber = (patient as unknown as { phoneNumber?: string }).phoneNumber?.trim()
 
-    if (phone) return phone
-    if (phoneNumber) return phoneNumber
-    if (nationalId) return nationalId
+    // Mask sensitive identifiers - prioritize phone (less sensitive) over national ID
+    if (phone) return maskPhoneNumber(phone) || phone
+    if (phoneNumber) return maskPhoneNumber(phoneNumber) || phoneNumber
+    if (nationalId) return maskIdentifier(nationalId) || nationalId
     return 'No phone/ID'
   }
 
