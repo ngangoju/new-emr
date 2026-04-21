@@ -7,13 +7,6 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import {
   Form,
   FormControl,
   FormField,
@@ -28,7 +21,7 @@ import toast from 'react-hot-toast'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { loginSchema, type LoginInput } from '@/lib/validations/auth'
-import { getAccessToken, getSessionUser, setSessionUser } from '@/lib/utils/auth'
+import { getSessionUser, setSessionUser } from '@/lib/utils/auth'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -45,7 +38,7 @@ export default function LoginPage() {
   const loginMutation = useLogin()
 
   useEffect(() => {
-    if (getAccessToken() && getSessionUser()) {
+    if (getSessionUser()) {
       router.replace('/dashboard')
     }
   }, [router])
@@ -192,7 +185,7 @@ export default function LoginPage() {
                         </FormLabel>
                         <FormControl>
                           <Input 
-                            placeholder="ngango" 
+                            placeholder="username" 
                             className="h-11"
                             {...field}
                           />
@@ -219,41 +212,6 @@ export default function LoginPage() {
                             {...field}
                           />
                         </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="role"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-sm font-medium">Select Your Role</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger className="h-11">
-                              <SelectValue placeholder="Select role" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="USER">User</SelectItem>
-                            <SelectItem value="DOCTOR">
-                              <div className="flex items-center">
-                                <Stethoscope className="h-4 w-4 mr-2" />
-                                Doctor
-                              </div>
-                            </SelectItem>
-                            <SelectItem value="NURSE">Nurse</SelectItem>
-                            <SelectItem value="RECEPTIONIST">Receptionist</SelectItem>
-                            <SelectItem value="PHARMACIST">Pharmacist</SelectItem>
-                            <SelectItem value="LAB_TECH">Lab Technician</SelectItem>
-                            <SelectItem value="BILLING_OFFICER">Billing Officer</SelectItem>
-                            <SelectItem value="CASHIER">Cashier</SelectItem>
-                            <SelectItem value="AUDITOR">Auditor</SelectItem>
-                            <SelectItem value="ADMIN">Admin</SelectItem>
-                          </SelectContent>
-                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -297,7 +255,7 @@ export default function LoginPage() {
 
               <div className="text-center text-sm text-muted-foreground pt-4">
                 Need an account?{' '}
-                <Link href="/register" className="text-primary hover:text-primary/80 font-medium transition-colors">
+                <Link href="/contact-administrator" className="text-primary hover:text-primary/80 font-medium transition-colors">
                   Contact Administrator
                 </Link>
               </div>

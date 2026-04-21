@@ -34,9 +34,14 @@ export interface CreatePatientVitalsPayload {
     heartRate?: number;
     respiratoryRate?: number;
     oxygenSaturation?: number;
+    painScore?: number;
+    avpu?: 'ALERT' | 'VOICE' | 'PAIN' | 'UNRESPONSIVE';
     weight?: number;
     height?: number;
     bmi?: number;
+    chiefComplaint?: string;
+    triageNote?: string;
+    triageDisposition?: string;
 }
 
 export interface PatientLabResult {
@@ -47,6 +52,8 @@ export interface PatientLabResult {
     orderedAt?: string;
     processedAt?: string;
     approvedAt?: string;
+    physicianAcknowledgedBy?: string;
+    physicianAcknowledgedAt?: string;
 }
 
 export interface PatientHistoryConsultation {

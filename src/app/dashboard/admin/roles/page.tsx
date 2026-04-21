@@ -170,7 +170,7 @@ export default function RolesPage() {
 
             {/* Create Dialog */}
             <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto overflow-x-hidden">
                     <DialogHeader>
                         <DialogTitle>Create New Role</DialogTitle>
                         <DialogDescription>
@@ -182,7 +182,7 @@ export default function RolesPage() {
                             <Label htmlFor="name">Role Name</Label>
                             <Input
                                 id="name"
-                                value={createFormData.name}
+                                value={createFormData.name || ''}
                                 onChange={(e) => setCreateFormData({ ...createFormData, name: e.target.value })}
                                 placeholder="e.g., NURSE, PHARMACIST"
                             />
@@ -208,7 +208,7 @@ export default function RolesPage() {
 
             {/* Edit Dialog */}
             <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto overflow-x-hidden">
                     <DialogHeader>
                         <DialogTitle>Edit Role</DialogTitle>
                         <DialogDescription>
@@ -220,7 +220,7 @@ export default function RolesPage() {
                             <Label htmlFor="edit-name">Role Name</Label>
                             <Input
                                 id="edit-name"
-                                value={editFormData.name}
+                                value={editFormData.name || ''}
                                 onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
                             />
                         </div>

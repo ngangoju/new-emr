@@ -36,7 +36,7 @@ export function useCreateTariff() {
 
     const { mutateAsync: createTariff, isPending: isCreating } = useMutation({
         mutationFn: async (input: CreateTariffInput) => {
-            const { data } = await apiRequest<Tariff>('POST', '/api/tariffs', input)
+            const { data } = await apiRequest<Tariff>('POST', '/api/billing/tariffs', input)
             return data
         },
         onMutate: async (input) => {
@@ -81,7 +81,7 @@ export function useUpdateTariff() {
 
     const { mutateAsync: updateTariff, isPending: isUpdating } = useMutation({
         mutationFn: async ({ id, input }: { id: string; input: UpdateTariffInput }) => {
-            const { data } = await apiRequest<Tariff>('PUT', `/api/tariffs/${id}`, input)
+            const { data } = await apiRequest<Tariff>('PUT', `/api/billing/tariffs/${id}`, input)
             return data
         },
         onMutate: async ({ id, input }) => {
@@ -116,7 +116,7 @@ export function useDeleteTariff() {
     const { mutateAsync: deleteTariff, isPending: isDeleting } = useMutation({
         mutationFn: async (id: string) => {
             // Soft delete - set active to false
-            await apiRequest<void>('DELETE', `/api/tariffs/${id}`)
+            await apiRequest<void>('DELETE', `/api/billing/tariffs/${id}`)
         },
         onMutate: async (id) => {
             await queryClient.cancelQueries({ queryKey: ['tariffs'] })
@@ -151,7 +151,7 @@ export function useUpdateTariffPrice() {
 
     const { mutateAsync: updateTariffPrice, isPending: isUpdatingPrice } = useMutation({
         mutationFn: async ({ id, input }: { id: string; input: UpdateTariffPriceInput }) => {
-            const { data } = await apiRequest<Tariff>('PATCH', `/api/tariffs/${id}/price`, input)
+            const { data } = await apiRequest<Tariff>('PATCH', `/api/billing/tariffs/${id}/price`, input)
             return data
         },
         onMutate: async ({ id, input }) => {
@@ -185,7 +185,7 @@ export function useBulkCreateTariffs() {
 
     const { mutateAsync: bulkCreateTariffs, isPending: isImporting } = useMutation({
         mutationFn: async (inputs: CreateTariffInput[]) => {
-            const { data } = await apiRequest<Tariff[]>('POST', '/api/tariffs/bulk', inputs)
+            const { data } = await apiRequest<Tariff[]>('POST', '/api/billing/tariffs/bulk', inputs)
             return data
         },
         onSuccess: () => {

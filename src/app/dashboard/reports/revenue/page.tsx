@@ -183,7 +183,7 @@ export default function RevenueReportPage() {
                         tickFormatter={(value) => `${value / 1000}k`}
                       />
                       <Tooltip 
-                        formatter={(value: number | undefined) => [value !== undefined ? formatCurrency(value) : '-', 'Amount']}
+                        formatter={(value) => [typeof value === 'number' ? formatCurrency(value) : String(value), 'Amount']}
                         contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                       />
                       <Bar 
@@ -224,7 +224,7 @@ export default function RevenueReportPage() {
                           <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                         ))}
                       </Pie>
-                      <Tooltip formatter={(value: number | undefined) => value !== undefined ? formatCurrency(value) : '-'} />
+                      <Tooltip formatter={(value: any) => typeof value === 'number' ? formatCurrency(value) : value} />
                     </PieChart>
                   </ResponsiveContainer>
                   <div className="mt-4 grid grid-cols-2 gap-2 text-xs">

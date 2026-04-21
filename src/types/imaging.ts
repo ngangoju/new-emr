@@ -16,6 +16,8 @@ export interface ImagingOrder {
     updatedAt: string;
     approvedAt?: string;
     approvedBy?: string;
+    physicianAcknowledgedBy?: string;
+    physicianAcknowledgedAt?: string;
 
     // Enriched fields
     patientFirstName?: string;

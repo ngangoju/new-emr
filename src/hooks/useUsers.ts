@@ -21,13 +21,30 @@ interface UseUsersResult {
   loading: boolean
 }
 
+function extractUserRoles(user: User): string[] {
+  const normalized = (value: string) => value.trim().toUpperCase()
+  const roles = Array.isArray(user.roles) ? user.roles : []
+
+  if (roles.length > 0) {
+    return roles
+      .filter((role): role is string => typeof role === 'string' && role.trim().length > 0)
+      .map(normalized)
+  }
+
+  if (typeof user.role === 'string' && user.role.trim().length > 0) {
+    return [normalized(user.role)]
+  }
+
+  return []
+}
+
 interface UseUsersOptions {
   enabled?: boolean
 }
 
 export function useUsers(filters: UseUsersFilters = {}, options: UseUsersOptions = {}): UseUsersResult {
   const role = getUserRole()
-  const usersEndpointAllowedRoles = new Set(['ADMIN', 'DOCTOR', 'NURSE', 'RECEPTIONIST', 'RECEIPTION', 'CLINICAL_DIRECTOR', 'MANAGER', 'HUMAN_RESOURCE'])
+  const usersEndpointAllowedRoles = new Set(['ADMIN', 'HUMAN_RESOURCE', 'MANAGER'])
   const canReadUsers = !!role && usersEndpointAllowedRoles.has(role)
   const { enabled = true } = options
 
@@ -35,7 +52,7 @@ export function useUsers(filters: UseUsersFilters = {}, options: UseUsersOptions
     queryKey: ['users'],
     enabled: enabled && canReadUsers,
     queryFn: async () => {
-      const { data } = await apiRequest<User[]>('GET', '/users')
+      const { data } = await apiRequest<User[]>('GET', '/api/users')
       return data
     }
   })
@@ -50,7 +67,8 @@ export function useUsers(filters: UseUsersFilters = {}, options: UseUsersOptions
       )
     }
     if (filters.role) {
-      data = data.filter(user => user.role === filters.role)
+      const targetRole = filters.role.trim().toUpperCase()
+      data = data.filter(user => extractUserRoles(user).includes(targetRole))
     }
     if (filters.status) {
       data = data.filter(user => user.status === filters.status)
@@ -81,7 +99,7 @@ export function useCreateUser() {
 
   const { mutateAsync: createUser, isPending: isCreating } = useMutation({
     mutationFn: async (input: CreateUserInput) => {
-      const { data } = await apiRequest<User>('POST', '/users', input)
+      const { data } = await apiRequest<User>('POST', '/api/users', input)
       return data
     },
     onSuccess: () => {
@@ -97,7 +115,7 @@ export function useUpdateUser() {
 
   const { mutateAsync: updateUser, isPending: isUpdating } = useMutation({
     mutationFn: async ({ id, input }: { id: string; input: UpdateUserInput }) => {
-      const { data } = await apiRequest<User>('PUT', `/users/${id}`, input)
+      const { data } = await apiRequest<User>('PUT', `/api/users/${id}`, input)
       return data
     },
     onSuccess: () => {

@@ -54,6 +54,26 @@ export interface Inventory {
   minStockLevel: number;
 }
 
+export interface InventoryEntry {
+  id: string;
+  medicationId: string;
+  batchNumber: string;
+  expiresAt: string;
+  quantity: number;
+  unitPrice: number;
+  supplier: string;
+  minStockLevel: number;
+  medicationBrandName?: string;
+  medicationGenericName?: string;
+  medicationCategory?: string;
+  medicationDosageForm?: string;
+  medicationStrength?: string;
+  isLowStock?: boolean;
+  hasStock?: boolean;
+  isCritical?: boolean;
+  inventorySummary?: string;
+}
+
 // Extended type for UI display with nested medication details
 export interface InventoryItem {
   medication: {
@@ -82,6 +102,12 @@ export interface DrugRequestItem {
   drugName: string;
   quantity: number;
   notes?: string;
+  dose?: string;
+  route?: string;
+  frequency?: string;
+  duration?: string;
+  allergyOverrideReason?: string;
+  interactionOverrideReason?: string;
 }
 
 export interface DrugRequest {
@@ -95,6 +121,8 @@ export interface DrugRequest {
   items: DrugRequestItem[];
   status: DrugRequestStatus;
   notes?: string;
+  approvedAt?: string;
+  approvedBy?: string;
   fulfilledAt?: string;
   fulfilledBy?: string;
   deniedAt?: string;

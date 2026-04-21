@@ -27,7 +27,7 @@ import {
 
 import { UserRole, getSessionUser, getUserRole, isAuthInitialized, onAuthInitialized, AUTH_EVENTS } from "@/lib/utils/auth"
 import { useUIStore } from "@/lib/stores/uiStore"
-import { getDashboardNavigationForRole, normalizeUserRole } from "@/lib/authz/policy"
+import { getDashboardNavigationForRole } from "@/lib/authz/policy"
 import { useUnreadCount } from "@/hooks/useNotifications"
 import { Badge } from "@/components/ui/badge"
 
@@ -59,6 +59,10 @@ const NAV_ICONS_BY_HREF: Record<string, LucideIcon> = {
 
 export function Sidebar({ className }: { className?: string }) {
   const [userRole, setUserRole] = useState<UserRole>('DOCTOR')
+  const [sessionUserState, setSessionUserState] = useState<{ roles: string[]; permissions: string[] }>({
+    roles: [],
+    permissions: [],
+  })
   const [mounted, setMounted] = useState(false)
   const pathname = usePathname()
   const router = useRouter()
@@ -70,9 +74,16 @@ export function Sidebar({ className }: { className?: string }) {
     
     const checkRole = () => {
       const role = getUserRole()
+      const sessionUser = getSessionUser()
+
       if (role) {
         setUserRole(role)
       }
+
+      setSessionUserState({
+        roles: Array.isArray(sessionUser?.roles) ? sessionUser.roles : [],
+        permissions: Array.isArray(sessionUser?.permissions) ? sessionUser.permissions : [],
+      })
     }
     
     // If auth is already initialized, check immediately
@@ -92,6 +103,7 @@ export function Sidebar({ className }: { className?: string }) {
     // Listen for session cleared events
     const handleSessionCleared = () => {
       setUserRole('DOCTOR')
+      setSessionUserState({ roles: [], permissions: [] })
     }
     window.addEventListener(AUTH_EVENTS.SESSION_CLEARED, handleSessionCleared)
     
@@ -102,7 +114,11 @@ export function Sidebar({ className }: { className?: string }) {
   }, [])
 
   const roleForFiltering = mounted ? userRole : 'DOCTOR'
-  const filteredNavItems: NavItem[] = getDashboardNavigationForRole(roleForFiltering).map((item) => ({
+
+  const filteredNavItems: NavItem[] = getDashboardNavigationForRole(roleForFiltering, {
+    roles: sessionUserState.roles,
+    permissions: sessionUserState.permissions,
+  }).map((item) => ({
     ...item,
     icon: NAV_ICONS_BY_HREF[item.href] ?? LayoutDashboard,
   }))

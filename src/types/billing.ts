@@ -90,6 +90,33 @@ export interface CreatePaymentInput {
   notes?: string
 }
 
+export interface CreateMobileMoneyPaymentInput {
+  invoiceId: string
+  amount: number
+  phoneNumber: string
+  paidBy?: string
+  notes?: string
+}
+
+export interface MobileMoneyTransaction {
+  id: string
+  invoiceId: string
+  paymentId?: string | null
+  amount: number
+  currency: string
+  phoneNumber: string
+  externalId: string
+  referenceId: string
+  status: 'PENDING' | 'SUCCESSFUL' | 'FAILED' | 'EXPIRED'
+  externalStatus?: string | null
+  financialTransactionId?: string | null
+  payerName?: string | null
+  notes?: string | null
+  failureReason?: string | null
+  createdAt: string
+  updatedAt: string
+}
+
 export type PaymentMethod = Payment['paymentMethod']
 
 export interface CashCloseSummary {

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Pill, User, Clock, CheckCircle, XCircle, AlertCircle, Eye, Package } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -25,7 +25,15 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  CompactModalShell,
 } from '@/components/ui/dialog'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import {
   Tabs,
   TabsContent,
@@ -33,27 +41,68 @@ import {
   TabsTrigger,
 } from '@/components/ui/tabs'
 
-import { useDrugRequests, useFulfillDrugRequest, useDenyDrugRequest } from '@/hooks/useDrugRequests'
+import { useDrugRequests, useFulfillDrugRequest, useDenyDrugRequest, useApproveDrugRequest } from '@/hooks/useDrugRequests'
+import { useInventoryEntries } from '@/hooks/useInventory'
 import { useRole } from '@/hooks/useRole'
-import type { DrugRequest, DrugRequestItem, DrugRequestStatus } from '@/types/pharmacy'
-
-/**
- * The backend stores `items` as a raw JSON string in the DB and returns it
- * as a string literal from the API. This helper normalises it to an array.
- */
-function parseItems(items: DrugRequestItem[] | string | null | undefined): DrugRequestItem[] {
-  if (!items) return []
-  if (Array.isArray(items)) return items
-  try {
-    const parsed = JSON.parse(items as string)
-    return Array.isArray(parsed) ? parsed : []
-  } catch {
-    return []
-  }
-}
+import type { DrugRequest, DrugRequestItem, DrugRequestStatus, InventoryEntry } from '@/types/pharmacy'
+import { normalizeDrugRequestItems, formatDrugRequestItemContext } from '@/lib/pharmacy/drugRequestMapping'
+import { DrugRequestQueueRow } from '@/components/pharmacy/DrugRequestQueueRow'
 
 function normalizeRequest(request: DrugRequest): DrugRequest {
-  return { ...request, items: parseItems(request.items as DrugRequestItem[] | string) }
+  return { ...request, items: normalizeDrugRequestItems(request.items) }
+}
+
+function normalizeName(value: string | undefined) {
+  return String(value ?? '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+}
+
+type RequestItemStockAssessment = {
+  item: DrugRequestItem
+  matches: InventoryEntry[]
+  totalAvailable: number
+  suggestedBatch: InventoryEntry | null
+  isOutOfStock: boolean
+  isInsufficient: boolean
+  isLowStock: boolean
+}
+
+function getAssessmentKey(item: DrugRequestItem, index: number) {
+  return `${item.drugId || item.drugName || 'drug'}-${index}`
+}
+
+function assessRequestItemStock(item: DrugRequestItem, inventoryEntries: InventoryEntry[]): RequestItemStockAssessment {
+  const itemName = normalizeName(item.drugName)
+  const matches = inventoryEntries
+    .filter((entry) => {
+      const brand = normalizeName(entry.medicationBrandName)
+      const generic = normalizeName(entry.medicationGenericName)
+      if (!itemName) return false
+      return (
+        itemName === brand ||
+        itemName === generic ||
+        brand.includes(itemName) ||
+        generic.includes(itemName) ||
+        itemName.includes(brand) ||
+        itemName.includes(generic)
+      )
+    })
+    .sort((a, b) => new Date(a.expiresAt).getTime() - new Date(b.expiresAt).getTime())
+
+  const totalAvailable = matches.reduce((sum, entry) => sum + Number(entry.quantity || 0), 0)
+  const suggestedBatch = matches.find((entry) => Number(entry.quantity || 0) > 0) ?? null
+
+  return {
+    item,
+    matches,
+    totalAvailable,
+    suggestedBatch,
+    isOutOfStock: matches.length === 0 || totalAvailable <= 0,
+    isInsufficient: totalAvailable > 0 && totalAvailable < item.quantity,
+    isLowStock: matches.some((entry) => Boolean(entry.isLowStock) || Boolean(entry.isCritical)),
+  }
 }
 
 /**
@@ -70,17 +119,61 @@ function normalizeRequest(request: DrugRequest): DrugRequest {
 export function DrugRequestQueue() {
   const { hasPermission, isRole, isLoading: roleLoading } = useRole()
   const { data: rawRequests = [], isLoading } = useDrugRequests({})
+  const { data: inventoryEntries = [], isLoading: inventoryLoading } = useInventoryEntries()
   // Normalise items field: the backend returns it as a JSON string, not an array
   const requests = useMemo(() => rawRequests.map(normalizeRequest), [rawRequests])
+  const { mutateAsync: approveRequest, isPending: approving } = useApproveDrugRequest()
   const { mutateAsync: fulfillRequest, isPending: fulfilling } = useFulfillDrugRequest()
   const { mutateAsync: denyRequest, isPending: denying } = useDenyDrugRequest()
 
   const [selectedRequest, setSelectedRequest] = useState<DrugRequest | null>(null)
   const [denialReason, setDenialReason] = useState('')
+  const [reviewNotes, setReviewNotes] = useState('')
   const [fulfillNotes, setFulfillNotes] = useState('')
+  const [showApproveDialog, setShowApproveDialog] = useState(false)
   const [showDenyDialog, setShowDenyDialog] = useState(false)
   const [showFulfillDialog, setShowFulfillDialog] = useState(false)
   const [activeTab, setActiveTab] = useState<DrugRequestStatus | 'all'>('pending')
+  const [selectedBatchesByItem, setSelectedBatchesByItem] = useState<Record<string, string>>({})
+
+  const selectedRequestAssessments = useMemo(
+    () =>
+      selectedRequest
+        ? selectedRequest.items.map((item) => assessRequestItemStock(item, inventoryEntries))
+        : [],
+    [inventoryEntries, selectedRequest],
+  )
+  const selectedRequestHasStockRisk = selectedRequestAssessments.some(
+    (assessment) => assessment.isOutOfStock || assessment.isInsufficient || assessment.isLowStock,
+  )
+  const canConfirmFulfillment = selectedRequestAssessments.length > 0 && selectedRequestAssessments.every((assessment, index) => {
+    const selectedBatchId = selectedBatchesByItem[getAssessmentKey(assessment.item, index)]
+    if (!selectedBatchId) return false
+    const selectedBatch = assessment.matches.find((entry) => entry.id === selectedBatchId)
+    return Boolean(selectedBatch && Number(selectedBatch.quantity || 0) >= assessment.item.quantity)
+  })
+  const requestStockWarnings = useMemo(() => {
+    return new Map(
+      requests.map((request) => [
+        request.id,
+        request.items
+          .map((item) => assessRequestItemStock(item, inventoryEntries))
+          .some((assessment) => assessment.isOutOfStock || assessment.isInsufficient || assessment.isLowStock),
+      ]),
+    )
+  }, [inventoryEntries, requests])
+
+  useEffect(() => {
+    if (!showFulfillDialog) return
+
+    const defaults = Object.fromEntries(
+      selectedRequestAssessments.map((assessment, index) => [
+        getAssessmentKey(assessment.item, index),
+        assessment.suggestedBatch?.id || '',
+      ]),
+    )
+    setSelectedBatchesByItem(defaults)
+  }, [selectedRequestAssessments, showFulfillDialog])
 
   // Check permission - either CAN_DISPENSE permission or PHARMACIST role
   const canDispense = useMemo(() => {
@@ -123,19 +216,54 @@ export function DrugRequestQueue() {
     }
   }
 
+  const handleApprove = async () => {
+    if (!selectedRequest) return
+
+    try {
+      await approveRequest({
+        id: selectedRequest.id,
+        notes: reviewNotes || undefined,
+      })
+      toast.success(`Drug request for ${selectedRequest.patientName} has been verified`)
+      setShowApproveDialog(false)
+      setSelectedRequest(null)
+      setReviewNotes('')
+    } catch (error) {
+      console.error('Failed to approve request:', error)
+      toast.error('Failed to verify request. Please try again.')
+    }
+  }
+
   // Handle fulfill
   const handleFulfill = async () => {
     if (!selectedRequest) return
+
+    if (!canConfirmFulfillment) {
+      toast.error('Select a valid inventory batch for every medication before dispensing.')
+      return
+    }
+
+    const dispenseAllocations = selectedRequestAssessments
+      .map((assessment, index) => {
+        const selectedBatchId = selectedBatchesByItem[getAssessmentKey(assessment.item, index)]
+        return {
+          inventoryId: selectedBatchId,
+          quantity: assessment.item.quantity || 1,
+          drugName: assessment.item.drugName,
+        }
+      })
 
     try {
       await fulfillRequest({
         id: selectedRequest.id,
         notes: fulfillNotes || undefined,
+        dispenseAllocations,
       })
       toast.success(`Drug request for ${selectedRequest.patientName} has been fulfilled`)
       setShowFulfillDialog(false)
       setSelectedRequest(null)
       setFulfillNotes('')
+      setSelectedBatchesByItem({})
     } catch (error) {
       console.error('Failed to fulfill request:', error)
       toast.error('Failed to fulfill request. Please try again.')
@@ -153,11 +281,13 @@ export function DrugRequestQueue() {
       await denyRequest({
         id: selectedRequest.id,
         reason: denialReason,
+        notes: reviewNotes || undefined,
       })
       toast.success(`Drug request for ${selectedRequest.patientName} has been denied`)
       setShowDenyDialog(false)
       setSelectedRequest(null)
       setDenialReason('')
+      setReviewNotes('')
     } catch (error) {
       console.error('Failed to deny request:', error)
       toast.error('Failed to deny request. Please try again.')
@@ -168,6 +298,7 @@ export function DrugRequestQueue() {
   const stats = useMemo(() => {
     return {
       pending: requests.filter((r) => r.status === 'pending').length,
+      approved: requests.filter((r) => r.status === 'approved').length,
       fulfilled: requests.filter((r) => r.status === 'fulfilled').length,
       denied: requests.filter((r) => r.status === 'denied').length,
       total: requests.length,
@@ -208,7 +339,7 @@ export function DrugRequestQueue() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <Card>
           <CardContent className="pt-4">
             <div className="flex items-center gap-3">
@@ -218,6 +349,19 @@ export function DrugRequestQueue() {
               <div>
                 <p className="text-2xl font-bold">{stats.pending}</p>
                 <p className="text-sm text-muted-foreground">Pending</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <CheckCircle className="h-5 w-5 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{stats.approved}</p>
+                <p className="text-sm text-muted-foreground">Verified</p>
               </div>
             </div>
           </CardContent>
@@ -269,6 +413,9 @@ export function DrugRequestQueue() {
           <TabsTrigger value="pending">
             Pending ({stats.pending})
           </TabsTrigger>
+          <TabsTrigger value="approved">
+            Verified ({stats.approved})
+          </TabsTrigger>
           <TabsTrigger value="fulfilled">
             Fulfilled ({stats.fulfilled})
           </TabsTrigger>
@@ -309,76 +456,30 @@ export function DrugRequestQueue() {
                 </TableHeader>
                 <TableBody>
                   {filteredRequests.map((request) => (
-                    <TableRow key={request.id}>
-                      <TableCell className="font-medium">
-                        <div className="flex items-center gap-2">
-                          <User className="h-4 w-4 text-muted-foreground" />
-                          {request.patientName || 'Patient ' + (request.patientId?.substring(0, 8) || 'Unknown')}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex flex-col gap-1">
-                          {request.items.slice(0, 2).map((item, idx) => (
-                            <span key={idx} className="text-sm">
-                              {item.quantity}x {item.drugName}
-                            </span>
-                          ))}
-                          {request.items.length > 2 && (
-                            <span className="text-xs text-muted-foreground">
-                              +{request.items.length - 2} more
-                            </span>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>{request.requestedByName || request.requestedBy || 'Unknown'}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                          <Clock className="h-3 w-3" />
-                          {formatDate(request.requestedAtFormatted || request.requestedAt)}
-                        </div>
-                      </TableCell>
-                      <TableCell>{getStatusBadge(request.status)}</TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setSelectedRequest(request)}
-                          >
-                            <Eye className="h-4 w-4 mr-1" />
-                            View
-                          </Button>
-                          {request.status === 'pending' && (
-                            <>
-                              <Button
-                                variant="default"
-                                size="sm"
-                                className="bg-green-600 hover:bg-green-700"
-                                onClick={() => {
-                                  setSelectedRequest(request)
-                                  setShowFulfillDialog(true)
-                                }}
-                              >
-                                <CheckCircle className="h-4 w-4 mr-1" />
-                                Fulfill
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="text-red-600 border-red-200 hover:bg-red-50"
-                                onClick={() => {
-                                  setSelectedRequest(request)
-                                  setShowDenyDialog(true)
-                                }}
-                              >
-                                <XCircle className="h-4 w-4 mr-1" />
-                                Deny
-                              </Button>
-                            </>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
+                    <DrugRequestQueueRow
+                      key={request.id}
+                      request={request}
+                      formatDate={formatDate}
+                      getStatusBadge={getStatusBadge}
+                      onView={setSelectedRequest}
+                      onApprove={(selected) => {
+                        setSelectedRequest(selected)
+                        setReviewNotes('')
+                        setShowApproveDialog(true)
+                      }}
+                      onFulfill={(selected) => {
+                        setSelectedRequest(selected)
+                        setFulfillNotes('')
+                        setShowFulfillDialog(true)
+                      }}
+                      onDeny={(selected) => {
+                        setSelectedRequest(selected)
+                        setDenialReason('')
+                        setReviewNotes('')
+                        setShowDenyDialog(true)
+                      }}
+                      hasStockWarning={requestStockWarnings.get(request.id)}
+                    />
                   ))}
                 </TableBody>
               </Table>
@@ -388,14 +489,20 @@ export function DrugRequestQueue() {
       </Card>
 
       {/* View Details Dialog */}
-      <Dialog open={!!selectedRequest && !showFulfillDialog && !showDenyDialog} onOpenChange={() => setSelectedRequest(null)}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Drug Request Details</DialogTitle>
-            <DialogDescription>
-              Request ID: {selectedRequest?.id}
-            </DialogDescription>
-          </DialogHeader>
+      <Dialog
+        open={!!selectedRequest && !showApproveDialog && !showFulfillDialog && !showDenyDialog}
+        onOpenChange={() => setSelectedRequest(null)}
+      >
+        <CompactModalShell className="sm:!max-w-2xl">
+          <div className="px-6 py-4 border-b">
+            <DialogHeader className="pr-8">
+              <DialogTitle>Drug Request Details</DialogTitle>
+              <DialogDescription>
+                Request ID: {selectedRequest?.id}
+              </DialogDescription>
+            </DialogHeader>
+          </div>
+          <div className="flex-1 overflow-y-auto p-6">
           {selectedRequest && (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -417,22 +524,113 @@ export function DrugRequestQueue() {
                 </div>
               </div>
 
+              {(selectedRequest.approvedAt || selectedRequest.fulfilledAt || selectedRequest.deniedAt) && (
+                <div className="grid grid-cols-1 gap-3 rounded-lg border bg-muted/20 p-4 md:grid-cols-3">
+                  <div>
+                    <Label className="text-muted-foreground">Verified</Label>
+                    <p className="text-sm font-medium">
+                      {selectedRequest.approvedAt
+                        ? `${formatDate(selectedRequest.approvedAt)} by ${selectedRequest.approvedBy || 'Pharmacy'}`
+                        : 'Not yet verified'}
+                    </p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">Dispensed</Label>
+                    <p className="text-sm font-medium">
+                      {selectedRequest.fulfilledAt
+                        ? `${formatDate(selectedRequest.fulfilledAt)} by ${selectedRequest.fulfilledBy || 'Pharmacy'}`
+                        : 'Not yet dispensed'}
+                    </p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">Denied</Label>
+                    <p className="text-sm font-medium">
+                      {selectedRequest.deniedAt
+                        ? `${formatDate(selectedRequest.deniedAt)} by ${selectedRequest.deniedBy || 'Pharmacy'}`
+                        : 'Not denied'}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {selectedRequestHasStockRisk ? (
+                <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="mt-0.5 h-4 w-4" />
+                    <div>
+                      <p className="font-medium">Stock allocation needs attention</p>
+                      <p>
+                        One or more requested medications are low on stock, have no visible stock match, or do not
+                        have enough quantity for immediate dispense.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+
               <div>
                 <Label className="text-muted-foreground">Items</Label>
+                {selectedRequest.items.some((item) => Boolean(item.allergyOverrideReason)) && (
+                  <div className="mb-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                    <div className="flex items-center gap-2 font-medium">
+                      <AlertCircle className="h-4 w-4" />
+                      Allergy override reason provided for one or more medications.
+                    </div>
+                  </div>
+                )}
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Medication</TableHead>
                       <TableHead>Quantity</TableHead>
+                      <TableHead>Prescription Context</TableHead>
                       <TableHead>Notes</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {selectedRequest.items.map((item, idx) => (
                       <TableRow key={idx}>
-                        <TableCell className="font-medium">{item.drugName}</TableCell>
+                        <TableCell className="font-medium">
+                          {formatDrugRequestItemContext(item)}
+                          {item.allergyOverrideReason && (
+                            <div className="mt-1 flex items-center gap-1 text-xs text-destructive font-medium border border-destructive/20 bg-destructive/5 p-1 rounded">
+                              <AlertCircle className="w-3 h-3 flex-shrink-0" />
+                              Doctor Override: {item.allergyOverrideReason}
+                            </div>
+                          )}
+                          {item.interactionOverrideReason && (
+                            <div className="mt-1 flex items-center gap-1 text-xs text-amber-700 font-medium border border-amber-700/20 bg-amber-50 p-1 rounded">
+                              <AlertCircle className="w-3 h-3 flex-shrink-0" />
+                              Doctor Override: {item.interactionOverrideReason}
+                            </div>
+                          )}
+                        </TableCell>
                         <TableCell>{item.quantity}</TableCell>
-                        <TableCell className="text-muted-foreground">{item.notes || '-'}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground">
+                          {[item.dose, item.route, item.frequency, item.duration].filter(Boolean).join(' • ') || 'Legacy unstructured record'}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {item.notes || '-'}
+                          {(() => {
+                            const assessment = selectedRequestAssessments[idx]
+                            if (!assessment || inventoryLoading) return null
+                            return (
+                              <div className="mt-2 text-xs">
+                                {assessment.isOutOfStock ? (
+                                  <p className="text-red-700">No matching in-stock batch found.</p>
+                                ) : assessment.isInsufficient ? (
+                                  <p className="text-red-700">
+                                    Only {assessment.totalAvailable} unit(s) visible in stock for this request.
+                                  </p>
+                                ) : (
+                                  <p className="text-emerald-700">
+                                    Suggested FIFO batch: {assessment.suggestedBatch?.batchNumber || 'N/A'}
+                                  </p>
+                                )}
+                              </div>
+                            )
+                          })()}
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -454,27 +652,184 @@ export function DrugRequestQueue() {
               )}
             </div>
           )}
-        </DialogContent>
+          </div>
+        </CompactModalShell>
+      </Dialog>
+
+      {/* Approve Dialog */}
+      <Dialog
+        open={showApproveDialog}
+        onOpenChange={(open) => {
+          setShowApproveDialog(open)
+          if (!open) {
+            setReviewNotes('')
+          }
+        }}
+      >
+        <CompactModalShell className="sm:!max-w-2xl">
+          <div className="px-6 py-4 border-b">
+            <DialogHeader className="pr-8">
+              <DialogTitle>Verify Drug Request</DialogTitle>
+              <DialogDescription>
+                Confirm pharmacist review for {selectedRequest?.patientName} before dispensing.
+              </DialogDescription>
+            </DialogHeader>
+          </div>
+          <div className="flex-1 overflow-y-auto p-6 space-y-4">
+            {selectedRequestHasStockRisk ? (
+              <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="mt-0.5 h-4 w-4" />
+                  <div>
+                    <p className="font-medium">Stock warning</p>
+                    <p>Review the suggested allocations below before marking this request as verified.</p>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+            <div>
+              <Label>Medication Review</Label>
+              <Table>
+                <TableBody>
+                  {selectedRequestAssessments.map((assessment, idx) => (
+                    <TableRow key={`${assessment.item.drugId || assessment.item.drugName}-${idx}`}>
+                      <TableCell className="font-medium">{formatDrugRequestItemContext(assessment.item)}</TableCell>
+                      <TableCell>{assessment.item.quantity}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {inventoryLoading ? (
+                          'Checking stock...'
+                        ) : assessment.isOutOfStock ? (
+                          <span className="text-red-700">No matched stock available</span>
+                        ) : assessment.isInsufficient ? (
+                          <span className="text-red-700">
+                            {assessment.totalAvailable} available, request exceeds stock
+                          </span>
+                        ) : (
+                          <span className={assessment.isLowStock ? 'text-amber-700' : 'text-emerald-700'}>
+                            FIFO batch {assessment.suggestedBatch?.batchNumber || 'N/A'} • {assessment.totalAvailable} in stock
+                          </span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+            <div>
+              <Label>Verification Notes (Optional)</Label>
+              <Textarea
+                placeholder="Document pharmacist verification notes or substitution guidance..."
+                value={reviewNotes}
+                onChange={(e) => setReviewNotes(e.target.value)}
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter className="px-6 py-4 bg-slate-50 border-t shrink-0">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowApproveDialog(false)
+                setReviewNotes('')
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              className="bg-blue-600 hover:bg-blue-700"
+              onClick={handleApprove}
+              disabled={approving}
+            >
+              {approving ? 'Verifying...' : 'Confirm Verification'}
+            </Button>
+          </DialogFooter>
+        </CompactModalShell>
       </Dialog>
 
       {/* Fulfill Dialog */}
-      <Dialog open={showFulfillDialog} onOpenChange={setShowFulfillDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Fulfill Drug Request</DialogTitle>
-            <DialogDescription>
-              Mark this request as fulfilled for {selectedRequest?.patientName}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
+      <Dialog
+        open={showFulfillDialog}
+        onOpenChange={(open) => {
+          setShowFulfillDialog(open)
+          if (!open) {
+            setFulfillNotes('')
+            setSelectedBatchesByItem({})
+          }
+        }}
+      >
+        <CompactModalShell className="sm:!max-w-2xl">
+          <div className="px-6 py-4 border-b">
+            <DialogHeader className="pr-8">
+              <DialogTitle>Fulfill Drug Request</DialogTitle>
+              <DialogDescription>
+                Mark this request as fulfilled for {selectedRequest?.patientName}
+              </DialogDescription>
+            </DialogHeader>
+          </div>
+          <div className="flex-1 overflow-y-auto p-6 space-y-4">
+            {selectedRequestHasStockRisk ? (
+              <div className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="mt-0.5 h-4 w-4" />
+                  <div>
+                    <p className="font-medium">Dispense warning</p>
+                    <p>
+                      At least one requested medication has insufficient or missing visible stock. Choose valid batches for every line item before confirming dispense.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : null}
             <div>
               <Label>Items to Dispense</Label>
               <Table>
                 <TableBody>
-                  {selectedRequest?.items.map((item, idx) => (
+                  {selectedRequestAssessments.map((assessment, idx) => (
                     <TableRow key={idx}>
-                      <TableCell className="font-medium">{item.drugName}</TableCell>
-                      <TableCell>{item.quantity}</TableCell>
+                      <TableCell className="font-medium">{assessment.item.drugName}</TableCell>
+                      <TableCell>{assessment.item.quantity}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        <div className="space-y-2">
+                          {inventoryLoading ? (
+                            <span>Checking stock...</span>
+                          ) : assessment.matches.length ? (
+                            <Select
+                              value={selectedBatchesByItem[getAssessmentKey(assessment.item, idx)] || ''}
+                              onValueChange={(value) =>
+                                setSelectedBatchesByItem((current) => ({
+                                  ...current,
+                                  [getAssessmentKey(assessment.item, idx)]: value,
+                                }))
+                              }
+                            >
+                              <SelectTrigger className="h-8 text-xs">
+                                <SelectValue placeholder="Select batch" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {assessment.matches.map((match) => (
+                                  <SelectItem key={match.id} value={match.id}>
+                                    {match.batchNumber} • {match.quantity} in stock
+                                    {match.isLowStock || match.isCritical ? ' • low stock' : ''}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <span className="text-red-700">No matched batch</span>
+                          )}
+                          {!inventoryLoading ? (
+                            assessment.isOutOfStock ? (
+                              <span className="text-red-700">No matched stock available</span>
+                            ) : assessment.isInsufficient ? (
+                              <span className="text-red-700">{assessment.totalAvailable} available across matching batches</span>
+                            ) : (
+                              <span className={assessment.isLowStock ? 'text-amber-700' : 'text-emerald-700'}>
+                                FIFO suggestion {assessment.suggestedBatch?.batchNumber || 'N/A'}
+                              </span>
+                            )
+                          ) : null}
+                        </div>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -490,31 +845,48 @@ export function DrugRequestQueue() {
               />
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowFulfillDialog(false)}>
+          <DialogFooter className="px-6 py-4 bg-slate-50 border-t shrink-0">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowFulfillDialog(false)
+                setFulfillNotes('')
+              }}
+            >
               Cancel
             </Button>
             <Button
               className="bg-green-600 hover:bg-green-700"
               onClick={handleFulfill}
-              disabled={fulfilling}
+              disabled={fulfilling || !canConfirmFulfillment}
             >
               {fulfilling ? 'Processing...' : 'Confirm Fulfillment'}
             </Button>
           </DialogFooter>
-        </DialogContent>
+        </CompactModalShell>
       </Dialog>
 
       {/* Deny Dialog */}
-      <Dialog open={showDenyDialog} onOpenChange={setShowDenyDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Deny Drug Request</DialogTitle>
-            <DialogDescription>
-              Please provide a reason for denying this request for {selectedRequest?.patientName}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
+      <Dialog
+        open={showDenyDialog}
+        onOpenChange={(open) => {
+          setShowDenyDialog(open)
+          if (!open) {
+            setDenialReason('')
+            setReviewNotes('')
+          }
+        }}
+      >
+        <CompactModalShell>
+          <div className="px-6 py-4 border-b">
+            <DialogHeader className="pr-8">
+              <DialogTitle>Deny Drug Request</DialogTitle>
+              <DialogDescription>
+                Please provide a reason for denying this request for {selectedRequest?.patientName}
+              </DialogDescription>
+            </DialogHeader>
+          </div>
+          <div className="flex-1 overflow-y-auto p-6 space-y-4">
             <div>
               <Label>Items Requested</Label>
               <Table>
@@ -538,9 +910,25 @@ export function DrugRequestQueue() {
                 required
               />
             </div>
+            <div>
+              <Label>Pharmacist Notes (Optional)</Label>
+              <Textarea
+                placeholder="Add review context, substitution advice, or inventory notes..."
+                value={reviewNotes}
+                onChange={(e) => setReviewNotes(e.target.value)}
+                rows={3}
+              />
+            </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowDenyDialog(false)}>
+          <DialogFooter className="px-6 py-4 bg-slate-50 border-t shrink-0">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowDenyDialog(false)
+                setDenialReason('')
+                setReviewNotes('')
+              }}
+            >
               Cancel
             </Button>
             <Button
@@ -551,7 +939,7 @@ export function DrugRequestQueue() {
               {denying ? 'Processing...' : 'Confirm Denial'}
             </Button>
           </DialogFooter>
-        </DialogContent>
+        </CompactModalShell>
       </Dialog>
     </div>
   )

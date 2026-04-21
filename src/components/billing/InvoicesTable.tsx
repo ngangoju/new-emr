@@ -1,6 +1,5 @@
 'use client'
 
-import { useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -21,16 +20,19 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { FileText, CreditCard, Trash2, Percent } from 'lucide-react'
+import { FileText, CreditCard, Trash2, Percent, Eye, EyeOff } from 'lucide-react'
 import type { Invoice } from '@/types/billing'
 import { format } from 'date-fns'
 import { useRole } from '@/hooks/useRole'
 import { usePendingApprovals, useRequestDiscountApproval, useRequestInvoiceVoid } from '@/hooks/useApprovals'
 import toast from 'react-hot-toast'
+import { maskIdentifier, type RevealedIdsMap } from '@/lib/utils/masking'
+import { useState } from 'react'
 
 interface InvoicesTableProps {
   invoices: Invoice[]
   onProcessPayment?: (invoice: Invoice) => void
+  onViewDetails?: (invoice: Invoice) => void
   onInvoiceVoidRequested?: () => void
 }
 
@@ -40,6 +42,7 @@ const MIN_DISCOUNT_REASON_LENGTH = 8
 export function InvoicesTable({
   invoices,
   onProcessPayment,
+  onViewDetails,
   onInvoiceVoidRequested,
 }: InvoicesTableProps) {
   const { hasPermission, isRole, isLoading: roleLoading } = useRole()
@@ -51,6 +54,14 @@ export function InvoicesTable({
   const [selectedInvoiceForDiscount, setSelectedInvoiceForDiscount] = useState<Invoice | null>(null)
   const [discountAmount, setDiscountAmount] = useState('')
   const [discountReason, setDiscountReason] = useState('')
+  const [revealedIds, setRevealedIds] = useState<RevealedIdsMap>({})
+
+  const toggleIdReveal = (id: string) => {
+    setRevealedIds(prev => ({
+      ...prev,
+      [id]: !prev[id]
+    }))
+  }
 
   const canRequestInvoiceVoidApproval = hasPermission('CAN_APPROVE') || isRole(['ADMIN', 'MANAGER'])
   const canRequestDiscountApproval = isRole(['DOCTOR', 'CLINICAL_DIRECTOR', 'ADMIN'])
@@ -163,11 +174,16 @@ export function InvoicesTable({
               const isVoidPending = statusValue === 'VOID_PENDING' || statusValue === 'PENDING_VOID'
               const isDiscountPending = pendingDiscountInvoiceIds.has(invoice.id)
 
-                const patientFullName = invoice.patient?.fullName || 'Unknown'
-                const patientInitials = patientFullName.trim() ? patientFullName.slice(0, 2).toUpperCase() : '??'
+              const patientFullName = invoice.patient?.fullName || 'Unknown'
+              const patientInitials = patientFullName.trim() ? patientFullName.slice(0, 2).toUpperCase() : '??'
+              const nationalId = invoice.patient?.nationalId
+              const isRevealed = revealedIds[invoice.id] || false
+              const displayNationalId = nationalId
+                ? (isRevealed ? nationalId : (maskIdentifier(nationalId) || nationalId))
+                : '—'
 
-                return (
-                  <TableRow key={invoice.id}>
+              return (
+                <TableRow key={invoice.id}>
                   <TableCell className="font-medium">
                     {invoice.invoiceNumber ? `#${invoice.invoiceNumber}` : `#${invoice.id.slice(0, 8)}`}
                   </TableCell>
@@ -178,8 +194,21 @@ export function InvoicesTable({
                       </div>
                       <div>
                         <p className="font-medium">{patientFullName}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {invoice.patient?.nationalId || '—'}
+                        <p className="text-sm text-muted-foreground flex items-center gap-1">
+                          {displayNationalId}
+                          {nationalId && (
+                            <button
+                              onClick={() => toggleIdReveal(invoice.id)}
+                              className="ml-1 p-0.5 hover:bg-muted rounded-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                              title={isRevealed ? 'Hide ID' : 'Reveal full ID'}
+                            >
+                              {isRevealed ? (
+                                <EyeOff className="h-3 w-3" />
+                              ) : (
+                                <Eye className="h-3 w-3" />
+                              )}
+                            </button>
+                          )}
                         </p>
                       </div>
                     </div>
@@ -222,7 +251,12 @@ export function InvoicesTable({
                     {format(invoice.createdAt, 'MMM dd, yyyy')}
                   </TableCell>
                   <TableCell className="space-x-2">
-                    <Button variant="outline" size="sm" title="View Details">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      title="View Details"
+                      onClick={() => onViewDetails?.(invoice)}
+                    >
                       <FileText className="h-4 w-4" />
                     </Button>
                     {statusValue !== 'PAID' && invoice.paymentStatus !== 'PAID' && (

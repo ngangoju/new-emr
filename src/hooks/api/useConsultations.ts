@@ -31,6 +31,61 @@ export interface CreateConsultationPayload {
     vitals?: unknown;
 }
 
+export interface MedicationFormulary {
+    id: string;
+    brandName: string;
+    genericName: string;
+    strength: string;
+    form: string;
+    category: string;
+}
+
+export interface ConsultationMedication {
+    id: string;
+    consultationId: string;
+    formularyId: string;
+    drugName: string;
+    dose: string;
+    route: string;
+    frequency: string;
+    duration: string;
+    indication?: string;
+    allergyOverrideReason?: string;
+    interactionOverrideReason?: string;
+    safetyChecked?: boolean;
+    createdAt: string;
+}
+
+export interface AddMedicationPayload {
+    formularyId: string;
+    dose: string;
+    route: string;
+    frequency: string;
+    duration: string;
+    indication?: string;
+    allergyOverrideReason?: string;
+    interactionOverrideReason?: string;
+}
+
+export interface DryRunSafetyCheckPayload {
+    patientId: string;
+    formularyId: string;
+    activeFormularyIds: string[];
+}
+
+export interface DryRunSafetyCheckResponse {
+    safe: boolean;
+    allergyConflict?: {
+        allergen: string;
+        severity: string;
+    };
+    interactionConflict?: {
+        drug1Name: string;
+        drug2Name: string;
+        description: string;
+    };
+}
+
 const normalizeConsultation = (c: any): Consultation => {
     // Handle the epoch seconds vs milliseconds bug from backend
     const fixDate = (dateVal: any) => {
@@ -127,6 +182,49 @@ export function useDeleteConsultation() {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['consultations'] });
+        },
+    });
+}
+
+export function useFormularySearch() {
+    return useMutation({
+        mutationFn: async (query: string) => {
+            const { data } = await api.get<MedicationFormulary[]>(`/api/formulary/search`, { params: { q: query } });
+            return data;
+        }
+    });
+}
+
+export function useConsultationMedications(consultationId: string) {
+    return useQuery({
+        queryKey: ['consultation', consultationId, 'medications'],
+        queryFn: async () => {
+            const { data } = await api.get<ConsultationMedication[]>(`/consultations/${consultationId}/medications`);
+            return data;
+        },
+        enabled: !!consultationId
+    });
+}
+
+export function useAddMedication() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async ({ consultationId, payload }: { consultationId: string; payload: AddMedicationPayload }) => {
+            const { data } = await api.post<ConsultationMedication>(`/consultations/${consultationId}/medications`, payload);
+            return data;
+        },
+        onSuccess: (data) => {
+            queryClient.invalidateQueries({ queryKey: ['consultation', data.consultationId, 'medications'] });
+        }
+    });
+}
+
+export function useDryRunSafetyCheck() {
+    return useMutation({
+        mutationFn: async (payload: DryRunSafetyCheckPayload) => {
+            const { data } = await api.post<DryRunSafetyCheckResponse>('/api/consultations/safety-check', payload);
+            return data;
         },
     });
 }

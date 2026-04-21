@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
-import type { Invoice, CreateInvoiceInput } from '@/types/billing'
+import type { Invoice, CreateInvoiceInput, InvoiceItem } from '@/types/billing'
 
 interface UseInvoicesFilters {
   status?: string
@@ -11,6 +11,62 @@ interface UseInvoicesFilters {
 
 export function useInvoices(filters: UseInvoicesFilters = {}) {
   const normalizeStatus = (value: unknown) => String(value ?? '').trim().toUpperCase()
+  const toFiniteNumber = (value: unknown) => {
+    const parsed = typeof value === 'number' ? value : Number(value)
+    return Number.isFinite(parsed) ? parsed : 0
+  }
+
+  const parseInvoiceItems = (rawItems: unknown): InvoiceItem[] => {
+    const normalizeItems = (items: unknown[]): InvoiceItem[] => items.map((item, index) => {
+      const raw = (item ?? {}) as Record<string, unknown>
+      const quantity = toFiniteNumber(raw.quantity)
+      const unitPrice = toFiniteNumber(raw.unitPrice ?? raw.unit_price)
+      const total = toFiniteNumber(raw.total) || (quantity * unitPrice)
+      const tariffId = String(raw.tariffId ?? raw.tariff_id ?? raw.billing_code ?? `line-${index}`)
+      const serviceName = String(
+        raw.description
+          ?? (raw.tariff as { serviceName?: unknown } | undefined)?.serviceName
+          ?? (raw.tariff as { billingCode?: unknown } | undefined)?.billingCode
+          ?? 'Unnamed service'
+      )
+      const billingCode = String(
+        raw.billing_code
+          ?? (raw.tariff as { billingCode?: unknown } | undefined)?.billingCode
+          ?? tariffId
+      )
+
+      return {
+        id: typeof raw.id === 'string' ? raw.id : undefined,
+        tariffId,
+        tariff: {
+          id: tariffId,
+          serviceName,
+          billingCode,
+          category: String(raw.category ?? 'General'),
+          basePrice: unitPrice,
+          active: true,
+        },
+        quantity,
+        unitPrice,
+        total,
+      }
+    })
+
+    if (Array.isArray(rawItems)) {
+      return normalizeItems(rawItems)
+    }
+
+    if (typeof rawItems !== 'string' || !rawItems.trim()) {
+      return []
+    }
+
+    try {
+      const parsed = JSON.parse(rawItems)
+      return Array.isArray(parsed) ? normalizeItems(parsed) : []
+    } catch {
+      return []
+    }
+  }
 
   const { data: invoices = [], isLoading } = useQuery({
     queryKey: ['invoices', filters],
@@ -34,6 +90,10 @@ export function useInvoices(filters: UseInvoicesFilters = {}) {
 
         return {
           ...invoice,
+          items: parseInvoiceItems((invoice as unknown as { items?: unknown }).items),
+          payments: Array.isArray((invoice as unknown as { payments?: unknown[] }).payments)
+            ? (invoice as unknown as { payments: Invoice['payments'] }).payments
+            : [],
           doctorName: invoice.doctorName || (invoice as unknown as { doctor_name?: string }).doctor_name,
           patient: {
             ...(invoice.patient ?? {}),

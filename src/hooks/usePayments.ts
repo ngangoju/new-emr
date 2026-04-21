@@ -3,6 +3,7 @@ import toast from 'react-hot-toast'
 import { api } from '@/lib/api'
 import type { Payment } from '@/types/billing'
 import type { CreatePaymentInput } from '@/types/billing'
+import type { CreateMobileMoneyPaymentInput, MobileMoneyTransaction } from '@/types/billing'
 import type { CashCloseSummary, CreateCashCloseInput, CashCloseHistoryFilters } from '@/types/billing'
 
 export function usePayments(invoiceId?: string) {
@@ -37,6 +38,41 @@ export function useCreatePayment() {
   })
 
   return { createPayment, creating: isPending }
+}
+
+export function useCreateMobileMoneyPayment() {
+  const queryClient = useQueryClient()
+
+  const { mutateAsync: createMobileMoneyPayment, isPending } = useMutation({
+    mutationFn: async (input: CreateMobileMoneyPaymentInput) => {
+      const { data } = await api.post<MobileMoneyTransaction>('/api/billing/mobile-money/request-to-pay', input)
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['mobile-money-transactions'] })
+      toast.success('MoMo request sent. Ask the patient to approve the prompt on their phone.')
+    },
+    onError: (error) => {
+      console.error('Failed to initiate mobile money payment:', error)
+    }
+  })
+
+  return { createMobileMoneyPayment, creatingMobileMoneyPayment: isPending }
+}
+
+export function useMobileMoneyTransaction(transactionId?: string, poll = false) {
+  return useQuery({
+    queryKey: ['mobile-money-transaction', transactionId],
+    queryFn: async () => {
+      if (!transactionId) return null
+      const { data } = await api.get<MobileMoneyTransaction>(`/api/billing/mobile-money/transactions/${transactionId}`, {
+        params: { refresh: true }
+      })
+      return data
+    },
+    enabled: !!transactionId,
+    refetchInterval: poll ? 3000 : false,
+  })
 }
 
 export function useCreateCashClose() {
