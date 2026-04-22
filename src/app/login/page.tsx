@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { Button } from "@/components/ui/button"
@@ -15,7 +15,7 @@ import {
   FormMessage,
 } from "@/components/ui/form"
 import Link from "next/link"
-import { LogIn, User, Lock, Stethoscope, Heart, Activity } from "lucide-react"
+import { LogIn, User, Lock, Stethoscope, Heart, Activity, Eye, EyeOff } from "lucide-react"
 import { useLogin } from '@/hooks/api/useAuth'
 import toast from 'react-hot-toast'
 import { useForm } from 'react-hook-form'
@@ -25,6 +25,7 @@ import { getSessionUser, setSessionUser } from '@/lib/utils/auth'
 
 export default function LoginPage() {
   const router = useRouter()
+  const [showPassword, setShowPassword] = useState(false)
   
   const form = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),
@@ -53,7 +54,25 @@ export default function LoginPage() {
           router.replace('/dashboard')
         },
         onError: (error: any) => {
-          toast.error(error?.response?.data?.message || 'Login failed. Please check your credentials.')
+          const status = error?.response?.status
+          const code = error?.response?.data?.code
+
+          let message = ''
+          if (status === 401 || code === 'UNAUTHORIZED') {
+            message = 'The username or password you entered is incorrect. Please double-check your credentials and try again.'
+          } else if (status === 403) {
+            message = 'Your account has been deactivated. Please contact your system administrator for assistance.'
+          } else if (status === 429) {
+            message = 'Too many login attempts. Please wait a few minutes before trying again.'
+          } else if (status === 500) {
+            message = 'We are experiencing a server issue. Please try again later or contact support if the problem persists.'
+          } else if (!error?.response) {
+            message = 'Unable to connect to the server. Please check your internet connection and try again.'
+          } else {
+            message = error?.response?.data?.message || 'Something went wrong. Please try again.'
+          }
+
+          toast.error(message)
         }
       }
     )
@@ -205,12 +224,22 @@ export default function LoginPage() {
                           Password
                         </FormLabel>
                         <FormControl>
-                          <Input 
-                            type="password" 
-                            placeholder="••••••••" 
-                            className="h-11"
-                            {...field}
-                          />
+                          <div className="relative">
+                            <Input 
+                              type={showPassword ? "text" : "password"} 
+                              placeholder="••••••••" 
+                              className="h-11 pr-10"
+                              {...field}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowPassword(!showPassword)}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                              aria-label={showPassword ? "Hide password" : "Show password"}
+                            >
+                              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                            </button>
+                          </div>
                         </FormControl>
                         <FormMessage />
                       </FormItem>
