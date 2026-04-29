@@ -77,7 +77,7 @@ export const DASHBOARD_ROUTE_POLICIES: readonly DashboardRoutePolicy[] = [
     },
     {
         routePrefix: '/dashboard/reports',
-        allowedRoles: ['ADMIN', 'DOCTOR', 'NURSE', 'DAF', 'COO', 'MANAGER', 'CLINICAL_DIRECTOR', 'CHIEF_NURSE', 'ACCOUNTANT'],
+        allowedRoles: ['ADMIN', 'DOCTOR', 'NURSE', 'DAF', 'COO', 'MANAGER', 'CLINICAL_DIRECTOR', 'CHIEF_NURSE', 'ACCOUNTANT', 'AUDITOR'],
     },
     {
         routePrefix: '/dashboard/approvals',
@@ -127,10 +127,11 @@ const ROLE_DEFAULT_DASHBOARD_ROUTES: Partial<Record<UserRole, string>> = {
     BILLING_OFFICER: '/dashboard/billing',
     CASHIER: '/dashboard/billing',
     DAF: '/dashboard/billing',
-    COO: '/dashboard/billing',
+    COO: '/dashboard/reports',
     MANAGER: '/dashboard/admin',
     'HUMAN_RESOURCE': '/dashboard/admin',
     ACCOUNTANT: '/dashboard/reports',
+    AUDITOR: '/dashboard/reports',
 }
 
 function normalizePath(pathname: string): string {

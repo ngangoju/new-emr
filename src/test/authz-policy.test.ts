@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
     canAccessDashboardRoute,
+    canRoleAccessFeature,
     getDashboardNavigationForRole,
     getRoleDefaultDashboardRoute,
     normalizeUserRole,
@@ -124,6 +125,33 @@ describe('frontend authz policy', () => {
 
     it('returns role-specific default dashboard route for restricted roles', () => {
         expect(getRoleDefaultDashboardRoute('CASHIER')).toBe('/dashboard/billing')
+        expect(getRoleDefaultDashboardRoute('COO')).toBe('/dashboard/reports')
+        expect(getRoleDefaultDashboardRoute('AUDITOR')).toBe('/dashboard/reports')
         expect(getRoleDefaultDashboardRoute('DOCTOR')).toBe('/dashboard')
+    })
+
+    it('allows auditor report access without admin navigation fallback', () => {
+        expect(canAccessDashboardRoute('AUDITOR', '/dashboard/reports')).toBe(true)
+        expect(canAccessDashboardRoute('AUDITOR', '/dashboard/admin')).toBe(false)
+
+        const auditorNavigation = getDashboardNavigationForRole('AUDITOR')
+        expect(auditorNavigation.some((item) => item.href === '/dashboard/reports')).toBe(true)
+        expect(auditorNavigation.some((item) => item.href === '/dashboard/admin')).toBe(false)
+    })
+
+    it('keeps security on public dashboard surfaces only by default', () => {
+        expect(canAccessDashboardRoute('SECURITY', '/dashboard')).toBe(true)
+        expect(canAccessDashboardRoute('SECURITY', '/dashboard/notifications')).toBe(true)
+        expect(canAccessDashboardRoute('SECURITY', '/dashboard/reception')).toBe(false)
+        expect(canAccessDashboardRoute('SECURITY', '/dashboard/reports')).toBe(false)
+
+        const securityNavigation = getDashboardNavigationForRole('SECURITY')
+        expect(securityNavigation.map((item) => item.href)).toEqual(['/dashboard', '/dashboard/notifications'])
+    })
+
+    it('keeps dispense fallback aligned to pharmacy-only default permissions', () => {
+        expect(canRoleAccessFeature('PHARMACIST', 'CAN_DISPENSE')).toBe(true)
+        expect(canRoleAccessFeature('STORE', 'CAN_DISPENSE')).toBe(false)
+        expect(canRoleAccessFeature('DOCTOR', 'CAN_DISPENSE')).toBe(false)
     })
 })
