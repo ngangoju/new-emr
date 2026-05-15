@@ -31,9 +31,9 @@ import {
 } from '@/components/ui/form'
 
 const STEPS = [
-  { id: 1, name: 'Patient Selection', icon: User, fields: ['patientId'], role: 'NURSE' },
-  { id: 2, name: 'Chief Complaint', icon: FileText, fields: ['chiefComplaint', 'history'], role: 'NURSE' },
-  { id: 3, name: 'Vitals & Examination', icon: Activity, fields: ['vitals.temperature', 'vitals.bloodPressure', 'vitals.heartRate', 'vitals.weight', 'vitals.height', 'examination'], role: 'NURSE' },
+  { id: 1, name: 'Patient Selection', icon: User, fields: ['patientId'], role: 'DOCTOR' },
+  { id: 2, name: 'Chief Complaint', icon: FileText, fields: ['chiefComplaint', 'history'], role: 'DOCTOR' },
+  { id: 3, name: 'Vitals & Examination', icon: Activity, fields: ['examination'], role: 'DOCTOR' },
   { id: 4, name: 'Diagnosis', icon: Stethoscope, fields: ['diagnosis'], role: 'DOCTOR' },
   { id: 5, name: 'Treatment Plan', icon: Pill, fields: ['medications', 'labTests', 'followUp'], role: 'DOCTOR' },
   { id: 6, name: 'Review & Submit', icon: Eye, fields: [], role: 'DOCTOR' },
@@ -50,7 +50,7 @@ const LAB_TEST_OPTIONS = [
   'HIV Rapid Test',
 ]
 
-import { usePatients, usePatient, type Patient } from '@/hooks/api/usePatients'
+import { usePatients, usePatient, usePatientVitals, type Patient } from '@/hooks/api/usePatients'
 import { useCreateConsultation, useSignConsultation } from '@/hooks/api/useConsultations'
 import { useCreateLabOrder } from '@/hooks/useLabOrders'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -135,8 +135,10 @@ function ConsultationWizard() {
   
   // Reliably fetch selected patient data
   const { data: selectedPatient, isLoading: isLoadingPatient } = usePatient(selectedPatientId)
+  const { data: patientVitalsData, isLoading: latestVitalsLoading } = usePatientVitals(selectedPatientId)
   
   const patients = patientsData?.data || []
+  const latestVitals = Array.isArray(patientVitalsData) ? patientVitalsData[0] : undefined
 
   const createConsultationMutation = useCreateConsultation()
   const signConsultationMutation = useSignConsultation()
@@ -162,6 +164,18 @@ function ConsultationWizard() {
       setPatientSearch(`${selectedPatient.firstName} ${selectedPatient.lastName}`)
     }
   }, [selectedPatient, patientIdFromUrl])
+
+  useEffect(() => {
+    if (!latestVitals) {
+      return
+    }
+
+    form.setValue('vitals.temperature', latestVitals.temperature ? String(latestVitals.temperature) : '')
+    form.setValue('vitals.bloodPressure', latestVitals.bloodPressure || '')
+    form.setValue('vitals.heartRate', latestVitals.heartRate ? String(latestVitals.heartRate) : '')
+    form.setValue('vitals.weight', latestVitals.weight ? String(latestVitals.weight) : '')
+    form.setValue('vitals.height', latestVitals.height ? String(latestVitals.height) : '')
+  }, [form, latestVitals])
 
   const progress = (currentStep / STEPS.length) * 100
 
@@ -248,6 +262,11 @@ function ConsultationWizard() {
     const payload = {
       patientId: data.patientId,
       diagnosis: data.diagnosis,
+      findings: `
+Chief Complaint: ${data.chiefComplaint}
+History: ${data.history || 'N/A'}
+Physical Examination: ${data.examination || 'N/A'}
+      `.trim(),
       notes: `
 Chief Complaint: ${data.chiefComplaint}
 History: ${data.history || 'N/A'}
@@ -621,6 +640,60 @@ Follow Up: ${data.followUp || 'N/A'}
               {/* Step 3: Vitals */}
               {currentStep === 3 && (
                 <div className="space-y-4">
+                  {latestVitalsLoading ? (
+                    <div className="rounded-lg border p-4 text-sm text-muted-foreground">
+                      Loading latest vitals...
+                    </div>
+                  ) : latestVitals ? (
+                    <div className="rounded-lg border bg-muted/40 p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h3 className="font-medium">Latest nurse-recorded vitals</h3>
+                        <Badge variant="secondary">Read only</Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Vitals recorded at {new Date(latestVitals.recordedAt).toLocaleString()}
+                      </p>
+                      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+                        <div>
+                          <Label className="text-muted-foreground">Temperature</Label>
+                          <p className="font-medium">{latestVitals.temperature ?? '-'} °C</p>
+                        </div>
+                        <div>
+                          <Label className="text-muted-foreground">Blood Pressure</Label>
+                          <p className="font-medium">{latestVitals.bloodPressure || '-'}</p>
+                        </div>
+                        <div>
+                          <Label className="text-muted-foreground">Heart Rate</Label>
+                          <p className="font-medium">{latestVitals.heartRate ?? '-'} bpm</p>
+                        </div>
+                        <div>
+                          <Label className="text-muted-foreground">Respiratory Rate</Label>
+                          <p className="font-medium">{latestVitals.respiratoryRate ?? '-'} /min</p>
+                        </div>
+                        <div>
+                          <Label className="text-muted-foreground">SpO2</Label>
+                          <p className="font-medium">{latestVitals.oxygenSaturation ?? '-'} %</p>
+                        </div>
+                        <div>
+                          <Label className="text-muted-foreground">Pain Score</Label>
+                          <p className="font-medium">{latestVitals.painScore ?? '-'}</p>
+                        </div>
+                        <div>
+                          <Label className="text-muted-foreground">Weight</Label>
+                          <p className="font-medium">{latestVitals.weight ?? '-'} kg</p>
+                        </div>
+                        <div>
+                          <Label className="text-muted-foreground">Height</Label>
+                          <p className="font-medium">{latestVitals.height ?? '-'} cm</p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                      No vitals recorded yet
+                    </div>
+                  )}
+
                   <div className="grid grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
@@ -629,7 +702,7 @@ Follow Up: ${data.followUp || 'N/A'}
                         <FormItem>
                           <FormLabel>Temperature (°C)</FormLabel>
                           <FormControl>
-                            <Input type="number" step="0.1" placeholder="36.5" {...field} />
+                            <Input type="number" step="0.1" placeholder="36.5" {...field} disabled />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -643,7 +716,7 @@ Follow Up: ${data.followUp || 'N/A'}
                         <FormItem>
                           <FormLabel>Blood Pressure (mmHg)</FormLabel>
                           <FormControl>
-                            <Input placeholder="120/80" {...field} />
+                            <Input placeholder="120/80" {...field} disabled />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -657,7 +730,7 @@ Follow Up: ${data.followUp || 'N/A'}
                         <FormItem>
                           <FormLabel>Heart Rate (bpm)</FormLabel>
                           <FormControl>
-                            <Input type="number" placeholder="72" {...field} />
+                            <Input type="number" placeholder="72" {...field} disabled />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -671,7 +744,7 @@ Follow Up: ${data.followUp || 'N/A'}
                         <FormItem>
                           <FormLabel>Weight (kg)</FormLabel>
                           <FormControl>
-                            <Input type="number" step="0.1" placeholder="70.5" {...field} />
+                            <Input type="number" step="0.1" placeholder="70.5" {...field} disabled />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -685,7 +758,7 @@ Follow Up: ${data.followUp || 'N/A'}
                         <FormItem>
                           <FormLabel>Height (cm)</FormLabel>
                           <FormControl>
-                            <Input type="number" placeholder="175" {...field} />
+                            <Input type="number" placeholder="175" {...field} disabled />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -876,9 +949,9 @@ Follow Up: ${data.followUp || 'N/A'}
                       <div>
                         <Label className="text-muted-foreground">Vitals:</Label>
                         <p>
-                          Temp: {formValues.vitals?.temperature || '-'}°C, 
-                          BP: {formValues.vitals?.bloodPressure || '-'}, 
-                          HR: {formValues.vitals?.heartRate || '-'} bpm
+                          Temp: {(latestVitals?.temperature ?? formValues.vitals?.temperature) || '-'}°C,
+                          BP: {latestVitals?.bloodPressure || formValues.vitals?.bloodPressure || '-'},
+                          HR: {(latestVitals?.heartRate ?? formValues.vitals?.heartRate) || '-'} bpm
                         </p>
                       </div>
 

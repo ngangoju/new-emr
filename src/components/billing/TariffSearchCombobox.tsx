@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Check, ChevronsUpDown, Search } from 'lucide-react'
+import { Check, ChevronsUpDown, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import {
@@ -23,13 +23,22 @@ import type { Tariff } from '@/types/billing'
 interface TariffSearchComboboxProps {
   value: string
   onSelect: (tariff: Tariff) => void
+  excludeCategories?: string[]
 }
 
-export function TariffSearchCombobox({ value, onSelect }: TariffSearchComboboxProps) {
+export function TariffSearchCombobox({
+  value,
+  onSelect,
+  excludeCategories = [],
+}: TariffSearchComboboxProps) {
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
 
-  const { data: tariffs = [], isLoading } = useTariffs({ search })
+  const uppercaseExcluded = excludeCategories.map((category) => category.toUpperCase())
+  const { data, isLoading } = useTariffs({ search, page: 0, size: 20, excludeCategories: uppercaseExcluded })
+  const tariffs = (data?.data ?? []).filter(
+    (tariff) => !uppercaseExcluded.includes(tariff.category.toUpperCase()),
+  )
 
   const selectedTariff = tariffs.find((tariff) => tariff.id === value)
 
@@ -64,33 +73,41 @@ export function TariffSearchCombobox({ value, onSelect }: TariffSearchComboboxPr
             onValueChange={setSearch}
           />
           <CommandList>
-            <CommandEmpty>No tariffs found.</CommandEmpty>
-            <CommandGroup>
-              {tariffs.map((tariff) => (
-                <CommandItem
-                  key={tariff.id}
-                  value={tariff.serviceName}
-                  onSelect={() => {
-                    onSelect(tariff)
-                    setOpen(false)
-                  }}
-                >
-                  <Check
-                    className={cn(
-                      'mr-2 h-4 w-4',
-                      value === tariff.id ? 'opacity-100' : 'opacity-0'
-                    )}
-                  />
-                  {tariff.serviceName}
-                  <div className="ml-auto text-xs text-muted-foreground">
-                    {tariff.category.toUpperCase()}
-                  </div>
-                  <span className="ml-2 font-medium">
-                    RWF {tariff.basePrice.toLocaleString()}
-                  </span>
-                </CommandItem>
-              ))}
-            </CommandGroup>
+            {isLoading ? (
+              <div className="flex items-center gap-2 p-3 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading tariffs...
+              </div>
+            ) : tariffs.length === 0 ? (
+              <CommandEmpty>No tariffs found.</CommandEmpty>
+            ) : (
+              <CommandGroup>
+                {tariffs.map((tariff) => (
+                  <CommandItem
+                    key={tariff.id}
+                    value={tariff.serviceName}
+                    onSelect={() => {
+                      onSelect(tariff)
+                      setOpen(false)
+                    }}
+                  >
+                    <Check
+                      className={cn(
+                        'mr-2 h-4 w-4',
+                        value === tariff.id ? 'opacity-100' : 'opacity-0'
+                      )}
+                    />
+                    {tariff.serviceName}
+                    <div className="ml-auto text-xs text-muted-foreground">
+                      {tariff.category.toUpperCase()}
+                    </div>
+                    <span className="ml-2 font-medium">
+                      RWF {tariff.basePrice.toLocaleString()}
+                    </span>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            )}
           </CommandList>
         </Command>
       </PopoverContent>

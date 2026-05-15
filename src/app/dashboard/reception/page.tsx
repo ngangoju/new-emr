@@ -15,12 +15,14 @@ import { CheckInModal } from '@/components/shared/CheckInModal'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ReceptionIntakeWorkspace } from '@/components/reception/ReceptionIntakeWorkspace'
+import { PatientRegistrationModal } from '@/components/shared/PatientRegistrationModal'
 
 export default function ReceptionPage() {
   const router = useRouter()
-  const { role, isLoading: roleLoading } = useRole()
-  const { data: stats, isLoading: statsLoading } = useQueueStats()
+  const { role, isLoading: roleLoading, hasPermission } = useRole()
+  const { data: stats } = useQueueStats({ enabled: !roleLoading })
   const [isCheckInModalOpen, setIsCheckInModalOpen] = useState(false)
+  const [isRegisterPatientOpen, setIsRegisterPatientOpen] = useState(false)
 
   if (!roleLoading && !canAccessDashboardRoute(role, '/dashboard/reception')) {
     return <ForbiddenAccess />
@@ -67,6 +69,21 @@ export default function ReceptionPage() {
         title="Reception & Triage"
         description="Patient check-in, triage priority management, and live visit queue monitoring."
       />
+
+      {hasPermission('CAN_REGISTER_PATIENT') && (
+        <>
+          <div className="flex justify-end">
+            <Button size="lg" className="gap-2" onClick={() => setIsRegisterPatientOpen(true)}>
+              <UserPlus className="h-4 w-4" />
+              + New Patient
+            </Button>
+          </div>
+          <PatientRegistrationModal
+            open={isRegisterPatientOpen}
+            onOpenChange={setIsRegisterPatientOpen}
+          />
+        </>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {actions.map((action) => (

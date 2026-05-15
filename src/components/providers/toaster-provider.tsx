@@ -13,10 +13,13 @@ export function ToasterProvider() {
     // Intercept toast.error to show our modal instead
     const originalError = toast.error;
     
-    toast.error = (message: string | React.ReactNode, opts?: any) => {
-      setErrorModal({ open: true, message });
+    toast.error = ((message, _opts) => {
+      setErrorModal({
+        open: true,
+        message: typeof message === 'function' ? 'Action failed.' : message,
+      });
       return 'error-modal-id';
-    };
+    }) as typeof toast.error;
 
     return () => {
       toast.error = originalError;

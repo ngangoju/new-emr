@@ -22,16 +22,19 @@ import { cn } from '@/lib/utils'
 interface PatientSelectorProps {
   onSelect: (patient: Patient) => void
   selectedPatientId?: string
+  admittedOnly?: boolean
 }
 
-export function PatientSelector({ onSelect, selectedPatientId }: PatientSelectorProps) {
+export function PatientSelector({ onSelect, selectedPatientId, admittedOnly = false }: PatientSelectorProps) {
   const [open, setOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null)
 
   const { data: patientsData, isLoading } = usePatients({
     query: searchQuery,
-    limit: 10
+    limit: 10,
+    admitted: admittedOnly,
+    enabled: open,
   })
 
   const patients = patientsData?.data || []

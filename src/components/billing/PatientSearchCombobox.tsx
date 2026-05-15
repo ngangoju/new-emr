@@ -24,13 +24,19 @@ import { maskIdentifier, maskPhoneNumber } from '@/lib/utils/masking'
 interface PatientSearchComboboxProps {
   value: string
   onSelect: (patient: Patient) => void
+  admittedOnly?: boolean
 }
 
-export function PatientSearchCombobox({ value, onSelect }: PatientSearchComboboxProps) {
+export function PatientSearchCombobox({ value, onSelect, admittedOnly = false }: PatientSearchComboboxProps) {
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
 
-  const { data: patientsData } = usePatients({ query: search })
+  const { data: patientsData, isLoading, isError, refetch } = usePatients({
+    query: search,
+    admitted: admittedOnly,
+    size: 20,
+    enabled: open,
+  })
   const patients = patientsData?.data || []
 
   const getPatientDisplayName = (patient: Patient) => {
@@ -88,32 +94,44 @@ export function PatientSearchCombobox({ value, onSelect }: PatientSearchCombobox
             onValueChange={setSearch}
           />
           <CommandList>
-            <CommandEmpty>No patients found.</CommandEmpty>
-            <CommandGroup>
-              {patients.map((patient: Patient) => (
-                <CommandItem
-                  key={patient.id}
-                  value={patient.fullName}
-                  onSelect={() => {
-                    onSelect(patient)
-                    setOpen(false)
-                  }}
-                >
-                  <Check
-                    className={cn(
-                      'mr-2 h-4 w-4',
-                      value === patient.id ? 'opacity-100' : 'opacity-0'
-                    )}
-                  />
-                  <div>
-                    <div className="font-medium">{getPatientDisplayName(patient)}</div>
-                    <div className="text-xs text-muted-foreground">
-                      Number: {getPatientDisplayNumber(patient)}
+            {isLoading ? (
+              <div className="p-3 text-sm text-muted-foreground">Loading patients...</div>
+            ) : isError ? (
+              <div className="space-y-2 p-3 text-sm text-destructive">
+                <p>Failed to load patients.</p>
+                <Button type="button" variant="outline" size="sm" onClick={() => refetch()}>
+                  Retry
+                </Button>
+              </div>
+            ) : patients.length === 0 ? (
+              <CommandEmpty>No patients found.</CommandEmpty>
+            ) : (
+              <CommandGroup>
+                {patients.map((patient: Patient) => (
+                  <CommandItem
+                    key={patient.id}
+                    value={patient.fullName}
+                    onSelect={() => {
+                      onSelect(patient)
+                      setOpen(false)
+                    }}
+                  >
+                    <Check
+                      className={cn(
+                        'mr-2 h-4 w-4',
+                        value === patient.id ? 'opacity-100' : 'opacity-0'
+                      )}
+                    />
+                    <div>
+                      <div className="font-medium">{getPatientDisplayName(patient)}</div>
+                      <div className="text-xs text-muted-foreground">
+                        Number: {getPatientDisplayNumber(patient)}
+                      </div>
                     </div>
-                  </div>
-                </CommandItem>
-              ))}
-            </CommandGroup>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            )}
           </CommandList>
         </Command>
       </PopoverContent>

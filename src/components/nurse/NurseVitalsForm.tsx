@@ -37,7 +37,6 @@ export function NurseVitalsForm() {
   const [avpu, setAvpu] = useState<AvpuOption>('ALERT')
   const [weight, setWeight] = useState('')
   const [height, setHeight] = useState('')
-  const [chiefComplaint, setChiefComplaint] = useState('')
   const [triageNote, setTriageNote] = useState('')
   const [triageDisposition, setTriageDisposition] = useState('WAIT_FOR_DOCTOR')
 
@@ -67,7 +66,6 @@ export function NurseVitalsForm() {
           weight: parsedWeight,
           height: parsedHeight,
           bmi: computedBmi,
-          chiefComplaint: chiefComplaint || undefined,
           triageNote: triageNote || undefined,
           triageDisposition: triageDisposition || undefined,
         },
@@ -83,7 +81,6 @@ export function NurseVitalsForm() {
       setAvpu('ALERT')
       setWeight('')
       setHeight('')
-      setChiefComplaint('')
       setTriageNote('')
       setTriageDisposition('WAIT_FOR_DOCTOR')
     } catch (error) {
@@ -109,6 +106,7 @@ export function NurseVitalsForm() {
           <PatientSelector
             selectedPatientId={patient.id}
             onSelect={(selectedPatient) => setPatient(selectedPatient)}
+            admittedOnly
           />
         </div>
 
@@ -162,15 +160,6 @@ export function NurseVitalsForm() {
         </div>
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor="chief-complaint">Chief Complaint</Label>
-            <Input
-              id="chief-complaint"
-              value={chiefComplaint}
-              onChange={(e) => setChiefComplaint(e.target.value)}
-              placeholder="Primary reason for visit"
-            />
-          </div>
           <div className="space-y-2">
             <Label htmlFor="triage-disposition">Triage Disposition</Label>
             <Select value={triageDisposition} onValueChange={setTriageDisposition}>

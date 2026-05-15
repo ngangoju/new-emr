@@ -41,15 +41,15 @@ export function useQueue(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: ['queue', 'active'],
     queryFn: async () => {
-      const { data } = await api.get<QueueEntry[]>('/api/triage/queue')
-      return data
+      const { data } = await api.get<QueueEntry[]>('/api/queue/active')
+      return [...data].sort((left, right) => new Date(left.checkedInAt).getTime() - new Date(right.checkedInAt).getTime())
     },
     refetchInterval: 30000,
     enabled: options?.enabled ?? true,
   })
 }
 
-export function useQueueStats() {
+export function useQueueStats(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: ['queue', 'stats'],
     queryFn: async () => {
@@ -62,7 +62,8 @@ export function useQueueStats() {
         seenTodayCount: seen.data
       }
     },
-    refetchInterval: 10000
+    refetchInterval: 10000,
+    enabled: options?.enabled ?? true,
   })
 }
 

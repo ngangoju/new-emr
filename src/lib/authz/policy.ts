@@ -33,7 +33,7 @@ export const DASHBOARD_ROUTE_POLICIES: readonly DashboardRoutePolicy[] = [
     },
     {
         routePrefix: '/dashboard/doctor/consultations',
-        allowedRoles: ['ADMIN', 'DOCTOR', 'NURSE', 'CHIEF_NURSE', 'CLINICAL_DIRECTOR'],
+        allowedRoles: ['ADMIN', 'DOCTOR', 'CLINICAL_DIRECTOR'],
     },
     {
         routePrefix: '/dashboard/doctor/schedule',
@@ -61,7 +61,7 @@ export const DASHBOARD_ROUTE_POLICIES: readonly DashboardRoutePolicy[] = [
     },
     {
         routePrefix: '/dashboard/billing',
-        allowedRoles: ['ADMIN', 'BILLING_OFFICER', 'CASHIER', 'DAF', 'COO', 'NURSE'],
+        allowedRoles: ['ADMIN', 'BILLING_OFFICER', 'CASHIER', 'DAF', 'COO', 'NURSE', 'CHIEF_NURSE'],
     },
     {
         routePrefix: '/dashboard/cashier/close',
@@ -77,7 +77,7 @@ export const DASHBOARD_ROUTE_POLICIES: readonly DashboardRoutePolicy[] = [
     },
     {
         routePrefix: '/dashboard/reports',
-        allowedRoles: ['ADMIN', 'DOCTOR', 'NURSE', 'DAF', 'COO', 'MANAGER', 'CLINICAL_DIRECTOR', 'CHIEF_NURSE', 'ACCOUNTANT', 'AUDITOR'],
+        allowedRoles: ['ADMIN', 'DOCTOR', 'DAF', 'COO', 'MANAGER', 'CLINICAL_DIRECTOR', 'ACCOUNTANT', 'AUDITOR'],
     },
     {
         routePrefix: '/dashboard/approvals',
@@ -257,5 +257,11 @@ export function getDashboardNavigationForRole(
         }
 
         return canAccessDashboardRoute(role, item.href, context)
+    }).map((item) => {
+        if (role === 'RECEPTIONIST' && item.href === '/dashboard/doctor/schedule') {
+            return { ...item, title: 'Appointments' }
+        }
+
+        return item
     })
 }

@@ -84,36 +84,65 @@ export interface PatientHistory {
     appointments: PatientHistoryAppointment[];
     vitals: PatientHistoryVital[];
     labResults: PatientLabResult[];
+    timeline?: PatientHistoryTimelineItem[];
+    meta?: {
+        page: number;
+        size: number;
+        totalElements: number;
+        totalPages: number;
+        hasNext: boolean;
+        hasPrevious: boolean;
+    };
+}
+
+export interface PatientHistoryTimelineItem {
+    id: string;
+    type: 'CONSULTATION' | 'APPOINTMENT' | 'VITALS' | 'LAB' | 'PRESCRIPTION' | 'IMAGING' | string;
+    createdAt: string;
+    summary: string;
+    details: unknown;
 }
 
 export interface PatientSearchParams {
     page?: number;
+    size?: number;
     limit?: number;
     gender?: string;
     query?: string;
+    doctorId?: string;
+    admitted?: boolean;
+    enabled?: boolean;
 }
 
 export function usePatients(params?: PatientSearchParams) {
     return useQuery({
         queryKey: ['patients', params],
+        enabled: params?.enabled ?? true,
         queryFn: async () => {
-            const url = params?.query
-                ? `/patients/search`
-                : '/patients';
+            const requestParams = {
+                search: params?.query || undefined,
+                gender: params?.gender || undefined,
+                doctorId: params?.doctorId || undefined,
+                admitted: params?.admitted || undefined,
+                page: params?.page ?? 0,
+                size: params?.size ?? params?.limit ?? 20,
+            };
 
             if (process.env.NODE_ENV !== 'production') {
                 console.debug('[usePatients] request', {
-                    url,
-                    params,
+                    url: '/patients',
+                    params: requestParams,
                 });
             }
 
-            const { data } = await api.get(url, { params });
-            const normalized = Array.isArray(data) ? { data, meta: { total: data.length } } : data;
+            const { data } = await api.get('/patients', { params: requestParams });
+            const normalized = Array.isArray(data)
+                ? { data, meta: { totalElements: data.length, page: 0, size: data.length, totalPages: 1, hasNext: false, hasPrevious: false } }
+                : ('data' in data ? data : { data: [], meta: { totalElements: 0, page: 0, size: 20, totalPages: 0, hasNext: false, hasPrevious: false } });
 
             if (process.env.NODE_ENV !== 'production') {
                 console.debug('[usePatients] response', {
-                    url,
+                    url: '/patients',
                     total: Array.isArray(normalized?.data) ? normalized.data.length : undefined,
                     shape: Array.isArray(data) ? 'array' : 'object',
                 });
@@ -212,11 +241,13 @@ export function useCreatePatientVitals() {
     });
 }
 
-export function usePatientHistory(id: string) {
+export function usePatientHistory(id: string, page = 0, size = 20) {
     return useQuery({
-        queryKey: ['patient', id, 'history'],
+        queryKey: ['patient', id, 'history', page, size],
         queryFn: async () => {
-            const { data } = await api.get<PatientHistory>(`/patients/${id}/history`);
+            const { data } = await api.get<PatientHistory>(`/patients/${id}/history`, {
+                params: { page, size },
+            });
             return data;
         },
         enabled: !!id,

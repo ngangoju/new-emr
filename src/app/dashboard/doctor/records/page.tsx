@@ -4,27 +4,24 @@ import React, { useState } from 'react'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { EmptyState } from '@/components/ui/empty-state'
-import { FileText, CalendarDays, Activity, Microscope } from 'lucide-react'
+import { FileText, ChevronLeft, ChevronRight } from 'lucide-react'
 import { PatientSelector } from '@/components/shared/PatientSelector'
-import {
-  usePatientHistory,
-  type PatientHistoryConsultation,
-  type PatientHistoryAppointment,
-  type PatientHistoryVital,
-  type PatientLabResult,
-} from '@/hooks/api/usePatients'
+import { usePatientHistory } from '@/hooks/api/usePatients'
 import { formatDateTime } from '@/lib/utils/date'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 
 export default function RecordsPage() {
   const [selectedPatientId, setSelectedPatientId] = useState('')
-  const { data: history, isLoading } = usePatientHistory(selectedPatientId)
+  const [page, setPage] = useState(0)
+  const [expandedId, setExpandedId] = useState<string | null>(null)
+  const { data: history, isLoading, isError } = usePatientHistory(selectedPatientId, page, 20)
 
   return (
     <div className="space-y-6 animate-fade-in">
       <PageHeader
         title="Medical Records"
-        description="View and manage patient medical records"
+        description="View patient medical history as a unified clinical timeline."
       />
 
       <Card>
@@ -35,7 +32,11 @@ export default function RecordsPage() {
         <CardContent>
           <PatientSelector
             selectedPatientId={selectedPatientId}
-            onSelect={(patient) => setSelectedPatientId(patient.id)}
+            onSelect={(patient) => {
+              setSelectedPatientId(patient.id)
+              setPage(0)
+              setExpandedId(null)
+            }}
           />
         </CardContent>
       </Card>
@@ -52,88 +53,64 @@ export default function RecordsPage() {
         <div className="rounded-lg border bg-card p-8 text-sm text-muted-foreground">
           Loading patient history...
         </div>
-      ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5" /> Consultations
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {history?.consultations?.length ? history.consultations.map((consultation: PatientHistoryConsultation) => (
-                <div key={consultation.id} className="rounded-md border p-3">
-                  <div className="flex justify-between items-center">
-                    <p className="font-medium">Consultation #{String(consultation.id).slice(0, 8)}</p>
-                    <Badge variant="secondary">{consultation.status}</Badge>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">{formatDateTime(consultation.createdAt)}</p>
-                  {consultation.diagnosis ? <p className="text-sm mt-2">Diagnosis: {consultation.diagnosis}</p> : null}
-                </div>
-              )) : <p className="text-sm text-muted-foreground">No consultations found.</p>}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <CalendarDays className="h-5 w-5" /> Appointments
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {history?.appointments?.length ? history.appointments.map((appointment: PatientHistoryAppointment) => (
-                <div key={appointment.id} className="rounded-md border p-3">
-                  <div className="flex justify-between items-center">
-                    <p className="font-medium">Appointment #{String(appointment.id).slice(0, 8)}</p>
-                    <Badge variant="secondary">{appointment.status}</Badge>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">{formatDateTime(appointment.scheduledAt)}</p>
-                  {appointment.reason ? <p className="text-sm mt-2">Reason: {appointment.reason}</p> : null}
-                </div>
-              )) : <p className="text-sm text-muted-foreground">No appointments found.</p>}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Activity className="h-5 w-5" /> Vitals
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {history?.vitals?.length ? history.vitals.map((vital: PatientHistoryVital) => (
-                <div key={vital.id} className="rounded-md border p-3">
-                  <p className="text-xs text-muted-foreground">{formatDateTime(vital.recordedAt)}</p>
-                  <div className="text-sm mt-2 space-y-1">
-                    <p>BP: {vital.bloodPressure || '-'}</p>
-                    <p>HR: {vital.heartRate || '-'} bpm</p>
-                    <p>Temp: {vital.temperature || '-'} °C</p>
-                  </div>
-                </div>
-              )) : <p className="text-sm text-muted-foreground">No vitals found.</p>}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Microscope className="h-5 w-5" /> Lab Results
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {history?.labResults?.length ? history.labResults.map((lab: PatientLabResult) => (
-                <div key={lab.orderId} className="rounded-md border p-3">
-                  <div className="flex justify-between items-center">
-                    <p className="font-medium">Lab #{String(lab.orderId).slice(0, 8)}</p>
-                    <Badge variant="secondary">{lab.status}</Badge>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">{lab.orderedAt ? formatDateTime(lab.orderedAt) : '-'}</p>
-                  {lab.tests ? <p className="text-sm mt-2">Tests: {lab.tests}</p> : null}
-                </div>
-              )) : <p className="text-sm text-muted-foreground">No lab results found.</p>}
-            </CardContent>
-          </Card>
+      ) : isError ? (
+        <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-8 text-sm text-destructive">
+          Failed to load patient history.
         </div>
+      ) : !history?.timeline?.length ? (
+        <div className="rounded-lg border bg-card p-8">
+          <EmptyState
+            icon={FileText}
+            title="No history available"
+            description="This patient does not have any recorded clinical events yet."
+          />
+        </div>
+      ) : (
+        <Card>
+          <CardHeader>
+            <CardTitle>Patient Timeline</CardTitle>
+            <CardDescription>Consultations, labs, vitals, prescriptions, and imaging ordered newest first.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {history.timeline.map((entry) => (
+              <div key={entry.id} className="rounded-lg border p-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <Badge variant="outline">{entry.type}</Badge>
+                    <p className="mt-2 font-medium">{entry.summary}</p>
+                    <p className="text-xs text-muted-foreground">{formatDateTime(entry.createdAt)}</p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setExpandedId((current) => current === entry.id ? null : entry.id)}
+                  >
+                    View
+                  </Button>
+                </div>
+                {expandedId === entry.id && (
+                  <pre className="mt-3 rounded-md bg-muted p-3 text-xs whitespace-pre-wrap overflow-x-auto">
+                    {JSON.stringify(entry.details, null, 2)}
+                  </pre>
+                )}
+              </div>
+            ))}
+
+            <div className="flex items-center justify-between pt-2">
+              <Button variant="outline" onClick={() => setPage((current) => Math.max(current - 1, 0))} disabled={!history.meta?.hasPrevious}>
+                <ChevronLeft className="mr-2 h-4 w-4" />
+                Previous
+              </Button>
+              <p className="text-sm text-muted-foreground">
+                Page {(history.meta?.page ?? 0) + 1} of {history.meta?.totalPages || 1}
+              </p>
+              <Button variant="outline" onClick={() => setPage((current) => current + 1)} disabled={!history.meta?.hasNext}>
+                Next
+                <ChevronRight className="ml-2 h-4 w-4" />
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       )}
     </div>
   )

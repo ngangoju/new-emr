@@ -18,10 +18,14 @@ import {
   Pill, 
   Microscope,
   Clock,
-  Edit
+  Edit,
+  ImageIcon,
+  ChevronLeft,
+  ChevronRight,
+  ExternalLink,
 } from 'lucide-react'
 
-import { usePatient, usePatientVitals, useUpdatePatient, usePatientLabResults, type Patient, type PatientLabResult } from '@/hooks/api/usePatients'
+import { usePatient, usePatientVitals, useUpdatePatient, usePatientLabResults, usePatientHistory, type Patient, type PatientLabResult } from '@/hooks/api/usePatients'
 import { useConsultations, type Consultation } from '@/hooks/api/useConsultations'
 import { useCreateEncounter } from '@/hooks/api/useEncounters'
 import Link from 'next/link'
@@ -36,6 +40,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { DoctorTreatmentWorkspace } from '@/components/doctor/DoctorTreatmentWorkspace'
+import { usePatientImagingOrders, useImagingResult, useDicomImages, useDicomImagePresignedUrl } from '@/hooks/useImaging'
+import type { ImagingOrder } from '@/types/imaging'
 
 type ConsultationView = Consultation & {
   doctorName?: string
@@ -52,11 +58,15 @@ export default function PatientDetailPage() {
 
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [editFormData, setEditFormData] = useState<Partial<Patient>>({})
+  const [historyPage, setHistoryPage] = useState(0)
+  const [expandedHistoryId, setExpandedHistoryId] = useState<string | null>(null)
 
   // Fetch real patient data
   const { data: patient, isLoading: patientLoading } = usePatient(id)
   const { data: vitals, isLoading: vitalsLoading } = usePatientVitals(id)
   const { data: labResults = [], isLoading: labResultsLoading } = usePatientLabResults(id)
+  const { data: history, isLoading: historyLoading, isError: historyError } = usePatientHistory(id, historyPage, 20)
+  const { data: imagingOrders = [], isLoading: imagingLoading } = usePatientImagingOrders(id)
   const { data: consultationsData, isLoading: consultationsLoading } = useConsultations({ patientId: id })
   const updatePatientMutation = useUpdatePatient()
 
@@ -324,7 +334,8 @@ export default function PatientDetailPage() {
           <TabsTrigger value="consultations" className="h-10">Consultations</TabsTrigger>
           <TabsTrigger value="medications" className="h-10">Medications</TabsTrigger>
           <TabsTrigger value="labs" className="h-10">Lab Results</TabsTrigger>
-          <TabsTrigger value="documents" className="h-10">Documents</TabsTrigger>
+          <TabsTrigger value="radiology" className="h-10">Radiology</TabsTrigger>
+          <TabsTrigger value="history" className="h-10">Medical History</TabsTrigger>
         </TabsList>
 
         {/* Overview Tab */}
@@ -348,27 +359,37 @@ export default function PatientDetailPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                  <div className="p-4 rounded-lg bg-accent/5 border border-accent/10">
-                    <p className="text-sm text-muted-foreground">Blood Pressure</p>
-                    <p className="text-2xl font-bold text-foreground">120/80</p>
-                    <span className="text-xs text-success flex items-center mt-1">
-                      <Clock className="h-3 w-3 mr-1" /> Normal
-                    </span>
+                {latestVitals ? (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                      <div className="p-4 rounded-lg bg-accent/5 border border-accent/10">
+                        <p className="text-sm text-muted-foreground">Blood Pressure</p>
+                        <p className="text-2xl font-bold text-foreground">{latestVitals?.bloodPressure || '-'}</p>
+                      </div>
+                      <div className="p-4 rounded-lg bg-accent/5 border border-accent/10">
+                        <p className="text-sm text-muted-foreground">Heart Rate</p>
+                        <p className="text-2xl font-bold text-foreground">{latestVitals?.heartRate || '-'} <span className="text-sm font-normal text-muted-foreground">bpm</span></p>
+                      </div>
+                      <div className="p-4 rounded-lg bg-accent/5 border border-accent/10">
+                        <p className="text-sm text-muted-foreground">Temperature</p>
+                        <p className="text-2xl font-bold text-foreground">{latestVitals?.temperature || '-'} <span className="text-sm font-normal text-muted-foreground">°C</span></p>
+                      </div>
+                      <div className="p-4 rounded-lg bg-accent/5 border border-accent/10">
+                        <p className="text-sm text-muted-foreground">Weight</p>
+                        <p className="text-2xl font-bold text-foreground">{latestVitals?.weight || '-'} <span className="text-sm font-normal text-muted-foreground">kg</span></p>
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Vitals recorded at {latestVitals?.recordedAt ? formatDateTime(latestVitals.recordedAt) : 'Unknown time'}
+                    </p>
                   </div>
-                  <div className="p-4 rounded-lg bg-accent/5 border border-accent/10">
-                    <p className="text-sm text-muted-foreground">Heart Rate</p>
-                    <p className="text-2xl font-bold text-foreground">72 <span className="text-sm font-normal text-muted-foreground">bpm</span></p>
-                  </div>
-                  <div className="p-4 rounded-lg bg-accent/5 border border-accent/10">
-                    <p className="text-sm text-muted-foreground">Temperature</p>
-                    <p className="text-2xl font-bold text-foreground">36.5 <span className="text-sm font-normal text-muted-foreground">°C</span></p>
-                  </div>
-                  <div className="p-4 rounded-lg bg-accent/5 border border-accent/10">
-                    <p className="text-sm text-muted-foreground">Weight</p>
-                    <p className="text-2xl font-bold text-foreground">{latestVitals?.weight || '-'} <span className="text-sm font-normal text-muted-foreground">kg</span></p>
-                  </div>
-                </div>
+                ) : (
+                  <EmptyState
+                    icon={Activity}
+                    title="No vitals recorded yet"
+                    description="Nurse-recorded vitals will appear here once captured."
+                  />
+                )}
               </CardContent>
             </Card>
 
@@ -401,10 +422,10 @@ export default function PatientDetailPage() {
                   </div>
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground mb-2">Blood Type</p>
-                  <Badge variant="outline" className="font-mono text-lg px-3 py-1">
-                    {latestVitals?.bloodType || '-'}
-                  </Badge>
+                  <p className="text-sm font-medium text-muted-foreground mb-2">Latest Triage Note</p>
+                  <p className="text-sm text-foreground">
+                    {latestVitals?.triageNote || 'No triage note recorded'}
+                  </p>
                 </div>
               </CardContent>
             </Card>
@@ -542,7 +563,9 @@ export default function PatientDetailPage() {
               <CardDescription>Completed and processed lab orders for this patient</CardDescription>
             </CardHeader>
             <CardContent className="py-2">
-              {labResults.length === 0 ? (
+              {labResultsLoading ? (
+                <p className="text-sm text-muted-foreground">Loading lab results...</p>
+              ) : labResults.length === 0 ? (
                 <EmptyState
                   icon={Microscope}
                   title="No lab results available"
@@ -577,18 +600,135 @@ export default function PatientDetailPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="documents">
+        <TabsContent value="radiology">
           <Card>
-            <CardContent className="py-8">
-              <EmptyState
-                icon={FileText}
-                title="No documents uploaded"
-                description="This patient doesn't have any uploaded documents yet. Medical reports, imaging results, and other documents will appear here."
-              />
+            <CardHeader>
+              <CardTitle>Radiology</CardTitle>
+              <CardDescription>Imaging studies and result files for this patient</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {imagingLoading ? (
+                <p className="text-sm text-muted-foreground">Loading imaging studies...</p>
+              ) : imagingOrders.length === 0 ? (
+                <EmptyState
+                  icon={ImageIcon}
+                  title="No imaging studies on record"
+                  description="Radiology orders will appear here when they are placed for this patient."
+                />
+              ) : (
+                imagingOrders.map((order) => (
+                  <RadiologyOrderCard key={order.id} order={order} />
+                ))
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="history">
+          <Card>
+            <CardHeader>
+              <CardTitle>Medical History</CardTitle>
+              <CardDescription>Unified timeline of consultations, labs, vitals, prescriptions, and imaging.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {historyLoading ? (
+                <p className="text-sm text-muted-foreground">Loading medical history...</p>
+              ) : historyError ? (
+                <div className="rounded-md border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
+                  Failed to load patient history. Refresh and try again.
+                </div>
+              ) : !history?.timeline?.length ? (
+                <EmptyState
+                  icon={FileText}
+                  title="No medical history yet"
+                  description="Timeline entries will appear here as clinical activity is recorded."
+                />
+              ) : (
+                <>
+                  <div className="space-y-3">
+                    {history.timeline.map((entry) => (
+                      <div key={entry.id} className="rounded-lg border p-4">
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <Badge variant="outline">{entry.type}</Badge>
+                            <p className="mt-2 font-medium">{entry.summary}</p>
+                            <p className="text-xs text-muted-foreground">{formatDateTime(entry.createdAt)}</p>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setExpandedHistoryId((current) => current === entry.id ? null : entry.id)}
+                          >
+                            View
+                          </Button>
+                        </div>
+                        {expandedHistoryId === entry.id && (
+                          <pre className="mt-3 overflow-x-auto rounded-md bg-muted p-3 text-xs whitespace-pre-wrap">
+                            {JSON.stringify(entry.details, null, 2)}
+                          </pre>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="flex items-center justify-between pt-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => setHistoryPage((current) => Math.max(current - 1, 0))}
+                      disabled={!history.meta?.hasPrevious}
+                    >
+                      <ChevronLeft className="mr-2 h-4 w-4" />
+                      Previous
+                    </Button>
+                    <p className="text-sm text-muted-foreground">
+                      Page {(history.meta?.page ?? 0) + 1} of {history.meta?.totalPages || 1}
+                    </p>
+                    <Button
+                      variant="outline"
+                      onClick={() => setHistoryPage((current) => current + 1)}
+                      disabled={!history.meta?.hasNext}
+                    >
+                      Next
+                      <ChevronRight className="ml-2 h-4 w-4" />
+                    </Button>
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
+    </div>
+  )
+}
+
+function RadiologyOrderCard({ order }: { order: ImagingOrder }) {
+  const { data: result } = useImagingResult(order.id)
+  const { data: images = [] } = useDicomImages(result?.id || '')
+  const firstImageId = images[0]?.id || ''
+  const { data: presigned } = useDicomImagePresignedUrl(firstImageId)
+
+  return (
+    <div className="rounded-lg border p-4">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="font-medium">{order.imagingType}{order.bodyPart ? ` - ${order.bodyPart}` : ''}</p>
+          <p className="text-xs text-muted-foreground">
+            Ordered: {order.orderedAt ? formatDateTime(order.orderedAt) : 'Unknown'}
+          </p>
+          <p className="text-sm mt-2">Status: {order.status}</p>
+        </div>
+        {presigned?.url ? (
+          <Button asChild variant="outline" size="sm">
+            <a href={presigned.url} target="_blank" rel="noreferrer">
+              <ExternalLink className="mr-2 h-4 w-4" />
+              View Images
+            </a>
+          </Button>
+        ) : (
+          <Badge variant="secondary">{result ? 'Images pending' : 'Result pending'}</Badge>
+        )}
+      </div>
     </div>
   )
 }

@@ -248,6 +248,7 @@ export function NurseBilling() {
               <PatientSearchCombobox
                 value={patient.id}
                 onSelect={(p) => setPatient(p)}
+                admittedOnly
               />
             </div>
             <div className="space-y-2">
@@ -297,11 +298,30 @@ export function NurseBilling() {
             <TariffSearchCombobox
               value=""
               onSelect={addItem}
+              excludeCategories={['LAB', 'LABORATORY']}
             />
             <p className="text-xs text-muted-foreground self-center">
               Search and add services. Quantity can be adjusted in the table below.
             </p>
           </div>
+
+          {items.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {items.map((item, index) => (
+                <Badge key={item.id} variant="secondary" className="gap-2 px-3 py-1">
+                  {item.tariff.serviceName} x{item.quantity}
+                  <button
+                    type="button"
+                    className="text-muted-foreground hover:text-destructive"
+                    onClick={() => removeItem(index)}
+                    aria-label={`Remove ${item.tariff.serviceName}`}
+                  >
+                    ×
+                  </button>
+                </Badge>
+              ))}
+            </div>
+          )}
 
           {/* Items Table */}
           {items.length === 0 ? (

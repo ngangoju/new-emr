@@ -280,6 +280,7 @@ export function DrugRequestForm() {
               <PatientSearchCombobox
                 value={patient.id}
                 onSelect={(p) => setPatient(p)}
+                admittedOnly
               />
             </div>
             {patient.id && (

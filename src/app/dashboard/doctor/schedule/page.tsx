@@ -260,7 +260,7 @@ function AppointmentList({
       {apts.map((apt) => (
         <div key={apt.id} className="border rounded-md p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
           <div>
-            <div className="font-medium">{apt.patientName || apt.patientId}</div>
+            <div className="font-medium">{apt.patientName || 'Unknown Patient'}</div>
             <div className="text-xs text-muted-foreground flex items-center gap-3 mt-1">
               <span className="inline-flex items-center gap-1">
                 <Clock3 className="h-3 w-3" />

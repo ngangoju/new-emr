@@ -116,7 +116,7 @@ export default function AdminPage() {
       iconBgClass: 'bg-[#E8F5EE]',
       iconColorClass: 'text-[#0C6030]',
       badgeBgClass: 'bg-[#0C6030]',
-      count: tariffsQuery.isLoading ? null : (tariffsQuery.data?.length ?? 0),
+      count: tariffsQuery.isLoading ? null : (tariffsQuery.data?.data.length ?? 0),
       countLabel: 'tariffs',
     },
     {

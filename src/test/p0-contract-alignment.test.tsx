@@ -108,15 +108,15 @@ describe('P0 contract alignment', () => {
 
   it('uses /api/tariffs list/search/category for read paths', async () => {
     const { api } = await getApiMock()
-    api.get.mockResolvedValue({ data: [] })
+    api.get.mockResolvedValue({ data: { data: [], meta: {} } })
 
     const wrapper = createWrapper()
 
     renderHook(() => useTariffs(), { wrapper })
-    await waitFor(() => expect(api.get).toHaveBeenCalledWith('/api/tariffs'))
+    await waitFor(() => expect(api.get).toHaveBeenCalledWith('/api/tariffs', { params: { search: undefined, page: 0, size: 20 } }))
 
     renderHook(() => useTariffs({ search: 'cbc' }), { wrapper })
-    await waitFor(() => expect(api.get).toHaveBeenCalledWith('/api/tariffs/search?searchTerm=cbc'))
+    await waitFor(() => expect(api.get).toHaveBeenCalledWith('/api/tariffs', { params: { search: 'cbc', page: 0, size: 20 } }))
 
     renderHook(() => useTariffs({ category: 'LAB' }), { wrapper })
     await waitFor(() => expect(api.get).toHaveBeenCalledWith('/api/tariffs/category/LAB'))

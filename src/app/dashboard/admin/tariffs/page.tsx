@@ -97,7 +97,8 @@ export default function TariffManagementPage() {
   }, [router])
 
   // Fetch tariffs
-  const { data: tariffs = [], isLoading } = useTariffs({ search, category: categoryFilter === 'ALL' ? undefined : categoryFilter })
+  const { data: tariffsResponse, isLoading } = useTariffs({ search, category: categoryFilter === 'ALL' ? undefined : categoryFilter })
+  const tariffs = tariffsResponse?.data ?? []
 
   // Mutations
   const { createTariff, isCreating } = useCreateTariff()

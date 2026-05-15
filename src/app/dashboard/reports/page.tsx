@@ -13,8 +13,31 @@ import {
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { usePatientThroughputReport, useRevenueReport, usePendingItemsReport } from '@/hooks/useHmisReports'
+import { useRole } from '@/hooks/useRole'
 
 export default function ReportsDashboard() {
+  const { isRole } = useRole()
+
+  if (isRole(['NURSE', 'CHIEF_NURSE'])) {
+    // TODO: Nurse reports flow still broken. Restore after dedicated reports stabilization work.
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          title="Operational Reports"
+          description="Reports are temporarily unavailable for nurse workflows."
+        />
+        <Card>
+          <CardHeader>
+            <CardTitle>Reports - under maintenance</CardTitle>
+            <CardDescription>
+              Nurse reports remain intentionally disabled in this release while the reports module is repaired.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      </div>
+    )
+  }
+
   const reports = [
     {
       title: 'Patient Throughput',

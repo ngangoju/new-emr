@@ -1,7 +1,9 @@
 'use client'
 
 import React from 'react'
+import { useRouter } from 'next/navigation'
 import { useQueue as useQueueAPI, useCallNextPatient, useUpdateQueueStatus } from '@/hooks/useQueue'
+import type { QueueEntry } from '@/hooks/useQueue'
 import { useRole } from '@/hooks/useRole'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -22,6 +24,7 @@ import { useState } from 'react'
 import { Wifi, WifiOff } from 'lucide-react'
 
 export function QueueBoard() {
+  const router = useRouter()
   const { role, isLoading: roleLoading } = useRole()
   const canAccessQueue = !roleLoading && ['ADMIN', 'DOCTOR', 'NURSE', 'RECEPTIONIST'].includes(role || '')
   const { data: queue = [], isLoading } = useQueueAPI({ enabled: canAccessQueue })
@@ -65,12 +68,13 @@ export function QueueBoard() {
     })
   }
 
-  const startConsultation = (id: string) => {
+  const startConsultation = (entry: QueueEntry) => {
     updateStatusMutation.mutate(
-      { id, status: 'IN_PROGRESS' },
+      { id: entry.id, status: 'IN_PROGRESS' },
       {
         onSuccess: () => {
           toast.success('Consultation started')
+          router.push(`/dashboard/doctor/consultations/new?patientId=${entry.patientId}&queueId=${entry.id}`)
         },
         onError: () => {
           toast.error('Failed to start consultation')
@@ -287,7 +291,7 @@ export function QueueBoard() {
                       <>
                         <Button 
                           size="sm"
-                          onClick={() => startConsultation(item.id)}
+                          onClick={() => startConsultation(item)}
                           className="h-7 px-2 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
                           disabled={updateStatusMutation.isPending}
                         >
