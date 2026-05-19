@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { useCreateLabOrder } from '@/hooks/useLabOrders'
 
@@ -51,6 +52,8 @@ export function QuickLabOrderModal({
   const [selectedTests, setSelectedTests] = useState<string[]>([])
   const [customTests, setCustomTests] = useState('')
   const [clinicalNote, setClinicalNote] = useState('')
+  const [priority, setPriority] = useState<'ROUTINE' | 'URGENT' | 'STAT'>('ROUTINE')
+  const [scheduledExamDate, setScheduledExamDate] = useState('')
 
   const allTests = useMemo(() => {
     const custom = customTests
@@ -71,6 +74,8 @@ export function QuickLabOrderModal({
     setSelectedTests([])
     setCustomTests('')
     setClinicalNote('')
+    setPriority('ROUTINE')
+    setScheduledExamDate('')
   }
 
   const handleClose = (nextOpen: boolean) => {
@@ -89,6 +94,9 @@ export function QuickLabOrderModal({
         patientId,
         consultId,
         tests: clinicalNote.trim() ? `${allTests.join(', ')} | Indication: ${clinicalNote.trim()}` : allTests,
+        priority,
+        clinicalIndication: clinicalNote.trim() || undefined,
+        scheduledExamDate: scheduledExamDate || undefined,
       })
       toast.success('Lab order created from treatment workspace.')
       reset()
@@ -148,6 +156,33 @@ export function QuickLabOrderModal({
               placeholder="Enter custom tests, separated by commas"
               value={customTests}
               onChange={(event) => setCustomTests(event.target.value)}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-sm font-semibold text-slate-700">Priority</Label>
+            <Select value={priority} onValueChange={(value) => setPriority(value as 'ROUTINE' | 'URGENT' | 'STAT')}>
+              <SelectTrigger className="bg-white">
+                <SelectValue placeholder="Select priority" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ROUTINE">ROUTINE</SelectItem>
+                <SelectItem value="URGENT">URGENT</SelectItem>
+                <SelectItem value="STAT">STAT</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="scheduled-exam-date" className="text-sm font-semibold text-slate-700">
+              Schedule for date
+            </Label>
+            <Input
+              id="scheduled-exam-date"
+              className="bg-white"
+              type="date"
+              value={scheduledExamDate}
+              onChange={(event) => setScheduledExamDate(event.target.value)}
             />
           </div>
 

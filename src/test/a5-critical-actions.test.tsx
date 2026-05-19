@@ -132,13 +132,8 @@ describe('A5 frontend critical action integrations', () => {
         apiMock.post.mockResolvedValueOnce({
             data: {
                 orderId: 'LAB-10',
-                status: 'approved',
-                result: {
-                    text: 'Hemoglobin normal',
-                    tech: 'Tech A',
-                    status: 'normal',
-                },
-                submittedAt: new Date().toISOString(),
+                orderStatus: 'COMPLETED',
+                resultStatus: 'submitted',
             },
         })
 
@@ -164,12 +159,9 @@ describe('A5 frontend critical action integrations', () => {
         expect(url).not.toBe('/lab-orders/LAB-10/results')
         expect(String(url)).not.toContain('mock')
         expect(payload).toMatchObject({
-            markAsFinal: true,
-            result: {
-                text: 'Hemoglobin normal',
-                tech: 'Tech A',
-                status: 'normal',
-            },
+            resultValue: 'Hemoglobin normal',
+            isCritical: false,
+            specimenQuality: 'ADEQUATE',
         })
     })
 

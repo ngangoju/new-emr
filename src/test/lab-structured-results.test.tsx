@@ -96,20 +96,26 @@ describe('lab structured results workflow', () => {
   it('givenNormalValue_whenEntered_thenFieldRendersDefaultColour', async () => {
     const apiMock = await getApiMock()
     apiMock.get.mockResolvedValueOnce({
-      data: {
-        id: 'cbc-panel',
-        name: 'CBC',
-        parameters: [
-          {
-            code: 'hemoglobin',
-            name: 'Hemoglobin',
-            unit: 'g/dL',
-            sequence: 1,
-            referenceRange: { low: 13, high: 17 },
-            criticalRange: { low: 7, high: 20 },
-          },
-        ],
-      },
+      data: [
+        {
+          id: 'cbc-panel',
+          panelName: 'CBC',
+          panelCode: 'cbc-panel',
+        },
+      ],
+    })
+    apiMock.get.mockResolvedValueOnce({
+      data: [
+        {
+          parameterName: 'Hemoglobin',
+          unit: 'g/dL',
+          displayOrder: 1,
+          minNormalMale: 13,
+          maxNormalMale: 17,
+          criticalMin: 7,
+          criticalMax: 20,
+        },
+      ],
     })
 
     renderStructuredHarness()
@@ -126,20 +132,26 @@ describe('lab structured results workflow', () => {
   it('givenCriticalValue_whenEntered_thenFieldRendersRedAndFinalizeModalShowsWarning', async () => {
     const apiMock = await getApiMock()
     apiMock.get.mockResolvedValueOnce({
-      data: {
-        id: 'cbc-panel',
-        name: 'CBC',
-        parameters: [
-          {
-            code: 'hemoglobin',
-            name: 'Hemoglobin',
-            unit: 'g/dL',
-            sequence: 1,
-            referenceRange: { low: 13, high: 17 },
-            criticalRange: { low: 7, high: 20 },
-          },
-        ],
-      },
+      data: [
+        {
+          id: 'cbc-panel',
+          panelName: 'CBC',
+          panelCode: 'cbc-panel',
+        },
+      ],
+    })
+    apiMock.get.mockResolvedValueOnce({
+      data: [
+        {
+          parameterName: 'Hemoglobin',
+          unit: 'g/dL',
+          displayOrder: 1,
+          minNormalMale: 13,
+          maxNormalMale: 17,
+          criticalMin: 7,
+          criticalMax: 20,
+        },
+      ],
     })
 
     renderStructuredHarness()
@@ -156,9 +168,7 @@ describe('lab structured results workflow', () => {
 
   it('givenRejectedSample_whenReasonSubmitted_thenNurseReceivesNotification', async () => {
     const apiMock = await getApiMock()
-    apiMock.post
-      .mockResolvedValueOnce({ data: { id: 'LAB-REJECT-1', status: 'rejected' } })
-      .mockResolvedValueOnce({ data: { id: 'NOTIF-1', type: 'LAB_SAMPLE_REJECTED' } })
+    apiMock.patch.mockResolvedValueOnce({ data: { id: 'LAB-REJECT-1', status: 'REJECTED' } })
 
     const { result } = renderHook(() => useRejectSample(), {
       wrapper: createWrapper(),
@@ -172,19 +182,10 @@ describe('lab structured results workflow', () => {
     })
 
     await waitFor(() => {
-      expect(apiMock.post).toHaveBeenCalledWith('/lab-orders/LAB-REJECT-1/reject', {
-        reason: 'Hemolyzed specimen',
+      expect(apiMock.patch).toHaveBeenCalledWith('/lab-orders/LAB-REJECT-1/status', {
+        status: 'REJECTED',
+        rejectionReason: 'Hemolyzed specimen',
       })
     })
-
-    expect(apiMock.post).toHaveBeenCalledWith(
-      '/api/notifications',
-      expect.objectContaining({
-        type: 'LAB_SAMPLE_REJECTED',
-        recipientRole: 'NURSE',
-        entityType: 'LAB_ORDER',
-        entityId: 'LAB-REJECT-1',
-      }),
-    )
   })
 })

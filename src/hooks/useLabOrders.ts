@@ -1,53 +1,151 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
+
 import { api } from '@/lib/api'
-import type { LabOrder, LabResult } from '@/types/lab'
-import type { LabResultFinalizeRequest, LabResultSubmissionResponse } from '@/types/lab'
-import type { FinalizeStructuredResultPayload, LabPanelDefinition } from '@/types/lab'
+import type {
+  FinalizeStructuredResultPayload,
+  LabInpatientFollowupItem,
+  LabOrder,
+  LabOrderDetail,
+  LabOrderResultPayload,
+  LabOrderStatus,
+  LabPanelDefinition,
+  LabResult,
+  LabResultFinalizeRequest,
+  LabResultSubmissionResponse,
+  LabStats,
+  LabWorklistItem,
+  LegacyLabResultFinalizeInput,
+  PagedResponse,
+} from '@/types/lab'
 
 export interface CreateLabOrderPayload {
   patientId: string
   consultId?: string
   tests: string | string[]
+  priority?: 'ROUTINE' | 'URGENT' | 'STAT'
+  clinicalIndication?: string
+  scheduledExamDate?: string
+}
+
+export interface WorklistParams {
+  page: number
+  size?: number
+}
+
+export interface LabStatusMutationInput {
+  orderId: string
+  status: LabOrderStatus
+  rejectionReason?: string
+}
+
+const DEFAULT_PAGE_SIZE = 20
+
+const emptyPage = <T>(page = 0, size = DEFAULT_PAGE_SIZE): PagedResponse<T> => ({
+  data: [],
+  meta: {
+    page,
+    size,
+    totalElements: 0,
+    totalPages: 0,
+    hasNext: false,
+    hasPrevious: false,
+  },
+})
+
+const labOrderKeys = {
+  all: ['lab-orders'] as const,
+  stats: () => ['lab-orders', 'stats'] as const,
+  pending: (page: number, size = DEFAULT_PAGE_SIZE) => ['lab-orders', 'pending', page, size] as const,
+  followups: (page: number, size = DEFAULT_PAGE_SIZE) => ['lab-orders', 'followups', page, size] as const,
+  detail: (orderId: string) => ['lab-orders', 'detail', orderId] as const,
+}
+
+function updateItemInPage<T extends { id: string; status: string }>(
+  page: PagedResponse<T> | undefined,
+  orderId: string,
+  status: LabOrderStatus,
+) {
+  if (!page) return page
+  return {
+    ...page,
+    data: page.data.map((item) => (item.id === orderId ? { ...item, status } : item)),
+  }
+}
+
+function removeItemFromPage<T extends { id: string }>(
+  page: PagedResponse<T> | undefined,
+  orderId: string,
+) {
+  if (!page) return page
+  const nextData = page.data.filter((item) => item.id !== orderId)
+  if (nextData.length === page.data.length) return page
+
+  return {
+    ...page,
+    data: nextData,
+    meta: {
+      ...page.meta,
+      totalElements: Math.max(0, page.meta.totalElements - 1),
+    },
+  }
+}
+
+export function useLabOrderStats() {
+  return useQuery({
+    queryKey: labOrderKeys.stats(),
+    queryFn: async () => {
+      const { data } = await api.get<LabStats>('/lab-orders/stats')
+      return data
+    },
+  })
+}
+
+export function useLabPendingWorklist({ page, size = DEFAULT_PAGE_SIZE }: WorklistParams) {
+  return useQuery({
+    queryKey: labOrderKeys.pending(page, size),
+    queryFn: async () => {
+      const { data } = await api.get<PagedResponse<LabWorklistItem>>('/lab-orders/pending', {
+        params: { page, size },
+      })
+      return data
+    },
+    placeholderData: () => emptyPage<LabWorklistItem>(page, size),
+    refetchInterval: 30_000,
+  })
+}
+
+export function useLabInpatientFollowups({ page, size = DEFAULT_PAGE_SIZE }: WorklistParams) {
+  return useQuery({
+    queryKey: labOrderKeys.followups(page, size),
+    queryFn: async () => {
+      const { data } = await api.get<PagedResponse<LabInpatientFollowupItem>>('/lab-orders/inpatient-followups', {
+        params: { page, size },
+      })
+      return data
+    },
+    placeholderData: () => emptyPage<LabInpatientFollowupItem>(page, size),
+    refetchInterval: 30_000,
+  })
 }
 
 export function useLabOrders() {
-  const { data: pending = [], isLoading: loadingPending } = useQuery({
-    queryKey: ['lab-orders', 'pending'],
-    queryFn: async () => {
-      const { data } = await api.get<LabOrder[]>('/lab-orders/pending')
-      return data
-    }
-  })
-
-  const { data: completed = [], isLoading: loadingCompleted } = useQuery({
-    queryKey: ['lab-orders', 'completed'],
-    queryFn: async () => {
-      const { data } = await api.get<LabOrder[]>('/lab-orders/completed')
-      return data
-    }
-  })
-
-  const { data: stats } = useQuery({
-    queryKey: ['lab-orders', 'stats'],
-    queryFn: async () => {
-      const { data } = await api.get<{
-        pending: number
-        completed: number
-        pendingToday: number
-        completedToday: number
-      }>('/lab-orders/stats')
-      return data
-    }
-  })
+  const pendingQuery = useLabPendingWorklist({ page: 0, size: DEFAULT_PAGE_SIZE })
+  const statsQuery = useLabOrderStats()
 
   return {
-    pending,
-    inProgress: pending.filter((order) => order.status === 'in_progress'),
-    completed,
-    rejected: pending.filter((order) => order.status === 'rejected'),
-    stats: stats || { pending: 0, completed: 0, pendingToday: 0, completedToday: 0 },
-    loading: loadingPending || loadingCompleted
+    pending: pendingQuery.data?.data ?? [],
+    inProgress: (pendingQuery.data?.data ?? []).filter((order) => order.status === 'IN_PROGRESS'),
+    completed: [] as LabOrder[],
+    rejected: (pendingQuery.data?.data ?? []).filter((order) => order.status === 'REJECTED'),
+    stats: statsQuery.data ?? {
+      pending: 0,
+      completed: 0,
+      pendingToday: 0,
+      completedToday: 0,
+      followupsDueNow: 0,
+    },
+    loading: pendingQuery.isLoading || statsQuery.isLoading,
   }
 }
 
@@ -55,23 +153,71 @@ export function useLabPanelDefinition(panelId: string) {
   return useQuery({
     queryKey: ['lab-panels', panelId],
     queryFn: async () => {
-      const { data } = await api.get<LabPanelDefinition>(`/api/lab-panels/${panelId}`)
-      return data
+      const { data: panels } = await api.get<Array<{
+        id: string
+        panelName: string
+        panelCode: string
+      }>>('/lab-orders/panels')
+
+      const panel = panels.find((item) =>
+        [item.id, item.panelCode, item.panelName].some(
+          (candidate) => candidate?.toLowerCase() === panelId.toLowerCase(),
+        ),
+      )
+
+      if (!panel) {
+        return {
+          id: panelId,
+          name: panelId,
+          parameters: [],
+        } satisfies LabPanelDefinition
+      }
+
+      const { data: parameters } = await api.get<Array<{
+        parameterName: string
+        unit?: string
+        displayOrder: number
+        minNormalMale?: number
+        maxNormalMale?: number
+        criticalMin?: number
+        criticalMax?: number
+      }>>(`/lab-orders/panels/${panel.id}/parameters`)
+
+      return {
+        id: panel.id,
+        name: panel.panelName,
+        parameters: parameters.map((parameter) => ({
+          code: parameter.parameterName,
+          name: parameter.parameterName,
+          unit: parameter.unit,
+          sequence: parameter.displayOrder,
+          referenceRange:
+            parameter.minNormalMale !== undefined && parameter.maxNormalMale !== undefined
+              ? { low: parameter.minNormalMale, high: parameter.maxNormalMale }
+              : undefined,
+          criticalRange:
+            parameter.criticalMin !== undefined && parameter.criticalMax !== undefined
+              ? { low: parameter.criticalMin, high: parameter.criticalMax }
+              : undefined,
+        })),
+      } satisfies LabPanelDefinition
     },
     enabled: !!panelId,
   })
 }
 
-export function useLabResult(orderId: string) {
+export function useLabOrderDetail(orderId: string) {
   return useQuery({
-    queryKey: ['lab-orders', orderId],
+    queryKey: labOrderKeys.detail(orderId),
     queryFn: async () => {
-      const { data } = await api.get<LabOrder>(`/lab-orders/${orderId}`)
+      const { data } = await api.get<LabOrderDetail>(`/lab-orders/${orderId}`)
       return data
     },
-    enabled: !!orderId
+    enabled: !!orderId,
   })
 }
+
+export const useLabResult = useLabOrderDetail
 
 export function usePatientLabOrders(patientId: string) {
   return useQuery({
@@ -92,12 +238,13 @@ export function useCreateLabOrder() {
       const normalizedPayload = {
         ...payload,
         tests: Array.isArray(payload.tests) ? JSON.stringify(payload.tests) : payload.tests,
+        priority: payload.priority ?? 'ROUTINE',
       }
       const { data } = await api.post<LabOrder>('/lab-orders', normalizedPayload)
       return data
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['lab-orders'] })
+      queryClient.invalidateQueries({ queryKey: labOrderKeys.all })
       toast.success('Lab order created successfully.')
     },
   })
@@ -112,7 +259,7 @@ export function useAcknowledgeLabOrder() {
       return data
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['lab-orders'] })
+      queryClient.invalidateQueries({ queryKey: labOrderKeys.all })
       queryClient.invalidateQueries({ queryKey: ['patient', data.patientId, 'lab-results'] })
       queryClient.invalidateQueries({ queryKey: ['workflow', 'patient', data.patientId] })
       toast.success('Lab result acknowledged.')
@@ -120,24 +267,17 @@ export function useAcknowledgeLabOrder() {
   })
 }
 
-export function useUploadResult() {
+export function useSubmitLabResult() {
   const queryClient = useQueryClient()
 
-  const { mutateAsync: uploadResult, isPending } = useMutation({
+  const { mutateAsync: submitResult, isPending } = useMutation({
     mutationFn: async ({
       orderId,
-      result,
-      markAsFinal,
+      payload,
     }: {
       orderId: string
-      result: LabResult
-      markAsFinal: boolean
+      payload: LabResultFinalizeRequest
     }) => {
-      const payload: LabResultFinalizeRequest = {
-        result,
-        markAsFinal,
-      }
-
       const { data } = await api.post<LabResultSubmissionResponse>(
         `/lab-orders/${orderId}/results/submit`,
         payload,
@@ -145,16 +285,48 @@ export function useUploadResult() {
       return data
     },
     onSuccess: (_, variables) => {
-      // Invalidate and refetch lab orders
-      queryClient.invalidateQueries({ queryKey: ['lab-orders'] })
-      toast.success(variables.markAsFinal ? 'Lab result finalized and approved.' : 'Lab result submitted.')
+      queryClient.setQueriesData<PagedResponse<LabWorklistItem>>(
+        { queryKey: ['lab-orders', 'pending'] },
+        (page) => removeItemFromPage(page, variables.orderId),
+      )
+      queryClient.setQueriesData<PagedResponse<LabInpatientFollowupItem>>(
+        { queryKey: ['lab-orders', 'followups'] },
+        (page) => removeItemFromPage(page, variables.orderId),
+      )
+      queryClient.invalidateQueries({ queryKey: labOrderKeys.stats() })
+      queryClient.invalidateQueries({ queryKey: labOrderKeys.detail(variables.orderId) })
+      queryClient.invalidateQueries({ queryKey: ['notifications'] })
+      toast.success('Lab result submitted.')
     },
-    onError: (error) => {
-      console.error('Failed to upload result:', error)
-    }
   })
 
-  return { uploadResult, uploading: isPending }
+  return { submitResult, submittingResult: isPending }
+}
+
+export function useUploadResult() {
+  const { submitResult, submittingResult } = useSubmitLabResult()
+
+  const uploadResult = async ({ orderId, result }: LegacyLabResultFinalizeInput) => {
+    const valuesText =
+      result.text?.trim() ||
+      (result.values && Object.keys(result.values).length > 0 ? JSON.stringify(result.values) : '')
+
+    return submitResult({
+      orderId,
+      payload: {
+        resultValue: valuesText,
+        unit: '',
+        isCritical: result.status === 'critical',
+        criticalNote: result.status === 'critical' ? result.comment ?? '' : '',
+        specimenQuality: 'ADEQUATE',
+        resultFiles: result.files ?? [],
+        notes: result.comment ?? '',
+        normalRangeText: '',
+      },
+    })
+  }
+
+  return { uploadResult, uploading: submittingResult }
 }
 
 export function useFinalizeStructuredResult() {
@@ -175,15 +347,9 @@ export function useFinalizeStructuredResult() {
       return data
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['lab-orders'] })
+      queryClient.invalidateQueries({ queryKey: labOrderKeys.all })
       queryClient.invalidateQueries({ queryKey: ['notifications'] })
       toast.success('Lab result finalized as structured panel.')
-      void api.post('/api/notifications', {
-        type: 'LAB_RESULT_READY',
-        entityType: 'LAB_ORDER',
-        entityId: variables.orderId,
-        recipientRole: 'DOCTOR',
-      })
     },
   })
 
@@ -194,12 +360,44 @@ export function useUpdateLabOrderStatus() {
   const queryClient = useQueryClient()
 
   const { mutateAsync: updateStatus, isPending } = useMutation({
-    mutationFn: async ({ orderId, status }: { orderId: string; status: LabOrder['status'] }) => {
-      const { data } = await api.patch<LabOrder>(`/lab-orders/${orderId}/status`, { status })
+    mutationFn: async ({ orderId, status, rejectionReason }: LabStatusMutationInput) => {
+      const { data } = await api.patch<LabOrder>(`/lab-orders/${orderId}/status`, {
+        status,
+        rejectionReason,
+      })
       return data
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['lab-orders'] })
+    onMutate: async ({ orderId, status }) => {
+      await queryClient.cancelQueries({ queryKey: labOrderKeys.all })
+
+      if (status === 'IN_PROGRESS') {
+        queryClient.setQueriesData<PagedResponse<LabWorklistItem>>(
+          { queryKey: ['lab-orders', 'pending'] },
+          (page) => updateItemInPage(page, orderId, status),
+        )
+        queryClient.setQueriesData<PagedResponse<LabInpatientFollowupItem>>(
+          { queryKey: ['lab-orders', 'followups'] },
+          (page) => updateItemInPage(page, orderId, status),
+        )
+      }
+
+      if (status === 'REJECTED') {
+        queryClient.setQueriesData<PagedResponse<LabWorklistItem>>(
+          { queryKey: ['lab-orders', 'pending'] },
+          (page) => removeItemFromPage(page, orderId),
+        )
+        queryClient.setQueriesData<PagedResponse<LabInpatientFollowupItem>>(
+          { queryKey: ['lab-orders', 'followups'] },
+          (page) => removeItemFromPage(page, orderId),
+        )
+      }
+    },
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: labOrderKeys.stats() })
+      queryClient.setQueryData(labOrderKeys.detail(variables.orderId), (current: LabOrderDetail | undefined) =>
+        current ? { ...current, status: data.status, rejectionReason: data.rejectionReason ?? null } : current,
+      )
+      queryClient.invalidateQueries({ queryKey: ['lab-orders', variables.status === 'REJECTED' ? 'followups' : 'pending'] })
     },
   })
 
@@ -207,26 +405,51 @@ export function useUpdateLabOrderStatus() {
 }
 
 export function useRejectSample() {
-  const queryClient = useQueryClient()
+  const { updateStatus, updatingStatus } = useUpdateLabOrderStatus()
 
-  const { mutateAsync: rejectSample, isPending } = useMutation({
-    mutationFn: async ({ orderId, reason }: { orderId: string; reason: string }) => {
-      const { data } = await api.post<LabOrder>(`/lab-orders/${orderId}/reject`, { reason })
-      await api.post('/api/notifications', {
-        type: 'LAB_SAMPLE_REJECTED',
-        entityType: 'LAB_ORDER',
-        entityId: orderId,
-        recipientRole: 'NURSE',
-        body: reason,
-      })
+  const rejectSample = async ({ orderId, reason }: { orderId: string; reason: string }) =>
+    updateStatus({
+      orderId,
+      status: 'REJECTED',
+      rejectionReason: reason,
+    })
+
+  return { rejectSample, rejecting: updatingStatus }
+}
+
+export function useLabResultPresignedUpload() {
+  const { mutateAsync: getUploadUrl, isPending } = useMutation({
+    mutationFn: async (fileName: string) => {
+      const { data } = await api.post<{ uploadUrl: string; fileKey: string }>(
+        '/lab-orders/storage/presigned-upload',
+        null,
+        { params: { fileName } },
+      )
       return data
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['lab-orders'] })
-      queryClient.invalidateQueries({ queryKey: ['notifications'] })
-      toast.success('Sample rejected and nurse notified.')
     },
   })
 
-  return { rejectSample, rejecting: isPending }
+  return { getUploadUrl, loadingUploadUrl: isPending }
+}
+
+export async function uploadLabResultFile(file: File): Promise<string> {
+  const { data } = await api.post<{ uploadUrl: string; fileKey: string }>(
+    '/lab-orders/storage/presigned-upload',
+    null,
+    { params: { fileName: file.name } },
+  )
+
+  const response = await fetch(data.uploadUrl, {
+    method: 'PUT',
+    body: file,
+    headers: {
+      'Content-Type': file.type || 'application/octet-stream',
+    },
+  })
+
+  if (!response.ok) {
+    throw new Error('Failed to upload lab result file')
+  }
+
+  return data.fileKey
 }

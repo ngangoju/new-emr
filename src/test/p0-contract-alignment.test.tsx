@@ -124,7 +124,7 @@ describe('P0 contract alignment', () => {
 
   it('uses /lab-orders/{id}/results/submit for lab result submission', async () => {
     const { api } = await getApiMock()
-    api.post.mockResolvedValueOnce({ data: { orderId: 'LAB-1', status: 'approved', result: {} } })
+    api.post.mockResolvedValueOnce({ data: { orderId: 'LAB-1', orderStatus: 'COMPLETED', resultStatus: 'submitted' } })
 
     const { result } = renderHook(() => useUploadResult(), {
       wrapper: createWrapper(),
@@ -141,8 +141,8 @@ describe('P0 contract alignment', () => {
     expect(api.post).toHaveBeenCalledWith(
       '/lab-orders/LAB-1/results/submit',
       expect.objectContaining({
-        result: { status: 'normal' },
-        markAsFinal: true,
+        isCritical: false,
+        specimenQuality: 'ADEQUATE',
       }),
     )
   })
