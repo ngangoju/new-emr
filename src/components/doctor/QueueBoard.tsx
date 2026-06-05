@@ -25,8 +25,11 @@ import { Wifi, WifiOff } from 'lucide-react'
 
 export function QueueBoard() {
   const router = useRouter()
-  const { role, isLoading: roleLoading } = useRole()
-  const canAccessQueue = !roleLoading && ['ADMIN', 'DOCTOR', 'NURSE', 'RECEPTIONIST'].includes(role || '')
+  const { isLoading: roleLoading, hasPermission } = useRole()
+  // Gate the queue fetch on the actual backend permission (queue:read) rather than a
+  // hardcoded role list. ADMIN was previously included here but lacks queue:read, so the
+  // /api/queue/active call returned 403 (P2-010).
+  const canAccessQueue = !roleLoading && hasPermission('queue:read')
   const { data: queue = [], isLoading } = useQueueAPI({ enabled: canAccessQueue })
   const callNextMutation = useCallNextPatient()
   const updateStatusMutation = useUpdateQueueStatus()

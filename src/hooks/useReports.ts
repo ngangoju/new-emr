@@ -18,9 +18,15 @@ interface UseReportsResult {
   loading: boolean
 }
 
-export function useReports(): UseReportsResult {
+export function useReports(options?: { enabled?: boolean }): UseReportsResult {
+  // Only fetch when explicitly enabled (caller has the report:* permission). This
+  // prevents roles such as CASHIER — which lack report permissions — from auto-firing
+  // /reports/* requests that always 403 (P2-009).
+  const enabled = options?.enabled ?? true
+
   const { data: financial, isLoading: loadingFinancial } = useQuery({
     queryKey: ['reports', 'financial'],
+    enabled,
     queryFn: async () => {
       try {
         const { data } = await api.get<Report>('/reports/financial')
@@ -34,6 +40,7 @@ export function useReports(): UseReportsResult {
 
   const { data: patient, isLoading: loadingPatient } = useQuery({
     queryKey: ['reports', 'patient'],
+    enabled,
     queryFn: async () => {
       try {
         const { data } = await api.get<Report>('/reports/patient')
@@ -47,6 +54,7 @@ export function useReports(): UseReportsResult {
 
   const { data: usage, isLoading: loadingUsage } = useQuery({
     queryKey: ['reports', 'usage'],
+    enabled,
     queryFn: async () => {
       try {
         const { data } = await api.get<Report>('/reports/usage')

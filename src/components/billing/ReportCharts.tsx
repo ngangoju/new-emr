@@ -14,10 +14,19 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { useReports } from '@/hooks/useReports'
+import { useRole } from '@/hooks/useRole'
 
 export function ReportCharts() {
-  const { reports, loading } = useReports()
+  // Only roles holding report:financial:read may load /reports/*; otherwise the fetch
+  // 403s (e.g. CASHIER). Gate the query and hide the widget when not permitted (P2-009).
+  const { hasPermission } = useRole()
+  const canViewReports = hasPermission('report:financial:read')
+  const { reports, loading } = useReports({ enabled: canViewReports })
   const data = reports.financial?.data || []
+
+  if (!canViewReports) {
+    return null
+  }
 
   if (loading) {
     return (
