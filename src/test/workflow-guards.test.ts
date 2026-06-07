@@ -23,7 +23,21 @@ describe('workflow guard helpers', () => {
       createdAt: '2026-06-07T08:30:00Z',
       paymentStatus: 'PARTIAL',
       patientDue: 1000,
+      payments: [{ amount: 400 }],
     }, today)).toBe(true)
+
+    expect(shouldHoldTriageForInitialInvoice({
+      createdAt: '2026-06-07T08:30:00Z',
+      paymentStatus: 'PARTIAL',
+      patientDue: 1000,
+      payments: [{ amount: 1000 }],
+    }, today)).toBe(false)
+
+    expect(shouldHoldTriageForInitialInvoice({
+      createdAt: '2026-06-07T08:30:00Z',
+      paymentStatus: 'PARTIAL',
+      patientDue: 1000,
+    }, today)).toBe(false)
 
     expect(shouldHoldTriageForInitialInvoice({
       createdAt: '2026-06-07T08:30:00Z',

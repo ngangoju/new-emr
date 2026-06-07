@@ -30,6 +30,7 @@ const defaultPatient: Patient = {
 
 type InitialInvoiceGateInput = Pick<Invoice, 'paymentStatus' | 'patientDue'> & {
   createdAt?: Invoice['createdAt'] | string | null
+  payments?: Array<{ amount?: number | string | null }> | null
 }
 
 export function shouldHoldTriageForInitialInvoice(invoice: InitialInvoiceGateInput, today = new Date()) {
@@ -46,7 +47,24 @@ export function shouldHoldTriageForInitialInvoice(invoice: InitialInvoiceGateInp
   const paymentStatus = String(invoice.paymentStatus ?? '').toUpperCase()
   const patientDue = Number(invoice.patientDue ?? 0)
 
-  return paymentStatus === 'UNPAID' || paymentStatus === 'PARTIAL' || patientDue > 0
+  if (!Number.isFinite(patientDue) || patientDue <= 0) {
+    return false
+  }
+
+  if (paymentStatus === 'UNPAID') {
+    return true
+  }
+
+  if (paymentStatus === 'PARTIAL' && Array.isArray(invoice.payments) && invoice.payments.length > 0) {
+    const totalPaid = invoice.payments.reduce((sum, payment) => {
+      const amount = Number(payment.amount ?? 0)
+      return Number.isFinite(amount) ? sum + amount : sum
+    }, 0)
+
+    return totalPaid < patientDue
+  }
+
+  return false
 }
 
 interface NurseVitalsFormProps {
@@ -159,7 +177,7 @@ export function NurseVitalsForm({ initialPatientId = '' }: NurseVitalsFormProps)
             <Receipt className="mt-0.5 h-4 w-4 shrink-0" />
             <div>
               <p className="font-semibold">Waiting for cashier payment</p>
-              <p className="text-yellow-800">Record triage after the initial service invoice is paid.</p>
+              <p className="text-yellow-800">Record triage after the initial patient payment is cleared.</p>
             </div>
           </div>
         )}
