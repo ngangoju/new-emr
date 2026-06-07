@@ -7,6 +7,7 @@ interface UseInvoicesFilters {
   patientId?: string
   doctorId?: string
   date?: string
+  enabled?: boolean
 }
 
 export function useInvoices(filters: UseInvoicesFilters = {}) {
@@ -102,7 +103,8 @@ export function useInvoices(filters: UseInvoicesFilters = {}) {
           },
         }
       })
-    }
+    },
+    enabled: filters.enabled ?? true,
   })
 
   const pending = invoices.filter((inv) => {

@@ -4,6 +4,14 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import toast from 'react-hot-toast'
 
+type ApiErrorPayload = {
+    response?: {
+        data?: {
+            message?: string
+        }
+    }
+}
+
 export interface OutboxEntry {
     id: string
     aggregateType: string
@@ -41,8 +49,9 @@ export function useRetryOutbox() {
             toast.success('Event scheduled for retry')
             queryClient.invalidateQueries({ queryKey: ['outbox'] })
         },
-        onError: (err: any) => {
-            toast.error(err.response?.data?.message || 'Failed to retry event')
+        onError: (err: unknown) => {
+            const apiError = err as ApiErrorPayload
+            toast.error(apiError.response?.data?.message || 'Failed to retry event')
         }
     })
 

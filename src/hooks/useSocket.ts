@@ -12,7 +12,7 @@ export const useSocket = () => {
     return socket;
 };
 
-export const useSocketEvent = (event: string, callback: (data: any) => void) => {
+export const useSocketEvent = (event: string, callback: (data: unknown) => void) => {
     const callbackRef = useRef(callback);
 
     useEffect(() => {
@@ -20,7 +20,7 @@ export const useSocketEvent = (event: string, callback: (data: any) => void) => 
     }, [callback]);
 
     useEffect(() => {
-        const internalCallback = (data: any) => callbackRef.current(data);
+        const internalCallback = (data: unknown) => callbackRef.current(data);
         socket.on(event, internalCallback);
 
         const subscribe = () => {

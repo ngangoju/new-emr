@@ -159,9 +159,12 @@ api.interceptors.response.use(
             errorMessage = `${errorMessage} [Trace: ${errData.traceId}]`;
         }
 
-        // Don't show toast for 401s — handled by refresh logic or redirect
-        // Don't show toast for 404s if they are expected (handled by component)
-        if (status !== 401 && status !== 404) {
+        if (status === 403 && typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('emr:permission-denied'));
+        }
+
+        // Auth/route guard states and expected not-found cases are handled by the caller.
+        if (status !== 401 && status !== 403 && status !== 404) {
             toast.error(errorMessage);
         }
 

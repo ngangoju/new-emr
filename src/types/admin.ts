@@ -81,7 +81,7 @@ export interface ReportData {
   label: string;
   value: number;
   color?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface Report {

@@ -46,6 +46,11 @@ export type NotificationType =
     | 'APPROVAL_REQUIRED'
     | 'QUEUE_UPDATE'
     | 'INVOICE_UNPAID'
+    | 'INVOICE_CREATED_UNPAID'
+    | 'QUEUE_ADMISSION'
+    | 'PATIENT_CHECKED_IN'
+    | 'INITIAL_SERVICE_PAYMENT_CLEARED'
+    | 'DRUG_REQUEST_SUBMITTED'
     | 'GENERAL'
 
 /**
@@ -75,6 +80,7 @@ export function getNotificationIcon(type: string): string {
         case 'IMAGING_RESULT_READY':
             return 'scan'
         case 'DRUG_REQUEST':
+        case 'DRUG_REQUEST_SUBMITTED':
             return 'pill'
         case 'ADMISSION':
             return 'bed'
@@ -83,8 +89,12 @@ export function getNotificationIcon(type: string): string {
         case 'APPROVAL_REQUIRED':
             return 'clipboard-check'
         case 'QUEUE_UPDATE':
+        case 'QUEUE_ADMISSION':
+        case 'PATIENT_CHECKED_IN':
+        case 'INITIAL_SERVICE_PAYMENT_CLEARED':
             return 'users'
         case 'INVOICE_UNPAID':
+        case 'INVOICE_CREATED_UNPAID':
             return 'receipt'
         default:
             return 'bell'
@@ -103,6 +113,7 @@ export function getNotificationColor(type: string): string {
         case 'IMAGING_RESULT_READY':
             return 'text-purple-500'
         case 'DRUG_REQUEST':
+        case 'DRUG_REQUEST_SUBMITTED':
             return 'text-orange-500'
         case 'ADMISSION':
             return 'text-indigo-500'
@@ -111,8 +122,12 @@ export function getNotificationColor(type: string): string {
         case 'APPROVAL_REQUIRED':
             return 'text-red-500'
         case 'QUEUE_UPDATE':
+        case 'QUEUE_ADMISSION':
+        case 'PATIENT_CHECKED_IN':
+        case 'INITIAL_SERVICE_PAYMENT_CLEARED':
             return 'text-cyan-500'
         case 'INVOICE_UNPAID':
+        case 'INVOICE_CREATED_UNPAID':
             return 'text-yellow-500'
         default:
             return 'text-gray-500'

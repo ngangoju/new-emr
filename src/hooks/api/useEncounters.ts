@@ -12,7 +12,7 @@ export interface Encounter {
     workflowMode: 'MULTI_ACTOR' | 'SINGLE_ACTOR';
     stepState: string;
     updatedAt: string;
-    [key: string]: any;
+    [key: string]: unknown;
 }
 
 export function useEncounter(id: string): UseQueryResult<Encounter | null, Error> {

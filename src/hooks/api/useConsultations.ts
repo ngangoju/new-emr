@@ -19,6 +19,14 @@ export interface Consultation {
     updatedAt: string;
 }
 
+type RawConsultation = Omit<Partial<Consultation>, 'createdAt' | 'updatedAt' | 'status'> & {
+    createdAt?: string | number | null;
+    updatedAt?: string | number | null;
+    signedAt?: string | number | null;
+    status?: string;
+    [key: string]: unknown;
+};
+
 export interface CreateConsultationPayload {
     patientId: string;
     doctorId?: string;
@@ -86,9 +94,9 @@ export interface DryRunSafetyCheckResponse {
     };
 }
 
-const normalizeConsultation = (c: any): Consultation => {
+const normalizeConsultation = (c: RawConsultation): Consultation => {
     // Handle the epoch seconds vs milliseconds bug from backend
-    const fixDate = (dateVal: any) => {
+    const fixDate = (dateVal: string | number | null | undefined) => {
         if (!dateVal) return new Date().toISOString();
         if (typeof dateVal === 'number') {
             // if it's < 10^12, it's likely seconds
@@ -97,22 +105,24 @@ const normalizeConsultation = (c: any): Consultation => {
         return dateVal;
     };
 
+    const status: Consultation['status'] =
+        (c.status === 'PENDING' || c.status === 'DRAFT') ? 'DRAFT' :
+            (c.status === 'SIGNED' || c.status === 'FINALIZED') ? 'FINALIZED' : 'DRAFT';
+
     return {
         ...c,
         createdAt: fixDate(c.createdAt),
         updatedAt: fixDate(c.updatedAt),
         signedAt: fixDate(c.signedAt),
-        // Map common backend status to frontend expected
-        status: (c.status === 'PENDING' || c.status === 'DRAFT') ? 'DRAFT' :
-            (c.status === 'SIGNED' || c.status === 'FINALIZED') ? 'FINALIZED' : c.status
-    };
+        status
+    } as Consultation;
 };
 
 export function useConsultations(params?: { patientId?: string; doctorId?: string }) {
     return useQuery({
         queryKey: ['consultations', params],
         queryFn: async () => {
-            const { data } = await api.get<any[]>('/consultations', { params });
+            const { data } = await api.get<RawConsultation[]>('/consultations', { params });
             return data.map(normalizeConsultation);
         },
     });
@@ -122,7 +132,7 @@ export function useConsultation(id: string) {
     return useQuery({
         queryKey: ['consultation', id],
         queryFn: async () => {
-            const { data } = await api.get<any>(`/consultations/${id}`);
+            const { data } = await api.get<RawConsultation>(`/consultations/${id}`);
             return normalizeConsultation(data);
         },
         enabled: !!id,

@@ -28,6 +28,11 @@ export interface Patient {
     [key: string]: unknown;
 }
 
+export type PatientMutationPayload = Omit<Partial<Patient>, 'insurance' | 'emergencyContact'> & {
+    insurance?: Patient['insurance'] | string;
+    emergencyContact?: Patient['emergencyContact'] | string;
+}
+
 export interface CreatePatientVitalsPayload {
     temperature?: number;
     bloodPressure?: string;
@@ -168,7 +173,7 @@ export function useCreatePatient() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: async (payload: Partial<Patient>) => {
+        mutationFn: async (payload: PatientMutationPayload) => {
             const { data } = await api.post<Patient>('/patients', payload);
             return data;
         },
@@ -182,7 +187,7 @@ export function useUpdatePatient() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: async ({ id, data }: { id: string; data: Partial<Patient> }) => {
+        mutationFn: async ({ id, data }: { id: string; data: PatientMutationPayload }) => {
             const response = await api.put<Patient>(`/patients/${id}`, data);
             return response.data;
         },

@@ -7,7 +7,11 @@
 const SOCKET_URL = (process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:8888')
     .replace('http', 'ws');
 
-type SocketCallback = (data?: any) => void;
+type SocketCallback = (data?: unknown) => void;
+
+function isSocketMessage(value: unknown): value is { type?: unknown; event?: unknown; data?: unknown } {
+    return typeof value === 'object' && value !== null;
+}
 
 class SocketClient {
     private socket: WebSocket | null = null;
@@ -35,7 +39,7 @@ class SocketClient {
 
         this.socket.onmessage = (event) => {
             const rawData = event.data;
-            let parsedData: any;
+            let parsedData: unknown;
 
             try {
                 parsedData = JSON.parse(rawData);
@@ -51,9 +55,9 @@ class SocketClient {
                 this.triggerEvent(parsedData);
             }
             // If it's an object with a type/event field
-            else if (parsedData && typeof parsedData === 'object') {
+            else if (isSocketMessage(parsedData)) {
                 const eventName = parsedData.type || parsedData.event;
-                if (eventName) {
+                if (typeof eventName === 'string') {
                     this.triggerEvent(eventName, parsedData.data || parsedData);
                 }
             }
@@ -90,7 +94,7 @@ class SocketClient {
         }
     }
 
-    emit(event: string, data?: any) {
+    emit(event: string, data?: unknown) {
         if (this.socket?.readyState === WebSocket.OPEN) {
             const payload = JSON.stringify({ type: event, data });
             this.socket.send(payload);
@@ -107,7 +111,7 @@ class SocketClient {
         }
     }
 
-    private triggerEvent(event: string, data?: any) {
+    private triggerEvent(event: string, data?: unknown) {
         const listeners = this.eventListeners.get(event);
         if (listeners) {
             listeners.forEach(callback => {
