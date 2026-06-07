@@ -113,7 +113,7 @@ export function DrugRequestForm() {
   // Check permission
   const canRequestDrugs = useMemo(() => {
     if (roleLoading) return false
-    return hasPermission('CAN_REQUEST_DRUGS')
+    return hasPermission('CAN_REQUEST_DRUGS') || hasPermission('drug_request:create')
   }, [hasPermission, roleLoading])
 
   // Add a medication item
@@ -210,17 +210,15 @@ export function DrugRequestForm() {
     }
   }
 
-  // Show access denied if no permission
   if (!roleLoading && !canRequestDrugs) {
     return (
       <Card className="w-full max-w-4xl mx-auto">
         <CardContent className="pt-6">
           <div className="text-center py-8">
             <Pill className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Access Denied</h3>
+            <h3 className="text-lg font-semibold mb-2">Drug requests unavailable</h3>
             <p className="text-muted-foreground">
-              You do not have permission to request drugs.
-              Contact your administrator if you need this access.
+              This workspace does not include medication request creation for your current role.
             </p>
           </div>
         </CardContent>

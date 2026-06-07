@@ -77,7 +77,7 @@ export function NurseBilling() {
   // Check permission
   const canBill = useMemo(() => {
     if (roleLoading) return false
-    return hasPermission('CAN_BILL')
+    return hasPermission('CAN_BILL') || hasPermission('billing:invoice:create')
   }, [hasPermission, roleLoading])
 
   // Calculate totals
@@ -178,17 +178,15 @@ export function NurseBilling() {
     }
   }
 
-  // Show access denied if no permission
   if (!roleLoading && !canBill) {
     return (
       <Card className="w-full max-w-4xl mx-auto">
         <CardContent className="pt-6">
           <div className="text-center py-8">
             <Receipt className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Access Denied</h3>
+            <h3 className="text-lg font-semibold mb-2">Billing tools unavailable</h3>
             <p className="text-muted-foreground">
-              You do not have permission to create bills. 
-              Contact your administrator if you need billing access.
+              This workspace does not include invoice creation for your current role.
             </p>
           </div>
         </CardContent>

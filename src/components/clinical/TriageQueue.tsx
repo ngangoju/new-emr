@@ -1,6 +1,7 @@
 'use client'
 
 import React from 'react'
+import Link from 'next/link'
 import { useQueue, QueueEntry } from '@/hooks/useQueue'
 import { 
   Table, 
@@ -15,10 +16,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { AlertCircle, Clock, Timer, User, Activity } from 'lucide-react'
 import { useSocketEvent } from '@/hooks/useSocket'
 import { useQueryClient } from '@tanstack/react-query'
+import { useRole } from '@/hooks/useRole'
 
 export function TriageQueue() {
   const { data: queue, isLoading } = useQueue()
   const queryClient = useQueryClient()
+  const { hasPermission, isRole } = useRole()
+  const canRecordVitals = hasPermission('vitals:write') || isRole(['ADMIN', 'NURSE', 'CHIEF_NURSE', 'CLINICAL_DIRECTOR'])
 
   useSocketEvent('queue:update', () => {
     queryClient.invalidateQueries({ queryKey: ['queue'] })
@@ -106,10 +110,10 @@ export function TriageQueue() {
           <div>
             <CardTitle className="text-2xl font-bold flex items-center gap-2">
               <Activity className="h-6 w-6 text-red-400" />
-              Live ER Triage Dashboard
+              Live Triage Worklist
             </CardTitle>
             <CardDescription className="text-slate-400 font-medium tracking-wide">
-              Real-time monitoring of patient flow and triage priority (S5-AC1)
+              Real-time patient flow and triage priority
             </CardDescription>
           </div>
           <div className="flex gap-4">
@@ -150,6 +154,11 @@ export function TriageQueue() {
                       </div>
                       <div>
                         <p className="font-bold text-slate-900 group-hover:text-primary transition-colors">{entry.patientName}</p>
+                        {entry.notes && (
+                          <p className="mt-1 max-w-xl whitespace-pre-line text-xs text-muted-foreground">
+                            {entry.notes}
+                          </p>
+                        )}
                       </div>
                     </div>
                   </TableCell>
@@ -175,18 +184,24 @@ export function TriageQueue() {
                     {getStatusBadge(entry.status)}
                   </TableCell>
                   <TableCell className="text-right">
-                    <a href={`/dashboard/doctor/consultations/new?patientId=${entry.patientId}`}>
-                      <Badge className="cursor-pointer bg-primary hover:bg-primary/90">
-                        Start Triage
+                    {canRecordVitals ? (
+                      <Link href={`/dashboard/nurse?patientId=${entry.patientId}&queueId=${entry.id}`}>
+                        <Badge className="cursor-pointer bg-primary hover:bg-primary/90">
+                          Record Triage
+                        </Badge>
+                      </Link>
+                    ) : (
+                      <Badge variant="outline" className="border-slate-200 text-slate-600">
+                        Await Nurse
                       </Badge>
-                    </a>
+                    )}
                   </TableCell>
                 </TableRow>
               )
             })}
             {(!queue || queue.length === 0) && (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-20">
+                <TableCell colSpan={7} className="text-center py-20">
                   <div className="flex flex-col items-center gap-2 opacity-40">
                     <Activity className="h-12 w-12" />
                     <p className="text-lg font-bold">No patients in the active queue</p>

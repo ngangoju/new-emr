@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useMemo, useState } from 'react'
 import { usePatients, Patient } from '@/hooks/api/usePatients'
 import {
   Command,
@@ -22,13 +22,14 @@ import { cn } from '@/lib/utils'
 interface PatientSelectorProps {
   onSelect: (patient: Patient) => void
   selectedPatientId?: string
+  selectedPatient?: Patient | null
   admittedOnly?: boolean
 }
 
-export function PatientSelector({ onSelect, selectedPatientId, admittedOnly = false }: PatientSelectorProps) {
+export function PatientSelector({ onSelect, selectedPatientId, selectedPatient: selectedPatientProp, admittedOnly = false }: PatientSelectorProps) {
   const [open, setOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
-  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null)
+  const [locallySelectedPatient, setLocallySelectedPatient] = useState<Patient | null>(null)
 
   const { data: patientsData, isLoading } = usePatients({
     query: searchQuery,
@@ -39,15 +40,16 @@ export function PatientSelector({ onSelect, selectedPatientId, admittedOnly = fa
 
   const patients = patientsData?.data || []
 
-  useEffect(() => {
-    if (selectedPatientId && !selectedPatient) {
-      // Find patient in list if already selected
-      const found = patients.find((p: Patient) => p.id === selectedPatientId)
-      if (found) setSelectedPatient(found)
-    } else if (!selectedPatientId && selectedPatient) {
-      setSelectedPatient(null)
-    }
-  }, [selectedPatientId, patients, selectedPatient])
+  const selectedPatient = useMemo(() => {
+    if (!selectedPatientId) return null
+
+    if (selectedPatientProp?.id === selectedPatientId) return selectedPatientProp
+
+    const found = patients.find((p: Patient) => p.id === selectedPatientId)
+    if (found) return found
+
+    return locallySelectedPatient?.id === selectedPatientId ? locallySelectedPatient : null
+  }, [locallySelectedPatient, patients, selectedPatientId, selectedPatientProp])
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -81,7 +83,7 @@ export function PatientSelector({ onSelect, selectedPatientId, admittedOnly = fa
                   key={patient.id}
                   value={patient.id}
                   onSelect={() => {
-                    setSelectedPatient(patient)
+                    setLocallySelectedPatient(patient)
                     onSelect(patient)
                     setOpen(false)
                   }}

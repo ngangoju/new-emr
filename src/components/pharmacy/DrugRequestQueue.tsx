@@ -178,7 +178,7 @@ export function DrugRequestQueue() {
   // Check permission - either CAN_DISPENSE permission or PHARMACIST role
   const canDispense = useMemo(() => {
     if (roleLoading) return false
-    return hasPermission('CAN_DISPENSE') || isRole('PHARMACIST') || isRole('ADMIN')
+    return hasPermission('CAN_DISPENSE') || hasPermission('drug_request:review') || hasPermission('pharmacy:dispense') || isRole('PHARMACIST') || isRole('ADMIN')
   }, [hasPermission, isRole, roleLoading])
 
   // Filter requests by status
@@ -305,17 +305,15 @@ export function DrugRequestQueue() {
     }
   }, [requests])
 
-  // Show access denied if no permission
   if (!roleLoading && !canDispense) {
     return (
       <Card className="w-full">
         <CardContent className="pt-6">
           <div className="text-center py-8">
             <Pill className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Access Denied</h3>
+            <h3 className="text-lg font-semibold mb-2">Drug request queue unavailable</h3>
             <p className="text-muted-foreground">
-              You do not have permission to manage drug requests.
-              Contact your administrator if you need this access.
+              This workspace does not include pharmacy request processing for your current role.
             </p>
           </div>
         </CardContent>

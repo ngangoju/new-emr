@@ -1,19 +1,51 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Toaster, ToastBar, toast } from 'react-hot-toast'
 import { X, AlertTriangle } from 'lucide-react'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
+
+const QUIET_PERMISSION_WINDOW_MS = 1000
+
+export function isPermissionFeedback(message: unknown) {
+  if (typeof message !== 'string') return false
+  const normalized = message.toLowerCase()
+
+  return [
+    'denied',
+    'forbidden',
+    'permission',
+    'not authorized',
+    'not permitted',
+    'not allowed',
+    'not available',
+    'current role',
+    'available for your role',
+    'only admin user',
+  ].some((phrase) => normalized.includes(phrase))
+}
 
 export function ToasterProvider() {
   const [errorModal, setErrorModal] = useState<{ open: boolean; message: React.ReactNode }>({ open: false, message: '' })
+  const lastPermissionDeniedAt = useRef(0)
 
   useEffect(() => {
     // Intercept toast.error to show our modal instead
     const originalError = toast.error;
+
+    const markPermissionDenied = () => {
+      lastPermissionDeniedAt.current = Date.now()
+    }
+
+    window.addEventListener('emr:permission-denied', markPermissionDenied)
     
-    toast.error = ((message, _opts) => {
+    toast.error = ((message) => {
+      const permissionDeniedRecently = Date.now() - lastPermissionDeniedAt.current < QUIET_PERMISSION_WINDOW_MS
+      if (permissionDeniedRecently || isPermissionFeedback(message)) {
+        return 'permission-suppressed'
+      }
+
       setErrorModal({
         open: true,
         message: typeof message === 'function' ? 'Action failed.' : message,
@@ -23,6 +55,7 @@ export function ToasterProvider() {
 
     return () => {
       toast.error = originalError;
+      window.removeEventListener('emr:permission-denied', markPermissionDenied)
     };
   }, []);
 

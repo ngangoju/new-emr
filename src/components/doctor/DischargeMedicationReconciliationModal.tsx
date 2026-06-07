@@ -310,7 +310,7 @@ export function DischargeMedicationReconciliationModal({
                   Discharge Medication Reconciliation
                 </DialogTitle>
                 <DialogDescription>
-                  Review inpatient medications and generate the patient's handoff summary.
+                Review inpatient medications and generate the patient&apos;s handoff summary.
                 </DialogDescription>
               </div>
               {reconciliationData?.complete && (

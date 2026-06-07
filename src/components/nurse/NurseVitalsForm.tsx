@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { Activity } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Activity, Receipt } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 import { Button } from '@/components/ui/button'
@@ -11,8 +11,10 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { PatientSelector } from '@/components/shared/PatientSelector'
-import { useCreatePatientVitals } from '@/hooks/api/usePatients'
+import { useCreatePatientVitals, usePatient } from '@/hooks/api/usePatients'
+import { useInvoices } from '@/hooks/useInvoices'
 import type { Patient } from '@/hooks/api/usePatients'
+import type { Invoice } from '@/types/billing'
 import { calculateMews, mewsToAcuityColor } from '@/lib/clinical/mews'
 
 type AvpuOption = 'ALERT' | 'VOICE' | 'PAIN' | 'UNRESPONSIVE'
@@ -26,7 +28,32 @@ const defaultPatient: Patient = {
   phone: '',
 }
 
-export function NurseVitalsForm() {
+type InitialInvoiceGateInput = Pick<Invoice, 'paymentStatus' | 'patientDue'> & {
+  createdAt?: Invoice['createdAt'] | string | null
+}
+
+export function shouldHoldTriageForInitialInvoice(invoice: InitialInvoiceGateInput, today = new Date()) {
+  if (!invoice.createdAt) return false
+
+  const invoiceDate = invoice.createdAt instanceof Date
+    ? invoice.createdAt
+    : new Date(invoice.createdAt)
+
+  if (Number.isNaN(invoiceDate.getTime()) || invoiceDate.toDateString() !== today.toDateString()) {
+    return false
+  }
+
+  const paymentStatus = String(invoice.paymentStatus ?? '').toUpperCase()
+  const patientDue = Number(invoice.patientDue ?? 0)
+
+  return paymentStatus === 'UNPAID' || paymentStatus === 'PARTIAL' || patientDue > 0
+}
+
+interface NurseVitalsFormProps {
+  initialPatientId?: string
+}
+
+export function NurseVitalsForm({ initialPatientId = '' }: NurseVitalsFormProps) {
   const [patient, setPatient] = useState<Patient>(defaultPatient)
   const [temperature, setTemperature] = useState('')
   const [bloodPressure, setBloodPressure] = useState('')
@@ -41,10 +68,27 @@ export function NurseVitalsForm() {
   const [triageDisposition, setTriageDisposition] = useState('WAIT_FOR_DOCTOR')
 
   const { mutateAsync: createPatientVitals, isPending } = useCreatePatientVitals()
+  const { data: initialPatient } = usePatient(initialPatientId)
+  const { pending: pendingInvoices, loading: invoicesLoading } = useInvoices({
+    patientId: patient.id,
+    enabled: Boolean(patient.id),
+  })
+  const hasOutstandingInitialInvoice = pendingInvoices.some((invoice) => shouldHoldTriageForInitialInvoice(invoice))
+
+  useEffect(() => {
+    if (initialPatient?.id) {
+      setPatient(initialPatient)
+    }
+  }, [initialPatient])
 
   const handleSubmit = async () => {
     if (!patient.id) {
       toast.error('Please select a patient before recording vitals.')
+      return
+    }
+
+    if (hasOutstandingInitialInvoice) {
+      toast.error('Initial service payment is still pending with cashier.')
       return
     }
 
@@ -105,10 +149,20 @@ export function NurseVitalsForm() {
           <Label>Patient</Label>
           <PatientSelector
             selectedPatientId={patient.id}
+            selectedPatient={patient.id ? patient : null}
             onSelect={(selectedPatient) => setPatient(selectedPatient)}
-            admittedOnly
           />
         </div>
+
+        {hasOutstandingInitialInvoice && (
+          <div className="flex items-start gap-3 rounded-md border border-yellow-200 bg-yellow-50 p-3 text-sm text-yellow-900">
+            <Receipt className="mt-0.5 h-4 w-4 shrink-0" />
+            <div>
+              <p className="font-semibold">Waiting for cashier payment</p>
+              <p className="text-yellow-800">Record triage after the initial service invoice is paid.</p>
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
@@ -195,8 +249,8 @@ export function NurseVitalsForm() {
           avpu={avpu}
         />
 
-        <Button onClick={handleSubmit} disabled={isPending}>
-          {isPending ? 'Saving...' : 'Save Vitals'}
+        <Button onClick={handleSubmit} disabled={isPending || invoicesLoading || hasOutstandingInitialInvoice}>
+          {isPending ? 'Saving...' : invoicesLoading ? 'Checking payment...' : 'Save Vitals'}
         </Button>
       </CardContent>
     </Card>

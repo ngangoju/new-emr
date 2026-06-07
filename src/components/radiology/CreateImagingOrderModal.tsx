@@ -55,6 +55,8 @@ const COMMON_BODY_PARTS = [
   'Knee', 'Shoulder', 'Hip', 'Ankle', 'Wrist', 'Elbow'
 ]
 
+type ImagingPriority = 'ROUTINE' | 'URGENT' | 'EMERGENCY'
+
 export function CreateImagingOrderModal({ 
   open, 
   onOpenChange, 
@@ -66,7 +68,7 @@ export function CreateImagingOrderModal({
   
   const [imagingType, setImagingType] = useState('')
   const [bodyPart, setBodyPart] = useState('')
-  const [priority, setPriority] = useState<'ROUTINE' | 'URGENT' | 'EMERGENCY'>('ROUTINE')
+  const [priority, setPriority] = useState<ImagingPriority>('ROUTINE')
   const [instructions, setInstructions] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -196,7 +198,7 @@ export function CreateImagingOrderModal({
               <AlertCircle className="h-4 w-4" />
               Priority <span className="text-red-500">*</span>
             </Label>
-            <Select value={priority} onValueChange={(val) => setPriority(val as any)}>
+            <Select value={priority} onValueChange={(val) => setPriority(val as ImagingPriority)}>
               <SelectTrigger id="priority">
                 <SelectValue />
               </SelectTrigger>

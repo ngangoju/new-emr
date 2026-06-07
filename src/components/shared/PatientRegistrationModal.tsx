@@ -25,6 +25,7 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { useCreatePatient } from '@/hooks/api/usePatients'
+import type { PatientMutationPayload } from '@/hooks/api/usePatients'
 import { patientRegistrationSchema, type PatientRegistrationInput } from '@/lib/validations/patient'
 
 interface PatientRegistrationModalProps {
@@ -32,6 +33,19 @@ interface PatientRegistrationModalProps {
   onOpenChange: (open: boolean) => void
   title?: string
   description?: string
+}
+
+type ApiErrorPayload = {
+  response?: {
+    data?: {
+      message?: string
+    }
+  }
+}
+
+function getApiErrorMessage(error: unknown, fallback: string) {
+  const apiError = error as ApiErrorPayload
+  return apiError.response?.data?.message || fallback
 }
 
 export function PatientRegistrationModal({
@@ -61,7 +75,7 @@ export function PatientRegistrationModal({
   })
 
   const handleRegisterPatient = (data: PatientRegistrationInput) => {
-    const payload: any = {
+    const payload: PatientMutationPayload = {
       ...data,
       allergies: data.allergies
         ? data.allergies.split(',').map((allergy) => allergy.trim()).filter(Boolean)
@@ -74,8 +88,8 @@ export function PatientRegistrationModal({
         form.reset()
         onOpenChange(false)
       },
-      onError: (error: any) => {
-        toast.error(error?.response?.data?.message || 'Failed to register patient')
+      onError: (error: unknown) => {
+        toast.error(getApiErrorMessage(error, 'Failed to register patient'))
       },
     })
   }

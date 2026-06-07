@@ -53,7 +53,7 @@ export function ReportCharts() {
             <XAxis dataKey="label" tickLine={false} axisLine={false} />
             <YAxis tickLine={false} axisLine={false} />
             <Tooltip 
-              formatter={(value: any) => [`RWF ${(Number(value) || 0).toLocaleString()}`, 'Revenue']}
+              formatter={(value: unknown) => [`RWF ${(Number(value) || 0).toLocaleString()}`, 'Revenue']}
               cursor={{ fill: 'transparent' }}
             />
             <Bar dataKey="value" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />

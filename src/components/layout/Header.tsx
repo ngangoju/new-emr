@@ -15,17 +15,21 @@ import {
 import { Badge } from "@/components/ui/badge"
   import { Bell, Search, Menu, User, Settings, LogOut, Sun, Moon, Loader2, CheckCheck } from "lucide-react"
 import { useUIStore } from "@/lib/stores/uiStore"
-import { AUTH_EVENTS, clearSession, getSessionUser } from '@/lib/utils/auth'
+import { AUTH_EVENTS, clearSession, getSessionUser, type SessionUser } from '@/lib/utils/auth'
 import { getDashboardNavigationForRole, normalizeUserRole } from '@/lib/authz/policy'
 import { findDashboardSearchTarget } from '@/lib/utils/dashboardSearch'
   import { useUnreadCount, useNotificationsModule } from '@/hooks/useNotifications'
 import { formatRelativeTime } from '@/lib/utils/date'
 import { getNotificationIcon, getNotificationColor } from '@/types/notification'
 
+type HeaderUser = SessionUser & {
+  name?: string
+}
+
 export function Header() {
   const router = useRouter()
   const [searchQuery, setSearchQuery] = useState('')
-  const [user, setUser] = useState<any>({ 
+  const [user, setUser] = useState<HeaderUser>({ 
     username: 'User', 
     name: 'User',
     role: 'user' 

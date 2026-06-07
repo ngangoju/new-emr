@@ -1,21 +1,25 @@
 'use client'
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+
+import { Spinner } from '@/components/ui/spinner'
+import { useRole } from '@/hooks/useRole'
+import { getRoleDefaultDashboardRoute } from '@/lib/authz/policy'
 
 export function ForbiddenAccess() {
+    const router = useRouter()
+    const { role, isLoading } = useRole()
+
+    useEffect(() => {
+        if (isLoading) return
+        router.replace(getRoleDefaultDashboardRoute(role))
+    }, [isLoading, role, router])
+
     return (
-        <div className="mx-auto max-w-2xl py-10">
-            <Card className="border-warning/30 bg-warning/5">
-                <CardHeader>
-                    <CardTitle>Access restricted</CardTitle>
-                    <CardDescription>
-                        Your account is signed in, but this section is not available for your role.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent className="text-sm text-muted-foreground">
-                    Please use the sidebar to open a section available to your role.
-                </CardContent>
-            </Card>
+        <div className="flex min-h-[40vh] flex-col items-center justify-center gap-3 text-muted-foreground">
+            <Spinner />
+            <p className="text-sm">Opening your workspace...</p>
         </div>
     )
 }
