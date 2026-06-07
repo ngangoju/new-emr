@@ -194,8 +194,9 @@ describe('API Interceptor - Auth Refresh Handling', () => {
             try {
                 parseRefreshTokenResponse(null)
                 expect.fail('Should have thrown')
-            } catch (error: any) {
-                expect(error.message).toBe('Empty refresh token response')
+            } catch (error: unknown) {
+                expect(error).toBeInstanceOf(Error)
+                expect((error as Error).message).toBe('Empty refresh token response')
             }
         })
 
@@ -203,8 +204,9 @@ describe('API Interceptor - Auth Refresh Handling', () => {
             try {
                 parseRefreshTokenResponse({ invalid: 'data' })
                 expect.fail('Should have thrown')
-            } catch (error: any) {
-                expect(error.message).toBe('Invalid refresh token response format')
+            } catch (error: unknown) {
+                expect(error).toBeInstanceOf(Error)
+                expect((error as Error).message).toBe('Invalid refresh token response format')
             }
         })
 

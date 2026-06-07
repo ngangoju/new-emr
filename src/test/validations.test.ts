@@ -142,6 +142,7 @@ describe('Auth Validation Schema', () => {
         const result = resetPasswordSchema.safeParse({
             token: 'token-123',
             newPassword: 'newStrongPass1',
+            confirmPassword: 'newStrongPass1',
         })
         expect(result.success).toBe(true)
     })

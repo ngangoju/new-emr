@@ -18,6 +18,15 @@ import {
     setSessionUser,
 } from '@/lib/utils/auth'
 
+type InterceptorHandler = {
+    fulfilled?: (config: { headers: Record<string, string> }) => { headers: Record<string, string> } | Promise<{ headers: Record<string, string> }>
+    rejected?: (error: unknown) => Promise<unknown>
+}
+
+type InterceptorManagerWithHandlers = {
+    handlers?: InterceptorHandler[]
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Token invisibility: no token in localStorage / memory
 // ─────────────────────────────────────────────────────────────────────────────
@@ -29,12 +38,12 @@ describe('auth session hardening — HttpOnly cookie model', () => {
 
     it('does NOT export setAccessToken — tokens are managed by HttpOnly cookies only', async () => {
         const authModule = await import('@/lib/utils/auth')
-        expect((authModule as any).setAccessToken).toBeUndefined()
+        expect((authModule as Record<string, unknown>).setAccessToken).toBeUndefined()
     })
 
     it('does NOT export getAccessToken — tokens are invisible to JS after migration', async () => {
         const authModule = await import('@/lib/utils/auth')
-        expect((authModule as any).getAccessToken).toBeUndefined()
+        expect((authModule as Record<string, unknown>).getAccessToken).toBeUndefined()
     })
 
     it('localStorage contains NO token keys after clearSession', () => {
@@ -103,7 +112,7 @@ describe('api interceptor — HttpOnly cookie model', () => {
 
         // In the cookie model there is NO request interceptor that injects Authorization.
         // The handlers array may be empty, or the fulfilled handler should not touch Authorization.
-        const handlers = (api.interceptors.request as any).handlers ?? []
+        const handlers = (api.interceptors.request as unknown as InterceptorManagerWithHandlers).handlers ?? []
         const requestFulfilled = handlers[0]?.fulfilled
 
         if (requestFulfilled) {
@@ -124,14 +133,15 @@ describe('api interceptor — HttpOnly cookie model', () => {
         vi.doMock('@/lib/utils/auth', () => ({ handleUnauthorized }))
 
         const { api } = await import('@/lib/api')
-        const responseRejected = (api.interceptors.response as any).handlers[0].rejected
+        const responseRejected = (api.interceptors.response as unknown as InterceptorManagerWithHandlers).handlers?.[0]?.rejected
+        expect(responseRejected).toBeDefined()
 
         // Simulate a retry-exhausted 401 (already retried, _retry is set)
         const error = { response: { status: 401, data: { message: 'Unauthorized' } }, config: { _retry: true } }
-        await expect(responseRejected(error)).rejects.toBeDefined()
+        await expect(responseRejected!(error)).rejects.toBeDefined()
     })
 
-    it('handles 403 as forbidden feedback without clearing session', async () => {
+    it('handles 403 quietly without clearing session', async () => {
         vi.resetModules()
 
         const toastError = vi.fn()
@@ -139,13 +149,18 @@ describe('api interceptor — HttpOnly cookie model', () => {
 
         const handleUnauthorized = vi.fn()
         vi.doMock('@/lib/utils/auth', () => ({ handleUnauthorized }))
+        const permissionListener = vi.fn()
+        window.addEventListener('emr:permission-denied', permissionListener as EventListener)
 
         const { api } = await import('@/lib/api')
-        const responseRejected = (api.interceptors.response as any).handlers[0].rejected
+        const responseRejected = (api.interceptors.response as unknown as InterceptorManagerWithHandlers).handlers?.[0]?.rejected
+        expect(responseRejected).toBeDefined()
 
-        await expect(responseRejected({ response: { status: 403, data: { message: 'Forbidden' } }, config: { _retry: false } })).rejects.toBeDefined()
+        await expect(responseRejected!({ response: { status: 403, data: { message: 'Forbidden' } }, config: { _retry: false } })).rejects.toBeDefined()
 
         expect(handleUnauthorized).not.toHaveBeenCalled()
-        expect(toastError).toHaveBeenCalledWith('Forbidden')
+        expect(toastError).not.toHaveBeenCalled()
+        expect(permissionListener).toHaveBeenCalledTimes(1)
+        window.removeEventListener('emr:permission-denied', permissionListener as EventListener)
     })
 })

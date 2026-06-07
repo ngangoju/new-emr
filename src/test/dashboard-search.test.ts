@@ -10,8 +10,8 @@ import {
 
 describe('normalizeSearchQuery', () => {
     it('returns empty string for null/undefined input', () => {
-        expect(normalizeSearchQuery(null as any)).toBe('')
-        expect(normalizeSearchQuery(undefined as any)).toBe('')
+        expect(normalizeSearchQuery(null as unknown as string)).toBe('')
+        expect(normalizeSearchQuery(undefined as unknown as string)).toBe('')
     })
 
     it('trims leading and trailing whitespace', () => {
@@ -144,8 +144,8 @@ describe('findDashboardSearchTarget', () => {
     })
 
     it('returns null for null/undefined input', () => {
-        expect(findDashboardSearchTarget(null as any, targets)).toBeNull()
-        expect(findDashboardSearchTarget(undefined as any, targets)).toBeNull()
+        expect(findDashboardSearchTarget(null as unknown as string, targets)).toBeNull()
+        expect(findDashboardSearchTarget(undefined as unknown as string, targets)).toBeNull()
     })
 })
 
@@ -195,4 +195,3 @@ describe('findAllDashboardSearchTargets', () => {
         expect(results[0]?.href).toBe('/dashboard/doctor/patients')
     })
 })
-

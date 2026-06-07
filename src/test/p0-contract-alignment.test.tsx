@@ -35,14 +35,14 @@ function createWrapper() {
 }
 
 async function getApiMock() {
-  const module = await import('@/lib/api')
+  const apiModule = await import('@/lib/api')
   return {
-    api: module.api as unknown as {
+    api: apiModule.api as unknown as {
       get: ReturnType<typeof vi.fn>
       post: ReturnType<typeof vi.fn>
       request: ReturnType<typeof vi.fn>
     },
-    apiRequest: module.apiRequest as unknown as ReturnType<typeof vi.fn>,
+    apiRequest: apiModule.apiRequest as unknown as ReturnType<typeof vi.fn>,
   }
 }
 

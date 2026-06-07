@@ -51,6 +51,12 @@ vi.mock('@/hooks/useInvoices', () => ({
 
 vi.mock('@/hooks/usePayments', () => ({
   useCreatePayment: () => ({ createPayment: vi.fn(), creating: false }),
+  useCreateMobileMoneyPayment: () => ({
+    createMobileMoneyPayment: vi.fn(),
+    creatingMobileMoneyPayment: false,
+  }),
+  usePayments: () => ({ data: [] }),
+  useMobileMoneyTransaction: () => ({ data: null }),
 }))
 
 vi.mock('@/hooks/useAdmissions', () => ({
@@ -58,6 +64,18 @@ vi.mock('@/hooks/useAdmissions', () => ({
   useDischargePatient: () => ({
     mutateAsync: mutateAsyncMock,
     isPending: false,
+  }),
+}))
+
+vi.mock('@/hooks/useWorkflow', () => ({
+  useDischargeReadiness: () => ({
+    data: {
+      ready: true,
+      blockers: [],
+      ownerRole: 'CASHIER',
+      responsibleRole: 'CASHIER',
+      packetStatus: 'MATCHES_LAST_EXPORT',
+    },
   }),
 }))
 
