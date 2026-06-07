@@ -28,24 +28,35 @@ const defaultPatient: Patient = {
   phone: '',
 }
 
-type InitialInvoiceGateInput = Pick<Invoice, 'paymentStatus' | 'patientDue'> & {
+type InitialInvoiceGateInput = Pick<Invoice, 'paymentStatus' | 'patientDue' | 'insuranceDue' | 'total'> & {
+  invoiceDate?: Invoice['invoiceDate'] | null
   createdAt?: Invoice['createdAt'] | string | null
   payments?: Array<{ amount?: number | string | null }> | null
 }
 
-export function shouldHoldTriageForInitialInvoice(invoice: InitialInvoiceGateInput, today = new Date()) {
-  if (!invoice.createdAt) return false
+function getEffectivePatientDue(invoice: InitialInvoiceGateInput) {
+  const total = Number(invoice.total ?? 0)
+  const patientDue = Number(invoice.patientDue ?? 0)
+  const insuranceDue = Number(invoice.insuranceDue ?? 0)
+  const hasLegacyUnsplitTotal = total > 0 && patientDue <= 0 && insuranceDue <= 0
 
-  const invoiceDate = invoice.createdAt instanceof Date
-    ? invoice.createdAt
-    : new Date(invoice.createdAt)
+  return hasLegacyUnsplitTotal ? total : patientDue
+}
+
+export function shouldHoldTriageForInitialInvoice(invoice: InitialInvoiceGateInput, today = new Date()) {
+  const dateSource = invoice.invoiceDate ?? invoice.createdAt
+  if (!dateSource) return false
+
+  const invoiceDate = dateSource instanceof Date
+    ? dateSource
+    : new Date(dateSource)
 
   if (Number.isNaN(invoiceDate.getTime()) || invoiceDate.toDateString() !== today.toDateString()) {
     return false
   }
 
   const paymentStatus = String(invoice.paymentStatus ?? '').toUpperCase()
-  const patientDue = Number(invoice.patientDue ?? 0)
+  const patientDue = getEffectivePatientDue(invoice)
 
   if (!Number.isFinite(patientDue) || patientDue <= 0) {
     return false
@@ -64,7 +75,7 @@ export function shouldHoldTriageForInitialInvoice(invoice: InitialInvoiceGateInp
     return totalPaid < patientDue
   }
 
-  return false
+  return paymentStatus === 'PARTIAL'
 }
 
 interface NurseVitalsFormProps {

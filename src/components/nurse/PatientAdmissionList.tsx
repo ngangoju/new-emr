@@ -156,7 +156,7 @@ export function PatientAdmissionList() {
     }))
   }
 
-  const canDischarge = hasPermission('CAN_DISCHARGE') || hasPermission('admission:discharge')
+  const canDischarge = hasPermission('CAN_DISCHARGE') || hasPermission('admission:discharge:financial')
   const canTransfer = hasPermission('CAN_TRANSFER') || hasPermission('admission:transfer')
   const canDocumentMedicationAdministration =
     hasPermission('route:/dashboard/nurse/admissions')

@@ -28,7 +28,8 @@ const PERMISSION_GROUPS = [
     description: 'Manage patient inpatient admissions',
     permissions: [
       { id: 'admission:create', label: 'Admit Patients', description: 'Admit patients to a ward and bed' },
-      { id: 'admission:discharge', label: 'Discharge Patients', description: 'Discharge or cancel admissions' },
+      { id: 'admission:discharge:prepare', label: 'Prepare Discharge', description: 'Record discharge preparation and education' },
+      { id: 'admission:discharge:financial', label: 'Finalize Discharge', description: 'Complete discharge after billing clearance' },
       { id: 'admission:transfer', label: 'Transfer Patients', description: 'Transfer patients between beds and wards' },
     ],
   },

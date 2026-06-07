@@ -17,12 +17,16 @@ describe('workflow guard helpers', () => {
       createdAt: '2026-06-07T08:30:00Z',
       paymentStatus: 'UNPAID',
       patientDue: 5000,
+      insuranceDue: 0,
+      total: 5000,
     }, today)).toBe(true)
 
     expect(shouldHoldTriageForInitialInvoice({
       createdAt: '2026-06-07T08:30:00Z',
       paymentStatus: 'PARTIAL',
       patientDue: 1000,
+      insuranceDue: 0,
+      total: 1000,
       payments: [{ amount: 400 }],
     }, today)).toBe(true)
 
@@ -30,6 +34,8 @@ describe('workflow guard helpers', () => {
       createdAt: '2026-06-07T08:30:00Z',
       paymentStatus: 'PARTIAL',
       patientDue: 1000,
+      insuranceDue: 0,
+      total: 1000,
       payments: [{ amount: 1000 }],
     }, today)).toBe(false)
 
@@ -37,20 +43,43 @@ describe('workflow guard helpers', () => {
       createdAt: '2026-06-07T08:30:00Z',
       paymentStatus: 'PARTIAL',
       patientDue: 1000,
-    }, today)).toBe(false)
+      insuranceDue: 0,
+      total: 1000,
+    }, today)).toBe(true)
 
     expect(shouldHoldTriageForInitialInvoice({
       createdAt: '2026-06-07T08:30:00Z',
       paymentStatus: 'PAID',
       patientDue: 0,
+      insuranceDue: 0,
+      total: 0,
+    }, today)).toBe(false)
+
+    expect(shouldHoldTriageForInitialInvoice({
+      createdAt: '2026-06-07T08:30:00Z',
+      paymentStatus: 'UNPAID',
+      patientDue: 0,
+      insuranceDue: 0,
+      total: 2500,
+    }, today)).toBe(true)
+
+    expect(shouldHoldTriageForInitialInvoice({
+      createdAt: '2026-06-07T08:30:00Z',
+      paymentStatus: 'UNPAID',
+      patientDue: 0,
+      insuranceDue: 2500,
+      total: 2500,
     }, today)).toBe(false)
   })
 
   it('does not hold triage for older invoices', () => {
     expect(shouldHoldTriageForInitialInvoice({
-      createdAt: '2026-06-06T08:30:00Z',
+      invoiceDate: '2026-06-06',
+      createdAt: '2026-06-07T08:30:00Z',
       paymentStatus: 'UNPAID',
       patientDue: 5000,
+      insuranceDue: 0,
+      total: 5000,
     }, new Date('2026-06-07T09:00:00Z'))).toBe(false)
   })
 })

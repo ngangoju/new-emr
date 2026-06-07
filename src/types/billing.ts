@@ -45,6 +45,7 @@ export interface Invoice {
   status: 'pending' | 'partial' | 'paid' | 'cancelled' | 'DRAFT' | 'ISSUED' | 'VOID'
   paymentStatus?: 'UNPAID' | 'PARTIAL' | 'PAID' | 'OVERPAID'
   invoiceNumber?: string
+  invoiceDate?: string
   payments: Payment[]
   createdAt: Date
   updatedAt: Date

@@ -15,12 +15,11 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { PatientSelector } from './PatientSelector'
 import { DoctorSelector } from './DoctorSelector'
-import { useAddToQueue } from '@/hooks/useQueue'
 import { Patient } from '@/hooks/api/usePatients'
 import { Activity, Clock, User, AlertCircle } from 'lucide-react'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { useTariffs } from '@/hooks/useTariffs'
-import { useCreateInvoice } from '@/hooks/useInvoices'
+import { useRegisterReceptionVisit } from '@/hooks/useReceptionVisits'
 import type { Tariff } from '@/types/billing'
 
 interface CheckInModalProps {
@@ -35,8 +34,7 @@ export function CheckInModal({ open, onOpenChange }: CheckInModalProps) {
   const [priority, setPriority] = useState<string>('1')
   const [notes, setNotes] = useState('')
 
-  const checkInMutation = useAddToQueue()
-  const createInvoiceMutation = useCreateInvoice()
+  const registerVisitMutation = useRegisterReceptionVisit()
   const { data: consultationTariffs, isLoading: isLoadingTariffs } = useTariffs({ category: 'CONSULTATION' })
   const tariffs = consultationTariffs?.data ?? []
   const selectedTariff = tariffs.find((tariff) => tariff.id === selectedTariffId)
@@ -45,28 +43,28 @@ export function CheckInModal({ open, onOpenChange }: CheckInModalProps) {
     if (!selectedPatient || !selectedDoctorId || !selectedTariff) return
 
     try {
-      const invoice = await createInvoiceMutation.mutateAsync({
-        patientId: selectedPatient.id,
-        doctorId: selectedDoctorId,
-        items: [{
-          billing_code: selectedTariff.billingCode,
-          quantity: 1,
-          unit_price: selectedTariff.basePrice,
-          description: selectedTariff.serviceName,
-          tariffId: selectedTariff.id,
-        }],
-      })
-
-      await checkInMutation.mutateAsync({
-        patientId: selectedPatient.id,
-        doctorId: selectedDoctorId,
-        priority: parseInt(priority),
-        notes: [
-          notes.trim(),
-          `Initial service: ${selectedTariff.serviceName}`,
-          `Invoice: ${invoice.invoiceNumber || invoice.id}`,
-          'Cashier payment required before triage completion.',
-        ].filter(Boolean).join('\n'),
+      await registerVisitMutation.mutateAsync({
+        invoice: {
+          patientId: selectedPatient.id,
+          doctorId: selectedDoctorId,
+          items: [{
+            billing_code: selectedTariff.billingCode,
+            quantity: 1,
+            unit_price: selectedTariff.basePrice,
+            description: selectedTariff.serviceName,
+            tariffId: selectedTariff.id,
+          }],
+        },
+        queue: {
+          patientId: selectedPatient.id,
+          doctorId: selectedDoctorId,
+          priority: parseInt(priority),
+          notes: [
+            notes.trim(),
+            `Initial service: ${selectedTariff.serviceName}`,
+            'Cashier payment required before triage completion.',
+          ].filter(Boolean).join('\n'),
+        },
       })
 
       onOpenChange(false)
@@ -80,7 +78,7 @@ export function CheckInModal({ open, onOpenChange }: CheckInModalProps) {
     }
   }
 
-  const isSubmitting = checkInMutation.isPending || createInvoiceMutation.isPending
+  const isSubmitting = registerVisitMutation.isPending
 
   const formatTariffLabel = (tariff: Tariff) => {
     const price = Number(tariff.basePrice || 0).toLocaleString()
