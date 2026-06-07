@@ -55,6 +55,9 @@ export default function PatientDetailPage() {
   const searchParams = useSearchParams()
   const id = params.id as string
   const { hasPermission } = useRole()
+  const canEditPatient = hasPermission('CAN_REGISTER_PATIENT') || hasPermission('patient:update') || hasPermission('patient:demographics:edit')
+  const canStartVisit = hasPermission('CAN_REGISTER_PATIENT') || hasPermission('encounter:create')
+  const canCreateConsultation = hasPermission('CAN_PRESCRIBE') || hasPermission('consultation:create') || hasPermission('prescription:create')
 
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [editFormData, setEditFormData] = useState<Partial<Patient>>({})
@@ -201,12 +204,14 @@ export default function PatientDetailPage() {
           </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={handleEditProfile}>
-            <Edit className="h-4 w-4 mr-2" />
-            Edit Profile
-          </Button>
+          {canEditPatient && (
+            <Button variant="outline" onClick={handleEditProfile}>
+              <Edit className="h-4 w-4 mr-2" />
+              Edit Profile
+            </Button>
+          )}
           
-          {hasPermission('CAN_REGISTER_PATIENT') && (
+          {canStartVisit && (
             <Button
               onClick={handleStartVisit}
               disabled={createEncounterMutation.isPending}
@@ -217,7 +222,7 @@ export default function PatientDetailPage() {
             </Button>
           )}
 
-          {hasPermission('CAN_PRESCRIBE') && (
+          {canCreateConsultation && (
             <Button variant="outline" onClick={handleNewConsultation}>
               <FileText className="h-4 w-4 mr-2" />
               New Consultation
@@ -504,7 +509,7 @@ export default function PatientDetailPage() {
                     icon={FileText}
                     title="No consultations yet"
                     description="This patient hasn't had any consultations recorded. Start a new consultation to create the first medical record."
-                    action={hasPermission('CAN_PRESCRIBE') ? {
+                    action={canCreateConsultation ? {
                       label: "Start Consultation",
                       onClick: () => window.location.href = '/dashboard/doctor/consultations/new'
                     } : undefined}

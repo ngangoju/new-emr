@@ -11,7 +11,7 @@ import {
   type CreateTariffInput,
   type UpdateTariffInput,
 } from '@/hooks/useTariffManagement'
-import { canRoleAccessFeature, FRONTEND_FEATURE_POLICY } from '@/lib/authz/policy'
+import { canRoleAccessFeature, FRONTEND_FEATURE_POLICY, getRoleDefaultDashboardRoute } from '@/lib/authz/policy'
 import { getUserRole } from '@/lib/utils/auth'
 import type { Tariff } from '@/types/billing'
 import {
@@ -69,6 +69,8 @@ const defaultFormState: CreateTariffInput = {
   description: '',
 }
 
+type TariffImportRow = Record<string, string | number | null | undefined>
+
 export default function TariffManagementPage() {
   const router = useRouter()
   const [search, setSearch] = useState('')
@@ -91,8 +93,7 @@ export default function TariffManagementPage() {
     const hasAccess = userRole ? canRoleAccessFeature(userRole, 'CAN_MANAGE_TARIFFS') : false
     setHasPermissionFlag(hasAccess)
     if (!hasAccess) {
-      toast.error('You do not have permission to manage tariffs')
-      router.push('/dashboard')
+      router.replace(getRoleDefaultDashboardRoute(userRole))
     }
   }, [router])
 
@@ -250,18 +251,23 @@ export default function TariffManagementPage() {
         const workbook = read(data, { type: 'binary' })
         const sheetName = workbook.SheetNames[0]
         const worksheet = workbook.Sheets[sheetName]
-        const jsonData = utils.sheet_to_json(worksheet) as any[]
+        const jsonData = utils.sheet_to_json<TariffImportRow>(worksheet)
+        const readCell = (row: TariffImportRow, ...keys: string[]) =>
+          keys.map((key) => row[key]).find((value) => value !== undefined && value !== null && value !== '') ?? ''
+        const readText = (row: TariffImportRow, ...keys: string[]) => String(readCell(row, ...keys))
+        const readNumber = (row: TariffImportRow, ...keys: string[]) =>
+          Number.parseFloat(String(readCell(row, ...keys) || '0'))
 
         // Map Excel columns to Tariff fields
         // Expecting headers: Service Name, Billing Code, Category, Base Price, Private Price, RSSB MMI Price, Description
         const tariffsToCreate: CreateTariffInput[] = jsonData.map(row => ({
-          serviceName: row['Service Name'] || row['serviceName'] || '',
-          billingCode: row['Billing Code'] || row['billingCode'] || '',
-          category: row['Category'] || row['category'] || '',
-          basePrice: parseFloat(row['Base Price'] || row['basePrice'] || '0'),
-          privatePrice: row['Private Price'] || row['privatePrice'] ? parseFloat(row['Private Price'] || row['privatePrice']) : undefined,
-          rssbMmiPrice: row['RSSB MMI Price'] || row['rssbMmiPrice'] ? parseFloat(row['RSSB MMI Price'] || row['rssbMmiPrice']) : undefined,
-          description: row['Description'] || row['description'] || ''
+          serviceName: readText(row, 'Service Name', 'serviceName'),
+          billingCode: readText(row, 'Billing Code', 'billingCode'),
+          category: readText(row, 'Category', 'category'),
+          basePrice: readNumber(row, 'Base Price', 'basePrice'),
+          privatePrice: readCell(row, 'Private Price', 'privatePrice') ? readNumber(row, 'Private Price', 'privatePrice') : undefined,
+          rssbMmiPrice: readCell(row, 'RSSB MMI Price', 'rssbMmiPrice') ? readNumber(row, 'RSSB MMI Price', 'rssbMmiPrice') : undefined,
+          description: readText(row, 'Description', 'description')
         })).filter(t => t.serviceName)
 
         if (tariffsToCreate.length === 0) {
@@ -418,7 +424,7 @@ export default function TariffManagementPage() {
             ) : filteredTariffs.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
-                  No tariffs found. Click "Add Tariff" to create one.
+                          No tariffs found. Click &quot;Add Tariff&quot; to create one.
                 </TableCell>
               </TableRow>
             ) : (
@@ -699,7 +705,7 @@ export default function TariffManagementPage() {
           <DialogHeader>
             <DialogTitle>Delete Tariff</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete "{selectedTariff?.serviceName}"? This action will mark the tariff as inactive.
+              Are you sure you want to delete &quot;{selectedTariff?.serviceName}&quot;? This action will mark the tariff as inactive.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

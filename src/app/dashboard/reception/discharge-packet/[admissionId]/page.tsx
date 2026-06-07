@@ -65,18 +65,20 @@ export default function ReceptionDischargePacketPage() {
   const { data: history = [] } = useAfterVisitDocumentHistory(admissionId)
   const exportDocument = useExportAfterVisitDocument(admissionId)
   const [reissueReason, setReissueReason] = useState('')
+  const generatedAt = data?.generatedAt
+  const changeDetailsSinceLastExport = data?.changeDetailsSinceLastExport
 
   const generatedLabel = useMemo(() => {
-    if (!data?.generatedAt) return ''
-    return new Date(data.generatedAt).toLocaleString()
-  }, [data?.generatedAt])
+    if (!generatedAt) return ''
+    return new Date(generatedAt).toLocaleString()
+  }, [generatedAt])
 
   const categorizedChanges = useMemo<CategorizedChange[]>(() => {
-    if (!data?.changeDetailsSinceLastExport?.length) {
+    if (!changeDetailsSinceLastExport?.length) {
       return []
     }
 
-    return [...data.changeDetailsSinceLastExport]
+    return [...changeDetailsSinceLastExport]
       .map((change) => ({
         ...change,
         tone: classifyChangeTone(change),
@@ -94,7 +96,7 @@ export default function ReceptionDischargePacketPage() {
 
         return left.label.localeCompare(right.label)
       })
-  }, [data?.changeDetailsSinceLastExport])
+  }, [changeDetailsSinceLastExport])
 
   const groupedChanges = useMemo(() => {
     const groupByTone = (changes: CategorizedChange[]) =>

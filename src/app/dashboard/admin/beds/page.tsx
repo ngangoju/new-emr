@@ -225,7 +225,7 @@ export default function BedsPage() {
                             {!beds?.length && (
                                 <TableRow>
                                     <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
-                                        No beds found. Click "Add Bed" to create one.
+                          No beds found. Click &quot;Add Bed&quot; to create one.
                                     </TableCell>
                                 </TableRow>
                             )}

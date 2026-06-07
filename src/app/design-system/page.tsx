@@ -195,14 +195,14 @@ export default function DesignSystemPage() {
             </div>
             <div className="space-y-4">
               <p className="text-base">
-                This is a paragraph of body text. It's the default size and weight for most content. 
+                This is a paragraph of body text. It&apos;s the default size and weight for most content.
                 Lorem ipsum dolor sit amet, consectetur adipiscing elit.
               </p>
               <p className="text-sm text-muted-foreground">
                 This is a smaller, muted text, often used for captions or subtitles.
               </p>
               <blockquote className="border-l-4 pl-4 italic">
-                "This is a blockquote. It stands out from the rest of the text."
+                &quot;This is a blockquote. It stands out from the rest of the text.&quot;
               </blockquote>
             </div>
           </div>

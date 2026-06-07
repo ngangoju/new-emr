@@ -249,7 +249,7 @@ export default function RolesPage() {
                     <DialogHeader>
                         <DialogTitle>Delete Role</DialogTitle>
                         <DialogDescription>
-                            Are you sure you want to delete the role "{selectedRole?.name}"? This action cannot be undone.
+              Are you sure you want to delete the role &quot;{selectedRole?.name}&quot;? This action cannot be undone.
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter>

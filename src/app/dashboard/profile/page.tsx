@@ -11,7 +11,9 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { useProfile } from "@/hooks/useProfile"
 import { useSettings } from "@/hooks/useSettings"
 import { useForm } from "react-hook-form"
-import type { NotificationPreferences } from '@/types/admin'
+import type { NotificationPreferences, UpdatePasswordRequest, UserProfile } from '@/types/admin'
+
+type ProfileFormValues = Pick<UserProfile, 'firstName' | 'lastName' | 'phoneNumber' | 'bio'>
 
 export default function ProfilePage() {
   const { 
@@ -37,7 +39,7 @@ export default function ProfilePage() {
 
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const { register: registerProfile, handleSubmit: handleSubmitProfile } = useForm({
+  const { register: registerProfile, handleSubmit: handleSubmitProfile } = useForm<Partial<ProfileFormValues>>({
     values: profile ? {
       firstName: profile.firstName || '',
       lastName: profile.lastName || '',
@@ -46,13 +48,13 @@ export default function ProfilePage() {
     } : {}
   })
 
-  const { register: registerPassword, handleSubmit: handleSubmitPassword, reset: resetPassword, watch: watchPassword } = useForm()
+  const { register: registerPassword, handleSubmit: handleSubmitPassword, reset: resetPassword, watch: watchPassword } = useForm<UpdatePasswordRequest>()
 
-  const onUpdateProfile = async (data: any) => {
+  const onUpdateProfile = async (data: Partial<ProfileFormValues>) => {
     await updateProfile(data)
   }
 
-  const onChangePassword = async (data: any) => {
+  const onChangePassword = async (data: UpdatePasswordRequest) => {
     if (data.newPassword !== data.confirmPassword) return
     await changePassword(data)
     resetPassword()

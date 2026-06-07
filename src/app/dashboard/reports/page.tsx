@@ -38,6 +38,10 @@ export default function ReportsDashboard() {
     )
   }
 
+  return <ReportsDashboardContent />
+}
+
+function ReportsDashboardContent() {
   const reports = [
     {
       title: 'Patient Throughput',

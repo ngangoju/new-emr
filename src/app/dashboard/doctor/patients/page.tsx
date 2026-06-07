@@ -45,7 +45,7 @@ import {
   Mail,
   MapPin
 } from 'lucide-react'
-import { usePatients, useUpdatePatient, type Patient } from '@/hooks/api/usePatients'
+import { usePatients, useUpdatePatient, type Patient, type PatientMutationPayload } from '@/hooks/api/usePatients'
 import toast from 'react-hot-toast'
 import { useDebounce } from '@/hooks/useDebounce'
 import { useForm } from 'react-hook-form'
@@ -62,8 +62,24 @@ import {
 import { useRole } from '@/hooks/useRole'
 import { PatientRegistrationModal } from '@/components/shared/PatientRegistrationModal'
 
+type ApiErrorPayload = {
+  response?: {
+    data?: {
+      message?: string
+    }
+  }
+}
+
+function getApiErrorMessage(error: unknown, fallback: string) {
+  const apiError = error as ApiErrorPayload
+  return apiError.response?.data?.message || fallback
+}
+
 export default function PatientsPage() {
-  const { role, hasPermission } = useRole()
+  const { hasPermission } = useRole()
+  const canRegisterPatient = hasPermission('CAN_REGISTER_PATIENT') || hasPermission('patient:create')
+  const canEditPatient = hasPermission('CAN_REGISTER_PATIENT') || hasPermission('patient:update') || hasPermission('patient:demographics:edit')
+  const canViewMedicalRecords = hasPermission('CAN_VIEW_MEDICAL_RECORDS') || hasPermission('patient:read') || hasPermission('consultation:read')
   const [searchQuery, setSearchQuery] = useState('')
   const debouncedQuery = useDebounce(searchQuery, 500)
   const [filterGender, setFilterGender] = useState('all')
@@ -90,7 +106,7 @@ export default function PatientsPage() {
   // Client-side insurance filter (if not supported by backend)
   const filteredPatients = patients.filter((patient: Patient) => {
     if (filterInsurance === 'all') return true
-    return patient.insurance?.provider === filterInsurance || (patient.insurance as any)?.type === filterInsurance
+    return patient.insurance?.provider === filterInsurance || patient.insurance?.type === filterInsurance
   })
 
   const handleEditPatient = (patient: Patient) => {
@@ -109,7 +125,7 @@ export default function PatientsPage() {
       allergies: Array.isArray(patient.allergies) ? patient.allergies.join(', ') : String(patient.allergies || ''),
       emergencyContact: typeof patient.emergencyContact === 'string' 
         ? patient.emergencyContact 
-        : (patient.emergencyContact as any)?.phone || (patient.emergencyContact as any)?.name || '',
+        : patient.emergencyContact?.phone || patient.emergencyContact?.name || '',
     })
     setIsEditDialogOpen(true)
   }
@@ -117,7 +133,7 @@ export default function PatientsPage() {
   const handleUpdatePatient = (data: PatientRegistrationInput) => {
     if (!selectedPatient) return
 
-    const payload: any = {
+    const payload: PatientMutationPayload = {
       ...data,
       allergies: data.allergies 
         ? data.allergies.split(',').map(a => a.trim()).filter(Boolean)
@@ -133,8 +149,8 @@ export default function PatientsPage() {
           setSelectedPatient(null)
           editForm.reset()
         },
-        onError: (error: any) => {
-          toast.error(error?.response?.data?.message || 'Failed to update patient')
+        onError: (error: unknown) => {
+          toast.error(getApiErrorMessage(error, 'Failed to update patient'))
         }
       }
     )
@@ -190,7 +206,7 @@ export default function PatientsPage() {
               </Select>
 
               {/* Register New Patient Button - Receptionists, Doctors, Admins only */}
-              {hasPermission('CAN_REGISTER_PATIENT') && (
+              {canRegisterPatient && (
                 <>
                   <Button className="h-11 bg-primary hover:bg-primary/90" onClick={() => setIsRegisterDialogOpen(true)}>
                     <UserPlus className="h-4 w-4 mr-2" />
@@ -287,7 +303,7 @@ export default function PatientsPage() {
                         </div>
                         <h3 className="text-lg font-semibold">No patients found</h3>
                         <p className="text-muted-foreground max-w-sm">
-                          We couldn't find any patients matching your search criteria. Try adjusting your filters or register a new patient.
+                          We couldn&apos;t find any patients matching your search criteria. Try adjusting your filters or register a new patient.
                         </p>
                         <Button 
                           variant="outline" 
@@ -317,7 +333,7 @@ export default function PatientsPage() {
                       </TableCell>
                       <TableCell>
                         <div>
-                          <span className="font-medium">{String((patient as any).age || '')} years</span>
+                          <span className="font-medium">{String(patient.age || '')} years</span>
                           <span className="text-muted-foreground"> • {String(patient.gender || '')}</span>
                         </div>
                       </TableCell>
@@ -363,12 +379,12 @@ export default function PatientsPage() {
                               <Eye className="h-4 w-4" />
                             </Button>
                           </Link>
-                          {hasPermission('CAN_VIEW_MEDICAL_RECORDS') && (
+                          {canViewMedicalRecords && (
                             <Button variant="ghost" size="sm" title="View Medical Records">
                               <FileText className="h-4 w-4" />
                             </Button>
                           )}
-                          {hasPermission('CAN_REGISTER_PATIENT') && (
+                          {canEditPatient && (
                             <Button 
                               variant="ghost" 
                               size="sm" 

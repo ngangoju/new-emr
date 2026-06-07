@@ -224,7 +224,7 @@ export default function RevenueReportPage() {
                           <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                         ))}
                       </Pie>
-                      <Tooltip formatter={(value: any) => typeof value === 'number' ? formatCurrency(value) : value} />
+                      <Tooltip formatter={(value: unknown) => typeof value === 'number' ? formatCurrency(value) : String(value ?? '')} />
                     </PieChart>
                   </ResponsiveContainer>
                   <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
@@ -307,4 +307,3 @@ export default function RevenueReportPage() {
     </div>
   )
 }
-

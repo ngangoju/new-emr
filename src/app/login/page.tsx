@@ -23,6 +23,16 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { loginSchema, type LoginInput } from '@/lib/validations/auth'
 import { getSessionUser, setSessionUser } from '@/lib/utils/auth'
 
+type LoginErrorPayload = {
+  response?: {
+    status?: number
+    data?: {
+      code?: string
+      message?: string
+    }
+  }
+}
+
 export default function LoginPage() {
   const router = useRouter()
   const [showPassword, setShowPassword] = useState(false)
@@ -53,9 +63,10 @@ export default function LoginPage() {
           setSessionUser(user)
           router.replace('/dashboard')
         },
-        onError: (error: any) => {
-          const status = error?.response?.status
-          const code = error?.response?.data?.code
+        onError: (error: unknown) => {
+          const loginError = error as LoginErrorPayload
+          const status = loginError.response?.status
+          const code = loginError.response?.data?.code
 
           let message = ''
           if (status === 401 || code === 'UNAUTHORIZED') {
@@ -66,10 +77,10 @@ export default function LoginPage() {
             message = 'Too many login attempts. Please wait a few minutes before trying again.'
           } else if (status === 500) {
             message = 'We are experiencing a server issue. Please try again later or contact support if the problem persists.'
-          } else if (!error?.response) {
+          } else if (!loginError.response) {
             message = 'Unable to connect to the server. Please check your internet connection and try again.'
           } else {
-            message = error?.response?.data?.message || 'Something went wrong. Please try again.'
+            message = loginError.response?.data?.message || 'Something went wrong. Please try again.'
           }
 
           toast.error(message)

@@ -226,7 +226,7 @@ export default function WardsPage() {
                             {!wards?.length && (
                                 <TableRow>
                                     <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                                        No wards found. Click "Add Ward" to create one.
+                          No wards found. Click &quot;Add Ward&quot; to create one.
                                     </TableCell>
                                 </TableRow>
                             )}

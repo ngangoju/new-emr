@@ -14,7 +14,6 @@ import {
   DollarSign,
   User,
   Calendar,
-  AlertTriangle,
 } from 'lucide-react'
 import { useRole } from '@/hooks/useRole'
 import { usePendingApprovals, useApprovalStats, useApproveRequest, useDenyRequest } from '@/hooks/useApprovals'
@@ -23,6 +22,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
+import { ForbiddenAccess } from '@/components/auth/ForbiddenAccess'
 
 export default function ApprovalsPage() {
   const { hasPermission, isLoading: roleLoading } = useRole()
@@ -32,7 +32,7 @@ export default function ApprovalsPage() {
   const [denyReason, setDenyReason] = useState('')
 
   // Check permission
-  const canApprove = hasPermission('CAN_APPROVE')
+  const canApprove = hasPermission('CAN_APPROVE') || hasPermission('approval:read') || hasPermission('approval:decide')
 
   // Filter by type
   const typeFilter = activeTab === 'all' ? undefined : activeTab as ApprovalType
@@ -115,15 +115,7 @@ export default function ApprovalsPage() {
 
   // Permission check
   if (!canApprove) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
-        <AlertTriangle className="h-12 w-12 text-amber-500" />
-        <h2 className="text-xl font-semibold">Access Denied</h2>
-        <p className="text-muted-foreground">
-          You do not have permission to view this page.
-        </p>
-      </div>
-    )
+    return <ForbiddenAccess />
   }
 
   return (
@@ -159,7 +151,7 @@ export default function ApprovalsPage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Today's Approved</CardTitle>
+            <CardTitle className="text-sm font-medium">Today&apos;s Approved</CardTitle>
             <CheckCircle className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
@@ -178,7 +170,7 @@ export default function ApprovalsPage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Today's Denied</CardTitle>
+            <CardTitle className="text-sm font-medium">Today&apos;s Denied</CardTitle>
             <XCircle className="h-4 w-4 text-red-500" />
           </CardHeader>
           <CardContent>

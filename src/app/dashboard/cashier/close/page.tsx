@@ -22,6 +22,14 @@ import { useRole } from '@/hooks/useRole'
 import { useCreateCashClose, useCashCloseHistory } from '@/hooks/usePayments'
 import { canAccessDashboardRoute } from '@/lib/authz/policy'
 import type { CashCloseSummary } from '@/types/billing'
+
+type ApiErrorPayload = {
+  response?: {
+    data?: {
+      message?: string
+    }
+  }
+}
 import toast from 'react-hot-toast'
 
 function formatCurrency(value: number) {
@@ -75,9 +83,10 @@ export default function CashierClosePage() {
         cashierId: cashierId.trim() || undefined,
         force: !!selectedSummary,
       })
-    } catch (error: any) {
-      if (error?.response?.data?.message) {
-        toast.error(error.response.data.message)
+    } catch (error: unknown) {
+      const apiError = error as ApiErrorPayload
+      if (apiError.response?.data?.message) {
+        toast.error(apiError.response.data.message)
       } else {
         toast.error('Failed to generate cash close report.')
       }

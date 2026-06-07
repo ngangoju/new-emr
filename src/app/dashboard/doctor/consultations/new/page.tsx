@@ -66,6 +66,7 @@ import { StructuredMedicationEntry } from '@/components/clinical/StructuredMedic
 import { PrescriptionList } from '@/components/clinical/PrescriptionList'
 import { AllergyInteractionOverrideModal } from '@/components/clinical/AllergyInteractionOverrideModal'
 import { AddMedicationPayload, useAddMedication, useDryRunSafetyCheck } from '@/hooks/api/useConsultations'
+import type { PrescriptionListMedication } from '@/components/clinical/PrescriptionList'
 
 export default function NewConsultationPage() {
   return (
@@ -300,7 +301,7 @@ Follow Up: ${data.followUp || 'N/A'}
                 interactionOverrideReason: med.interactionOverrideReason
               }
             })
-          } catch (err: any) {
+          } catch (err: unknown) {
              console.error('Failed to save med:', med.drugName, err)
              toast.error(`Failed to save prescription for ${med.drugName}`)
           }
@@ -841,7 +842,7 @@ Follow Up: ${data.followUp || 'N/A'}
                     <div className="space-y-2 mt-4">
                       <Label className="text-sm font-medium">Added Medications</Label>
                       <PrescriptionList 
-                        medications={structuredMeds as any} 
+                        medications={structuredMeds as PrescriptionListMedication[]} 
                         onRemove={handleRemoveStructuredMed}
                       />
                     </div>

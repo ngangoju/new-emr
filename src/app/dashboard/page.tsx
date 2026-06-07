@@ -34,6 +34,9 @@ import { Spinner } from '@/components/ui/spinner'
 export default function DoctorDashboard() {
   const router = useRouter()
   const { role, isLoading: roleLoading, hasPermission } = useRole()
+  const canRegisterPatient = hasPermission('CAN_REGISTER_PATIENT') || hasPermission('patient:create')
+  const canViewMedicalRecords = hasPermission('CAN_VIEW_MEDICAL_RECORDS') || hasPermission('patient:read') || hasPermission('consultation:read')
+  const canCreateConsultation = hasPermission('CAN_PRESCRIBE') || hasPermission('consultation:create') || hasPermission('prescription:create')
 
   const dashboardApiRoles = new Set(['ADMIN', 'DOCTOR', 'NURSE', 'RECEPTIONIST'])
   const canLoadDashboardApis = !roleLoading && !!role && dashboardApiRoles.has(role)
@@ -96,7 +99,7 @@ export default function DoctorDashboard() {
           Good Morning, {userRole}
         </h1>
         <p className="text-muted-foreground">
-          Here's an overview of your day. You have {stats?.todayAppointments || 0} appointments scheduled.
+          Here&apos;s an overview of your day. You have {stats?.todayAppointments || 0} appointments scheduled.
         </p>
       </header>
 
@@ -105,7 +108,7 @@ export default function DoctorDashboard() {
         <Card className="hover:shadow-lg transition-shadow duration-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Today's Appointments
+              Today&apos;s Appointments
             </CardTitle>
             <Users className="h-4 w-4 text-primary" />
           </CardHeader>
@@ -200,7 +203,7 @@ export default function DoctorDashboard() {
                   </div>
                   <h3 className="mt-4 text-lg font-semibold">No appointments today</h3>
                   <p className="text-muted-foreground max-w-sm mt-2">
-                    You don't have any scheduled appointments for today. Enjoy your free time!
+                    You don&apos;t have any scheduled appointments for today. Enjoy your free time!
                   </p>
                 </div>
               ) : (
@@ -263,7 +266,7 @@ export default function DoctorDashboard() {
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="text-xl font-heading">Recent Patients</CardTitle>
-              <CardDescription>Patients you've seen recently</CardDescription>
+                <CardDescription>Patients you&apos;ve seen recently</CardDescription>
             </div>
             <Button variant="outline" size="sm" asChild>
               <Link href="/dashboard/doctor/patients">View All</Link>
@@ -279,7 +282,7 @@ export default function DoctorDashboard() {
                 </div>
                 <h3 className="mt-4 text-lg font-semibold">No recent patients</h3>
                 <p className="text-muted-foreground max-w-sm mt-2">
-                  You haven't seen any patients recently. Start by registering a new patient or viewing your patient list.
+                  You haven&apos;t seen any patients recently. Start by registering a new patient or viewing your patient list.
                 </p>
                 <Button variant="outline" className="mt-4" asChild>
                   <Link href="/dashboard/doctor/patients">View All Patients</Link>
@@ -307,7 +310,7 @@ export default function DoctorDashboard() {
                   <Badge variant="outline" className="bg-success/10 text-success border-success/20">
                     {patient.status}
                   </Badge>
-                  {hasPermission('CAN_VIEW_MEDICAL_RECORDS') && (
+                  {canViewMedicalRecords && (
                     <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100 transition-opacity">
                       <FileText className="h-4 w-4" />
                     </Button>
@@ -335,7 +338,7 @@ export default function DoctorDashboard() {
             </div>
           </div>
           <div className="flex space-x-2">
-            {hasPermission('CAN_REGISTER_PATIENT') && (
+            {canRegisterPatient && (
               <Button variant="outline" asChild>
                 <Link href="/dashboard/doctor/patients">
                   <Users className="h-4 w-4 mr-2" />
@@ -343,7 +346,7 @@ export default function DoctorDashboard() {
                 </Link>
               </Button>
             )}
-            {hasPermission('CAN_PRESCRIBE') && (
+            {canCreateConsultation && (
               <Button asChild>
                 <Link href="/dashboard/doctor/consultations/new">
                   <FileText className="h-4 w-4 mr-2" />

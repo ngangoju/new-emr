@@ -79,7 +79,7 @@ export default function ConsultationDetailsPage({ params }: { params: Promise<{ 
             <AlertCircle className="h-12 w-12 text-destructive" />
             <div className="space-y-2">
               <h3 className="font-semibold text-lg">Consultation Not Found</h3>
-              <p className="text-muted-foreground">The consultation record you're looking for could not be loaded or does not exist.</p>
+          <p className="text-muted-foreground">The consultation record you&apos;re looking for could not be loaded or does not exist.</p>
             </div>
             <Button asChild variant="outline" className="mt-4">
               <Link href="/dashboard/doctor/consultations"><ArrowLeft className="mr-2 h-4 w-4" /> Back to Consultations</Link>

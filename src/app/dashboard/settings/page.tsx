@@ -53,7 +53,7 @@ export default function SettingsPage() {
   }
 
   const handleLanguageChange = async (value: string) => {
-    await updateSettings({ language: value as any })
+    await updateSettings({ language: value as UserSettings['language'] })
   }
 
   const handleTimezoneChange = async (value: string) => {
