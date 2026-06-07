@@ -41,3 +41,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local planning/exploratory artifacts (not product)
+EMR_Strategic_Roadmap.docx
+epic_emr_hospital_workflow.html
+e2e/qa-round1-*.spec.ts
+e2e/qa-round2-*.spec.ts
