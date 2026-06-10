@@ -30,7 +30,6 @@ import {
   AlertTriangle,
   Package,
   DollarSign,
-  TrendingUp,
   Clock,
   ShieldCheck,
   Boxes,
@@ -47,7 +46,7 @@ import { type FormEvent, useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
 
 export function PharmacyDashboard() {
-  const { isRole, isLoading: roleLoading } = useRole()
+  const { hasPermission, isLoading: roleLoading } = useRole()
   const { data: stats, isLoading: statsLoading } = usePharmacyDashboard()
   
   // Filter and pagination state
@@ -79,10 +78,12 @@ export function PharmacyDashboard() {
   const [expiryDate, setExpiryDate] = useState('')
   const [supplier, setSupplier] = useState('')
 
+  // Gate on the backend authority for POST /api/pharmacy/stock/in so the form only
+  // appears for roles the API will accept (pharmacist/store), not a hardcoded list.
   const canManageStock = useMemo(() => {
     if (roleLoading) return false
-    return isRole('PHARMACIST') || isRole('ADMIN')
-  }, [isRole, roleLoading])
+    return hasPermission('pharmacy:stock:receive')
+  }, [hasPermission, roleLoading])
 
   const resetForm = () => {
     setName('')

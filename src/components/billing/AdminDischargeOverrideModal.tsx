@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
-  DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
@@ -36,6 +35,7 @@ export function AdminDischargeOverrideModal({
   const dischargePatientMutation = useDischargePatient()
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!open) setAdminOverrideReason('')
   }, [open])
 

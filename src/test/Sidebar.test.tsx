@@ -10,7 +10,6 @@ import {
   getUserRole,
   isAuthInitialized,
   onAuthInitialized,
-  AUTH_EVENTS,
 } from '@/lib/utils/auth'
 
 vi.mock('@/hooks/useNotifications', () => ({

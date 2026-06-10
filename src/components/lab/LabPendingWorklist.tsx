@@ -2,12 +2,12 @@
 
 import { useState } from 'react'
 import toast from 'react-hot-toast'
-
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useLabPendingWorklist, useUpdateLabOrderStatus } from '@/hooks/useLabOrders'
+import { useRole } from '@/hooks/useRole'
 
 interface LabPendingWorklistProps {
   onViewOrder: (orderId: string) => void
@@ -39,6 +39,10 @@ export function LabPendingWorklist({ onViewOrder }: LabPendingWorklistProps) {
 
   const pendingQuery = useLabPendingWorklist({ page, size })
   const { updateStatus, updatingStatus } = useUpdateLabOrderStatus()
+  const { hasPermission, isLoading: roleLoading } = useRole()
+  // Accept advances the order (lab:result:enter); clinicians and oversight roles
+  // browsing the lab worklist get a read-only view instead of a 403 popup.
+  const canProcessOrders = !roleLoading && hasPermission('lab:result:enter')
 
   const rows = pendingQuery.data?.data ?? []
   const meta = pendingQuery.data?.meta
@@ -118,14 +122,16 @@ export function LabPendingWorklist({ onViewOrder }: LabPendingWorklistProps) {
                         <Badge variant="outline" className={statusClass(order.status)}>
                           {order.status}
                         </Badge>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          disabled={updatingStatus || order.status !== 'PENDING'}
-                          onClick={() => handleAccept(order.id)}
-                        >
-                          Accept
-                        </Button>
+                        {canProcessOrders && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={updatingStatus || order.status !== 'PENDING'}
+                            onClick={() => handleAccept(order.id)}
+                          >
+                            Accept
+                          </Button>
+                        )}
                         <Button size="sm" onClick={() => onViewOrder(order.id)}>
                           View
                         </Button>

@@ -3,14 +3,15 @@ import { api } from '@/lib/api'
 import type { InsuranceClaim, CreateClaimInput, UpdateClaimStatusInput } from '@/types/insurance'
 import toast from 'react-hot-toast'
 
-export function useClaims(status?: string) {
+export function useClaims(status?: string, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: ['claims', status],
     queryFn: async () => {
-      const endpoint = status ? `/billing/claims?status=${status}` : '/billing/claims'
+      const endpoint = status ? `/api/billing/claims?status=${status}` : '/api/billing/claims'
       const response = await api.get<InsuranceClaim[]>(endpoint)
       return response.data
     },
+    enabled: options?.enabled ?? true,
   })
 }
 
@@ -19,7 +20,7 @@ export function useCreateClaim() {
 
   return useMutation({
     mutationFn: async (input: CreateClaimInput) => {
-      const response = await api.post<InsuranceClaim>('/billing/claims', input)
+      const response = await api.post<InsuranceClaim>('/api/billing/claims', input)
       return response.data
     },
     onSuccess: () => {
@@ -44,7 +45,7 @@ export function useUpdateClaimStatus() {
       if (rejectionReason) {
         params.append('rejectionReason', rejectionReason)
       }
-      const response = await api.put<InsuranceClaim>(`/billing/claims/${claimId}/status?${params.toString()}`)
+      const response = await api.put<InsuranceClaim>(`/api/billing/claims/${claimId}/status?${params.toString()}`)
       return response.data
     },
     onSuccess: () => {

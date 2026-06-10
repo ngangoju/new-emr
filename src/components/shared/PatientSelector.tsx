@@ -16,7 +16,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover'
 import { Button } from '@/components/ui/button'
-import { Check, ChevronsUpDown, Search, User } from 'lucide-react'
+import { Check, ChevronsUpDown, Search } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface PatientSelectorProps {
@@ -38,7 +38,7 @@ export function PatientSelector({ onSelect, selectedPatientId, selectedPatient: 
     enabled: open,
   })
 
-  const patients = patientsData?.data || []
+  const patients = useMemo(() => patientsData?.data || [], [patientsData])
 
   const selectedPatient = useMemo(() => {
     if (!selectedPatientId) return null

@@ -9,7 +9,6 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import {
   Table,
   TableBody,
@@ -30,6 +29,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { useClaims, useUpdateClaimStatus } from '@/hooks/useClaims'
+import { useRole } from '@/hooks/useRole'
 import type { InsuranceClaim, ClaimStatus } from '@/types/insurance'
 
 const STATUS_ICONS: Record<string, React.ReactNode> = {
@@ -42,7 +42,12 @@ const STATUS_ICONS: Record<string, React.ReactNode> = {
 
 export function ClaimsWorkbench() {
   const [filterStatus, setFilterStatus] = useState<string>('')
-  const { data: claims = [], isLoading } = useClaims(filterStatus || undefined)
+  const { hasPermission, isLoading: roleLoading } = useRole()
+  // The /dashboard/billing route is shared by several roles; only fetch and offer
+  // claim actions when the backend authorities allow them, so nobody gets 403 popups.
+  const canReadClaims = !roleLoading && hasPermission('billing:claim:read')
+  const canManageClaims = !roleLoading && hasPermission('billing:claim:create')
+  const { data: claims = [], isLoading } = useClaims(filterStatus || undefined, { enabled: canReadClaims })
   const { mutate: updateStatus, isPending: isUpdating } = useUpdateClaimStatus()
   
   const [selectedClaim, setSelectedClaim] = useState<InsuranceClaim | null>(null)
@@ -77,6 +82,27 @@ export function ClaimsWorkbench() {
   const pendingCount = claims.filter((c: InsuranceClaim) => c.status === 'PENDING').length
   const submittedCount = claims.filter((c: InsuranceClaim) => c.status === 'SUBMITTED').length
   const rejectedCount = claims.filter((c: InsuranceClaim) => c.status === 'REJECTED').length
+
+  if (!roleLoading && !canReadClaims) {
+    return (
+      <>
+        <PageHeader
+          title="Claims Workbench"
+          description="Manage insurance claims, track submissions, and handle denials."
+        />
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+            <AlertCircle className="h-10 w-10 text-muted-foreground mb-3" />
+            <h3 className="font-semibold text-foreground mb-1">Claims are handled by the billing office</h3>
+            <p className="text-sm text-muted-foreground max-w-md">
+              Your role does not include insurance claim processing. Please contact a billing
+              officer for claim submissions and denials.
+            </p>
+          </CardContent>
+        </Card>
+      </>
+    )
+  }
 
   return (
     <>
@@ -192,12 +218,12 @@ export function ClaimsWorkbench() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
-                          {claim.status === 'PENDING' && (
+                          {canManageClaims && claim.status === 'PENDING' && (
                             <Button size="sm" variant="outline" onClick={() => handleUpdateStatus(claim, 'SUBMITTED')} disabled={isUpdating}>
                               Submit
                             </Button>
                           )}
-                          {claim.status === 'SUBMITTED' && (
+                          {canManageClaims && claim.status === 'SUBMITTED' && (
                             <>
                               <Button size="sm" variant="default" className="bg-emerald-600 hover:bg-emerald-700" onClick={() => handleUpdateStatus(claim, 'APPROVED')} disabled={isUpdating}>
                                 Approve
@@ -207,12 +233,12 @@ export function ClaimsWorkbench() {
                               </Button>
                             </>
                           )}
-                          {claim.status === 'APPROVED' && (
+                          {canManageClaims && claim.status === 'APPROVED' && (
                             <Button size="sm" variant="default" onClick={() => handleUpdateStatus(claim, 'PAID')} disabled={isUpdating}>
                               Mark Paid
                             </Button>
                           )}
-                          {claim.status === 'REJECTED' && (
+                          {canManageClaims && claim.status === 'REJECTED' && (
                             <Button size="sm" variant="outline" onClick={() => handleUpdateStatus(claim, 'PENDING')} disabled={isUpdating}>
                               Requeue
                             </Button>

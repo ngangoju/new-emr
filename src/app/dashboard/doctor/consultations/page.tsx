@@ -3,7 +3,7 @@
 import React from 'react'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { EmptyState } from '@/components/ui/empty-state'
-import { Stethoscope, Eye, Calendar, User, ClipboardList } from 'lucide-react'
+import { Stethoscope, Eye, ClipboardList } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import { useConsultations } from '@/hooks/api/useConsultations'

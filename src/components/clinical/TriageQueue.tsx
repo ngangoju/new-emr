@@ -22,7 +22,9 @@ export function TriageQueue() {
   const { data: queue, isLoading } = useQueue()
   const queryClient = useQueryClient()
   const { hasPermission, isRole } = useRole()
-  const canRecordVitals = hasPermission('vitals:write') || isRole(['ADMIN', 'NURSE', 'CHIEF_NURSE', 'CLINICAL_DIRECTOR'])
+  // vitals:write mirrors the backend guard on POST /patients/{id}/vitals; oversight
+  // roles (ADMIN, directors) browse the queue without the record-vitals action.
+  const canRecordVitals = hasPermission('vitals:write') || isRole(['NURSE', 'CHIEF_NURSE'])
 
   useSocketEvent('queue:update', () => {
     queryClient.invalidateQueries({ queryKey: ['queue'] })

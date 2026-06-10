@@ -11,7 +11,7 @@ import {
   type CreateTariffInput,
   type UpdateTariffInput,
 } from '@/hooks/useTariffManagement'
-import { canRoleAccessFeature, FRONTEND_FEATURE_POLICY, getRoleDefaultDashboardRoute } from '@/lib/authz/policy'
+import { canRoleAccessFeature, getRoleDefaultDashboardRoute } from '@/lib/authz/policy'
 import { getUserRole } from '@/lib/utils/auth'
 import type { Tariff } from '@/types/billing'
 import {
@@ -45,7 +45,6 @@ import {
 } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
 import toast from 'react-hot-toast'
-
 import { useRouter } from 'next/navigation'
 
 const TARIFF_CATEGORIES = [
@@ -89,6 +88,7 @@ export default function TariffManagementPage() {
   // Check permission
   useEffect(() => {
     const userRole = getUserRole()
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setCurrentRole(userRole)
     const hasAccess = userRole ? canRoleAccessFeature(userRole, 'CAN_MANAGE_TARIFFS') : false
     setHasPermissionFlag(hasAccess)
@@ -99,7 +99,7 @@ export default function TariffManagementPage() {
 
   // Fetch tariffs
   const { data: tariffsResponse, isLoading } = useTariffs({ search, category: categoryFilter === 'ALL' ? undefined : categoryFilter })
-  const tariffs = tariffsResponse?.data ?? []
+  const tariffs = useMemo(() => tariffsResponse?.data ?? [], [tariffsResponse])
 
   // Mutations
   const { createTariff, isCreating } = useCreateTariff()
@@ -150,7 +150,7 @@ export default function TariffManagementPage() {
       toast.success('Tariff created successfully')
       setCreateDialogOpen(false)
       setFormData(defaultFormState)
-    } catch (error) {
+    } catch {
       // Handled by global interceptor
     }
   }
@@ -197,7 +197,7 @@ export default function TariffManagementPage() {
       setEditDialogOpen(false)
       setSelectedTariff(null)
       setFormData(defaultFormState)
-    } catch (error) {
+    } catch {
       // Handled by global interceptor
     }
   }
@@ -215,7 +215,7 @@ export default function TariffManagementPage() {
       toast.success('Tariff deleted successfully')
       setDeleteDialogOpen(false)
       setSelectedTariff(null)
-    } catch (error) {
+    } catch {
       // Handled by global interceptor
     }
   }
@@ -280,7 +280,7 @@ export default function TariffManagementPage() {
           toast.success(`Successfully imported ${tariffsToCreate.length} tariffs`)
           // Reset file input
           if (fileInputRef.current) fileInputRef.current.value = ''
-        } catch (error) {
+        } catch {
           // Handled by global interceptor, we just need to catch it here to prevent the outer catch
         }
       }

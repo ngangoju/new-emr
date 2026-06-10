@@ -5,7 +5,6 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { Search, ChevronDown, ChevronRight, Check, Users, Calendar, DollarSign, FileText, Pill, Microscope, Settings, Shield, LayoutDashboard, Bed } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -526,7 +525,7 @@ export function initializePermissionsFromRole(permissionsJson: string | undefine
     // If it's not valid JSON, it might be an array string like ["read:*", "write:queue"]
     try {
       // Try to parse as array
-      const parsed = eval(permissionsJson) // eslint-disable-line no-eval
+      const parsed = eval(permissionsJson)
       if (Array.isArray(parsed)) {
         return JSON.stringify(parsed)
       }

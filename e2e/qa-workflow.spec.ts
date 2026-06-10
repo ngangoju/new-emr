@@ -68,10 +68,18 @@ test('stage 1 — reception registers a visit (invoice + queue) in the browser c
     await page.screenshot({ path: `${EV}/02-register-visit-modal.png` }).catch(() => undefined)
 
     const call = await apiAs(page, 'receptionist')
-    // pick an existing active patient, a CONSULTATION tariff, and a doctor
-    const patientsResp = await call('GET', '/patients?page=0&size=1')
-    const patients = await patientsResp.json().catch(() => null)
-    const patient = patients?.data?.[0]
+    // register a fresh patient each run: reusing an existing one trips the
+    // 3-invoices-per-patient-per-day business rule on repeated runs (400).
+    const stamp = Date.now()
+    const patientResp = await call('POST', '/patients', {
+        firstName: 'QAWorkflow',
+        lastName: `Run${stamp}`,
+        dateOfBirth: '1993-03-03',
+        gender: 'FEMALE',
+        phone: `+2507${String(stamp).slice(-8)}`,
+        email: `qa-workflow-${stamp}@emr.test`,
+    })
+    const patient = await patientResp.json().catch(() => null)
     shared.patientId = patient?.id
     shared.patientName = `${patient?.firstName ?? ''} ${patient?.lastName ?? ''}`.trim()
     const doctorsResp = await call('GET', '/api/users/clinical-staff?role=DOCTOR&page=0&size=20')

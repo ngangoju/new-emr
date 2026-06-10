@@ -11,7 +11,6 @@ import {
   Clock, 
   FileText, 
   Percent,
-  DollarSign,
   User,
   Calendar,
 } from 'lucide-react'

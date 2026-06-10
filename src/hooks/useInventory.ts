@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import { PharmacyDashboardStats, InventorySummary, StockAlert, PaginatedInventoryResponse, InventoryEntry } from '@/types/pharmacy';
+import { PharmacyDashboardStats, StockAlert, PaginatedInventoryResponse, InventoryEntry } from '@/types/pharmacy';
 
 // Fallback data for when the API fails
 const fallbackDashboardStats: PharmacyDashboardStats = {
@@ -13,8 +13,6 @@ const fallbackDashboardStats: PharmacyDashboardStats = {
   weekDispensingCount: 0,
   weekDispensingRevenue: 0
 };
-
-const fallbackInventorySummary: InventorySummary[] = [];
 
 const fallbackPaginatedInventory: PaginatedInventoryResponse = {
   content: [],

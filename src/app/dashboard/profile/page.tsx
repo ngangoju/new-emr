@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { User, Mail, Shield, Key, Bell, Camera, Loader2, Phone, FileText, Trash2 } from "lucide-react"
+import { Mail, Shield, Camera, Loader2, Phone, Trash2 } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
 import { useProfile } from "@/hooks/useProfile"
 import { useSettings } from "@/hooks/useSettings"
@@ -97,6 +97,7 @@ export default function ProfilePage() {
             <div className="relative group">
               <div className="h-32 w-32 rounded-full overflow-hidden bg-gradient-to-br from-primary to-accent flex items-center justify-center text-primary-foreground text-4xl font-bold shadow-xl">
                 {profile?.profilePictureUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
                   <img src={profile.profilePictureUrl} alt="Profile" className="h-full w-full object-cover" />
                 ) : (
                   initials.toUpperCase()
@@ -224,6 +225,7 @@ export default function ProfilePage() {
                     <div className="space-y-2">
                       <Label htmlFor="confirmPassword">Confirm New Password</Label>
                       <Input id="confirmPassword" type="password" {...registerPassword('confirmPassword', { required: true })} />
+                      {/* eslint-disable-next-line react-hooks/incompatible-library */}
                       {watchPassword('newPassword') !== watchPassword('confirmPassword') && watchPassword('confirmPassword') && (
                         <p className="text-xs text-destructive">Passwords do not match</p>
                       )}

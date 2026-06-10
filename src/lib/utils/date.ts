@@ -1,4 +1,4 @@
-import { format as dateFnsFormat, formatDistance, formatDistanceToNow, parseISO, isValid } from 'date-fns'
+import { format as dateFnsFormat, formatDistanceToNow, parseISO, isValid } from 'date-fns'
 
 /**
  * Safely parse a date from various input formats

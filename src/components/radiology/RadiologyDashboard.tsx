@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/table'
 import { Clock, CheckCircle2, Image as ImageIcon, Upload, Search, Activity, FileText } from 'lucide-react'
 import { PageHeader } from '@/components/layout/PageHeader'
+import { useRole } from '@/hooks/useRole'
 import { usePendingImagingOrders, useImagingOrders } from '@/hooks/useImaging'
 import type { ImagingOrder } from '@/types/imaging'
 import { format } from 'date-fns'
@@ -27,8 +28,13 @@ import { AcquisitionModal } from './AcquisitionModal'
 import { ReportingForm } from './ReportingForm'
 
 export function RadiologyDashboard() {
+  const { hasPermission, isLoading: roleLoading } = useRole()
+  // Acquisition advances study status (imaging:study:update); reporting writes the
+  // radiology report (imaging:report:write). Viewer roles see the worklist read-only.
+  const canAcquire = !roleLoading && hasPermission('imaging:study:update')
+  const canReport = !roleLoading && hasPermission('imaging:report:write')
   const { data: pending = [], isLoading: loadingPending } = usePendingImagingOrders()
-  const { data: allOrders = [], isLoading: loadingAll } = useImagingOrders()
+  const { data: allOrders = [] } = useImagingOrders()
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedOrder, setSelectedOrder] = useState<ImagingOrder | null>(null)
   const [reportingOrder, setReportingOrder] = useState<ImagingOrder | null>(null)
@@ -177,10 +183,14 @@ export function RadiologyDashboard() {
                         {format(new Date(order.orderedAt), 'MMM d, HH:mm')}
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button size="sm" className="gap-2" onClick={() => setSelectedOrder(order)}>
-                          <Upload className="h-4 w-4" />
-                          Acquire Study
-                        </Button>
+                        {canAcquire ? (
+                          <Button size="sm" className="gap-2" onClick={() => setSelectedOrder(order)}>
+                            <Upload className="h-4 w-4" />
+                            Acquire Study
+                          </Button>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">Awaiting radiology</span>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))
@@ -222,7 +232,7 @@ export function RadiologyDashboard() {
                         {order.completedAt ? format(new Date(order.completedAt), 'MMM d, HH:mm') : 'N/A'}
                       </TableCell>
                       <TableCell className="text-right">
-                        {order.status === 'COMPLETED' ? (
+                        {canReport && order.status === 'COMPLETED' ? (
                             <Button size="sm" variant="default" className="bg-purple-600 hover:bg-purple-700 gap-2" onClick={() => setReportingOrder(order)}>
                                 <FileText className="h-4 w-4" />
                                 Create Report

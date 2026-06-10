@@ -70,6 +70,7 @@ export function Sidebar({ className }: { className?: string }) {
   const { data: unreadCount = 0 } = useUnreadCount()
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true)
     
     const checkRole = () => {

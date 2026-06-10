@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react'
 import { Activity, Receipt } from 'lucide-react'
 import toast from 'react-hot-toast'
-
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -106,6 +105,7 @@ export function NurseVitalsForm({ initialPatientId = '' }: NurseVitalsFormProps)
 
   useEffect(() => {
     if (initialPatient?.id) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPatient(initialPatient)
     }
   }, [initialPatient])

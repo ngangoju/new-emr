@@ -15,7 +15,6 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
 import toast from 'react-hot-toast'
 import { Pencil, Trash2, Plus, Shield } from 'lucide-react'
 import { PermissionsManager } from '@/components/admin/PermissionsManager'
@@ -31,6 +30,7 @@ export default function RolesPage() {
 
     useEffect(() => {
         fetchRoles()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
     const handleCreate = async () => {

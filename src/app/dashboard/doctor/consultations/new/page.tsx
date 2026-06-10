@@ -153,6 +153,7 @@ function ConsultationWizard() {
       // Set the form's patientId field
       form.setValue('patientId', patientIdFromUrl, { shouldValidate: true })
       // Set the patient search to show the patient name
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPatientSearch('Loading patient...')
       // Auto-advance to step 2 (Chief Complaint) since patient is selected
       setCurrentStep(2)
@@ -162,6 +163,7 @@ function ConsultationWizard() {
   // Update patient search display when patient data is loaded
   useEffect(() => {
     if (selectedPatient && patientIdFromUrl) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPatientSearch(`${selectedPatient.firstName} ${selectedPatient.lastName}`)
     }
   }, [selectedPatient, patientIdFromUrl])

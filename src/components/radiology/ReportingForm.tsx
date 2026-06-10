@@ -3,14 +3,12 @@
 import { useState, useEffect } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -30,7 +28,6 @@ import {
   Stethoscope,
   ClipboardCheck,
   Save,
-  FileText
 } from 'lucide-react'
 import { 
   useImagingResult, 
@@ -40,7 +37,7 @@ import {
 } from '@/hooks/useImaging'
 // Actually hook for ICD10 is in a different file, let me fix imports
 import { useICD10 as useICD10Hook } from '@/hooks/useICD10'
-import type { ImagingOrder, ImagingResult } from '@/types/imaging'
+import type { ImagingOrder } from '@/types/imaging'
 import toast from 'react-hot-toast'
 import { format } from 'date-fns'
 
@@ -80,7 +77,7 @@ export function ReportingForm({ order, onOpenChange }: ReportingFormProps) {
         payload: { findings, impression, recommendations }
       })
       toast.success('Report saved successfully.')
-    } catch (error) {
+    } catch {
       toast.error('Failed to save report.')
     } finally {
       setIsSaving(false)
@@ -107,7 +104,7 @@ export function ReportingForm({ order, onOpenChange }: ReportingFormProps) {
       await signResult.mutateAsync(result.id)
       toast.success('Report signed and published.', { id: toastId })
       onOpenChange(false)
-    } catch (error) {
+    } catch {
       toast.error('Failed to sign report.', { id: toastId })
     } finally {
       setIsSigning(false)

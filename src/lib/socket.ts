@@ -43,7 +43,7 @@ class SocketClient {
 
             try {
                 parsedData = JSON.parse(rawData);
-            } catch (e) {
+            } catch {
                 parsedData = rawData;
             }
 

@@ -132,7 +132,7 @@ export function WorkflowIndicator({
           <div className="space-y-2">
             <p className="text-sm font-medium text-muted-foreground">Workflow Progress</p>
             <div className="flex justify-between items-center">
-              {workflowStepNames.map((step, index) => {
+              {workflowStepNames.map((step) => {
                 const status = getStepStatus(step.id)
                 const StepIcon = step.icon
                 

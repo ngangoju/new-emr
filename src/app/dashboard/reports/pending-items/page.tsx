@@ -4,17 +4,14 @@ import { format } from 'date-fns'
 import {
   ArrowLeft,
   Loader2,
-  AlertCircle,
   Clock,
   UserCheck,
   Stethoscope,
   FlaskConical,
-  Image,
+  Image as ImageIcon,
   Pill,
-  Timer
 } from 'lucide-react'
 import Link from 'next/link'
-
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { usePendingItemsReport } from '@/hooks/useHmisReports'
@@ -107,7 +104,7 @@ export default function PendingItemsReportPage() {
                     <p className="text-xs font-medium text-muted-foreground">Unreported Imaging</p>
                     <p className="text-2xl font-bold">{report.unreportedImagingOrderCount}</p>
                   </div>
-                  <Image className="h-8 w-8 text-purple-500 opacity-80" />
+                  <ImageIcon className="h-8 w-8 text-purple-500 opacity-80" />
                 </div>
               </CardContent>
             </Card>

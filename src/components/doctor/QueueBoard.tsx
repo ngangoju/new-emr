@@ -17,7 +17,6 @@ import {
 } from '@/components/ui/table'
 import { Clock, User, Phone, Bell, Play, CheckCircle2, XCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
-
 import { useQueryClient } from '@tanstack/react-query'
 import { useSocketEvent } from '@/hooks/useSocket'
 import { useState } from 'react'
@@ -30,7 +29,10 @@ export function QueueBoard() {
   // hardcoded role list. ADMIN was previously included here but lacks queue:read, so the
   // /api/queue/active call returned 403 (P2-010).
   const canAccessQueue = !roleLoading && hasPermission('queue:read')
-  const { data: queue = [], isLoading } = useQueueAPI({ enabled: canAccessQueue })
+  // Call/Start/Complete/No-show hit queue:manage-guarded endpoints; read-only roles
+  // (e.g. ADMIN oversight) see the live board without action buttons instead of 403s.
+  const canManageQueue = !roleLoading && hasPermission('queue:manage')
+  const { data: queue = [] } = useQueueAPI({ enabled: canAccessQueue })
   const callNextMutation = useCallNextPatient()
   const updateStatusMutation = useUpdateQueueStatus()
   const queryClient = useQueryClient()
@@ -268,7 +270,7 @@ export function QueueBoard() {
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-1.5">
-                    {item.status === 'WAITING' && (
+                    {canManageQueue && item.status === 'WAITING' && (
                       <>
                         <Button 
                           size="sm" 
@@ -290,7 +292,7 @@ export function QueueBoard() {
                         </Button>
                       </>
                     )}
-                    {item.status === 'CALLED' && (
+                    {canManageQueue && item.status === 'CALLED' && (
                       <>
                         <Button 
                           size="sm"
@@ -312,7 +314,7 @@ export function QueueBoard() {
                         </Button>
                       </>
                     )}
-                    {item.status === 'IN_PROGRESS' && (
+                    {canManageQueue && item.status === 'IN_PROGRESS' && (
                       <Button 
                         size="sm"
                         onClick={() => completeConsultation(item.id)}
@@ -331,7 +333,7 @@ export function QueueBoard() {
         </Table>
       </div>
 
-      {queue.some(q => q.status === 'WAITING') && (
+      {canManageQueue && queue.some(q => q.status === 'WAITING') && (
         <div className="flex items-center justify-between p-4 rounded-lg bg-accent/50 border border-border">
           <div className="flex items-center space-x-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">

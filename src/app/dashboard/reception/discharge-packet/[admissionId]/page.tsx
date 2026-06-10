@@ -4,7 +4,6 @@ import { useMemo, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { Download, Loader2, Printer } from 'lucide-react'
 import toast from 'react-hot-toast'
-
 import { Button } from '@/components/ui/button'
 import { useAfterVisitDocumentHistory, useExportAfterVisitDocument, usePrintableAfterVisitDocument } from '@/hooks/useWorkflow'
 import type { AfterVisitDocumentChangeDetail } from '@/types/workflow'

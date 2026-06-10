@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import toast from 'react-hot-toast'
-
 import { AllergyInteractionOverrideModal } from '@/components/clinical/AllergyInteractionOverrideModal'
 import { PrescriptionList } from '@/components/clinical/PrescriptionList'
 import { StructuredMedicationEntry } from '@/components/clinical/StructuredMedicationEntry'

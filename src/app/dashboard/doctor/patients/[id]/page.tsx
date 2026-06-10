@@ -17,7 +17,6 @@ import {
   Activity, 
   Pill, 
   Microscope,
-  Clock,
   Edit,
   ImageIcon,
   ChevronLeft,

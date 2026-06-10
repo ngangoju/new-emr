@@ -31,10 +31,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Label } from '@/components/ui/label'
 import { 
   Search, 
-  Plus, 
   Filter, 
   Eye, 
   FileText, 
@@ -43,7 +41,6 @@ import {
   Calendar,
   Phone,
   Mail,
-  MapPin
 } from 'lucide-react'
 import { usePatients, useUpdatePatient, type Patient, type PatientMutationPayload } from '@/hooks/api/usePatients'
 import toast from 'react-hot-toast'

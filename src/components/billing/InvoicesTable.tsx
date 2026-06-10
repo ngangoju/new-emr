@@ -259,7 +259,8 @@ export function InvoicesTable({
                     >
                       <FileText className="h-4 w-4" />
                     </Button>
-                    {statusValue !== 'PAID' && invoice.paymentStatus !== 'PAID' && (
+                    {statusValue !== 'PAID' && invoice.paymentStatus !== 'PAID'
+                      && !roleLoading && hasPermission('billing:payment:create') && (
                       <Button
                         variant="default"
                         size="sm"

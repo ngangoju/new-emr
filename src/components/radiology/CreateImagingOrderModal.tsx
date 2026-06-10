@@ -8,7 +8,6 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import {
   Dialog,
-  DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
@@ -103,7 +102,7 @@ export function CreateImagingOrderModal({
       setPriority('ROUTINE')
       setInstructions('')
       onOpenChange(false)
-    } catch (error) {
+    } catch {
       toast.error('Failed to create imaging order')
     } finally {
       setIsSubmitting(false)

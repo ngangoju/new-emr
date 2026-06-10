@@ -3,7 +3,6 @@
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
-
 import { Button } from "@/components/ui/button"
 import {
   Form,
@@ -138,7 +137,7 @@ function ProfileForm() {
         <FormField
           control={form.control}
           name="dateOfBirth"
-          render={({ field }) => (
+          render={() => (
             <FormItem className="flex flex-col">
               <FormLabel>Date of birth</FormLabel>
                 <DatePicker />
@@ -152,7 +151,7 @@ function ProfileForm() {
         <FormField
           control={form.control}
           name="framework"
-          render={({ field }) => (
+          render={() => (
             <FormItem className="flex flex-col">
               <FormLabel>Framework</FormLabel>
               <Autocomplete />

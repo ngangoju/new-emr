@@ -5,7 +5,6 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { 
   Dialog,
   DialogContent,
@@ -18,8 +17,6 @@ import {
   Upload, 
   FileText, 
   CheckCircle2, 
-  AlertCircle, 
-  X, 
   ShieldCheck,
   Info,
   Image as ImageIcon
@@ -221,7 +218,7 @@ export function AcquisitionModal({ order, onOpenChange }: AcquisitionModalProps)
                         await updateStatus.mutateAsync({ orderId: order.id, status: 'COMPLETED' })
                         toast.success('Acquisition phase marked as completed.')
                         onOpenChange(false)
-                    } catch (error) {
+                    } catch {
                         toast.error('Failed to complete acquisition.')
                     } finally {
                         setIsFinishing(false)

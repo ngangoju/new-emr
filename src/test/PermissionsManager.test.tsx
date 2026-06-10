@@ -2,7 +2,6 @@ import React, { useState } from 'react'
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-
 import { PermissionsManager } from '@/components/admin/PermissionsManager'
 
 const ROUTE_PERMISSION_IDS = [

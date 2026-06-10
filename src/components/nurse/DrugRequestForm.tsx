@@ -1,9 +1,8 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { Plus, Trash2, Pill, User, FileText, CheckCircle, XCircle } from 'lucide-react'
+import { Trash2, Pill, User, FileText, CheckCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
-
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'

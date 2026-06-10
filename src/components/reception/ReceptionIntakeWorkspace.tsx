@@ -50,6 +50,7 @@ export function ReceptionIntakeWorkspace() {
 
   useEffect(() => {
     if (patientId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setEligibilityStatus('PENDING')
       setEligibilityNotes('')
       setNotes('')
@@ -83,6 +84,7 @@ export function ReceptionIntakeWorkspace() {
 
   useEffect(() => {
     if (!intake) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setEligibilityStatus(intake.eligibilityStatus || 'PENDING')
     setEligibilityNotes(intake.eligibilityNotes || '')
     setNotes(intake.notes || '')

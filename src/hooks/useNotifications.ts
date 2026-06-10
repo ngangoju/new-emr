@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import toast from 'react-hot-toast'
-import type { Notification, NotificationFilters, NotificationsResponse, UnreadCountResponse } from '@/types/notification'
+import type { Notification, NotificationFilters, UnreadCountResponse } from '@/types/notification'
 
 // Query keys
 export const notificationKeys = {

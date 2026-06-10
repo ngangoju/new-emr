@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { CreateImagingOrderModal } from '@/components/radiology/CreateImagingOrderModal'
 import { PatientSelector } from '@/components/shared/PatientSelector'
 import { Patient } from '@/hooks/api/usePatients'
-import { Image as ImageIcon, Plus, Activity, UserSearch } from 'lucide-react'
+import { Image as Plus, Activity, UserSearch } from 'lucide-react'
 
 export default function ImagingOrdersPage() {
   const [showCreateModal, setShowCreateModal] = useState(false)

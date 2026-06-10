@@ -5,7 +5,7 @@ import { PageHeader } from '@/components/layout/PageHeader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useConsultation, useSignConsultation, useUpdateConsultation } from '@/hooks/api/useConsultations'
 import { formatDate } from '@/lib/utils/date'
-import { Stethoscope, Clock, FileText, Activity, AlertCircle } from 'lucide-react'
+import { Clock, FileText, AlertCircle } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
@@ -46,7 +46,7 @@ export default function ConsultationDetailsPage({ params }: { params: Promise<{ 
     try {
       await signMutation.mutateAsync(id)
       toast.success('Consultation successfully signed and finalized')
-    } catch (error) {
+    } catch {
       toast.error('Failed to sign consultation')
     }
   }
@@ -56,7 +56,7 @@ export default function ConsultationDetailsPage({ params }: { params: Promise<{ 
       await updateMutation.mutateAsync({ id, data: formData })
       setIsEditing(false)
       toast.success('Consultation updated successfully')
-    } catch (error) {
+    } catch {
       toast.error('Failed to update consultation')
     }
   }

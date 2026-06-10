@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
-import { AlertCircle, ShieldAlert, AlertTriangle, CheckCircle, Info } from 'lucide-react'
+import { ShieldAlert } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -13,7 +13,6 @@ import {
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Badge } from '@/components/ui/badge'
 
 interface AllergyInteractionOverrideModalProps {
   isOpen: boolean;
@@ -27,8 +26,7 @@ export function AllergyInteractionOverrideModal({ isOpen, onClose, error, onConf
   const [reason, setReason] = useState("")
   
   const isAllergy = error.toLowerCase().includes("allergy")
-  const isInteraction = error.toLowerCase().includes("interaction")
-  
+
   const handleConfirm = () => {
     if (!reason.trim()) return;
     onConfirm(reason);

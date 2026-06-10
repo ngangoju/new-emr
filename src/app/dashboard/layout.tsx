@@ -5,7 +5,7 @@ import { motion } from "framer-motion"
 import { Spinner } from "@/components/ui/spinner"
 import { usePathname, useRouter } from "next/navigation"
 import { AUTH_EVENTS, getSessionUser, getUserRole, isAuthInitialized, onAuthInitialized } from "@/lib/utils/auth"
-import { canAccessDashboardRoute, getRoleDefaultDashboardRoute, normalizeUserRole } from "@/lib/authz/policy"
+import { canAccessDashboardRoute, getRoleDefaultDashboardRoute } from "@/lib/authz/policy"
 
 import { Header } from "@/components/layout/Header"
 import { Sidebar } from "@/components/layout/Sidebar"

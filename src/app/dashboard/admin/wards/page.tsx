@@ -51,7 +51,7 @@ export default function WardsPage() {
             }
             setIsDialogOpen(false);
             resetForm();
-        } catch (error) {
+        } catch {
             alert("Failed to save ward");
         }
     };
@@ -72,7 +72,7 @@ export default function WardsPage() {
             try {
                 await deleteWard.mutateAsync(id);
                 alert("Ward deleted successfully");
-            } catch (error) {
+            } catch {
                 alert("Failed to delete ward");
             }
         }

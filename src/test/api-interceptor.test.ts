@@ -1,6 +1,5 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
-import axios, { type AxiosError, type AxiosResponse, type InternalAxiosRequestConfig } from 'axios'
-import { api, parseRefreshTokenResponse, type RefreshTokenResponse } from '@/lib/api'
+import { describe, expect, it } from 'vitest'
+import { parseRefreshTokenResponse, type RefreshTokenResponse } from '@/lib/api'
 
 describe('API Interceptor - Auth Refresh Handling', () => {
     describe('parseRefreshTokenResponse', () => {

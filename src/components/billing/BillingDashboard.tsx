@@ -64,7 +64,9 @@ export function BillingDashboard() {
   const { createMobileMoneyPayment, creatingMobileMoneyPayment } = useCreateMobileMoneyPayment()
   const { data: detailsPayments = [] } = usePayments(detailsInvoice?.id)
   const { data: momoTransaction } = useMobileMoneyTransaction(activeMomoTransactionId || undefined, !!activeMomoTransactionId)
-  const { isRole } = useRole()
+  const { isRole, hasPermission, isLoading: roleLoading } = useRole()
+  // Hide write controls the backend would 403 for this role (popup-free billing page).
+  const canCreateInvoice = !roleLoading && hasPermission('billing:invoice:create')
   const { data: patientAdmissions = [] } = useAdmissions(
     selectedInvoice
       ? {
@@ -166,6 +168,7 @@ export function BillingDashboard() {
 
     if (momoTransaction.status === 'SUCCESSFUL' && momoTransaction.paymentId) {
       toast.success('Mobile Money payment approved and recorded.')
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       closePaymentDialog()
       return
     }
@@ -325,16 +328,18 @@ export function BillingDashboard() {
         </CardContent>
       </Card>
 
-      <InvoiceGenerator
-        trigger={
-          <Button
-            className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg hover:shadow-xl z-50"
-            size="lg"
-          >
-            <Plus className="h-6 w-6" />
-          </Button>
-        }
-      />
+      {canCreateInvoice && (
+        <InvoiceGenerator
+          trigger={
+            <Button
+              className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg hover:shadow-xl z-50"
+              size="lg"
+            >
+              <Plus className="h-6 w-6" />
+            </Button>
+          }
+        />
+      )}
 
       <Dialog open={!!selectedInvoice} onOpenChange={(open) => !open && closePaymentDialog()}>
         <CompactModalShell className="sm:!max-w-[600px]">

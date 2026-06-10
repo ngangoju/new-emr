@@ -41,7 +41,7 @@ export function DoctorSelector({
     enabled: open,
   })
 
-  const doctors = data?.data ?? []
+  const doctors = useMemo(() => data?.data ?? [], [data])
   const selectedDoctor = useMemo(
     () => doctors.find((doctor) => doctor.id === value),
     [doctors, value],

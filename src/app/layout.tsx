@@ -27,7 +27,6 @@ export const metadata: Metadata = {
   },
   description: "Revolutionizing Healthcare Management",
 };
-
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { QueryProvider } from "@/components/providers/query-provider";
 import { ToasterProvider } from "@/components/providers/toaster-provider";

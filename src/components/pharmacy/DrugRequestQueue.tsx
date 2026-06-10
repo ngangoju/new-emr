@@ -1,12 +1,10 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { Pill, User, Clock, CheckCircle, XCircle, AlertCircle, Eye, Package } from 'lucide-react'
+import { Pill, Clock, CheckCircle, XCircle, AlertCircle, Package } from 'lucide-react'
 import toast from 'react-hot-toast'
-
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import {
@@ -20,7 +18,6 @@ import {
 import { Badge } from '@/components/ui/badge'
 import {
   Dialog,
-  DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
@@ -36,7 +33,6 @@ import {
 } from '@/components/ui/select'
 import {
   Tabs,
-  TabsContent,
   TabsList,
   TabsTrigger,
 } from '@/components/ui/tabs'
@@ -172,13 +168,14 @@ export function DrugRequestQueue() {
         assessment.suggestedBatch?.id || '',
       ]),
     )
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelectedBatchesByItem(defaults)
   }, [selectedRequestAssessments, showFulfillDialog])
 
   // Check permission - either CAN_DISPENSE permission or PHARMACIST role
   const canDispense = useMemo(() => {
     if (roleLoading) return false
-    return hasPermission('CAN_DISPENSE') || hasPermission('drug_request:review') || hasPermission('pharmacy:dispense') || isRole('PHARMACIST') || isRole('ADMIN')
+    return hasPermission('CAN_DISPENSE') || hasPermission('drug_request:review') || hasPermission('pharmacy:dispense') || isRole('PHARMACIST')
   }, [hasPermission, isRole, roleLoading])
 
   // Filter requests by status

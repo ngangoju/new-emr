@@ -24,7 +24,7 @@ import {
 import { Button } from '@/components/ui/button'
 
 import { Checkbox } from '@/components/ui/checkbox'
-import { Edit3, Plus, Trash2, UserX, Pencil } from 'lucide-react'
+import { Plus, Trash2, UserX, Pencil } from 'lucide-react'
 
 import {
   Dialog,
@@ -165,6 +165,7 @@ export function UserManagementTable() {
             normalized[userId] = normalizeRoles(roles)
           }
         })
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setRoleOverrides(normalized)
       }
     } catch {

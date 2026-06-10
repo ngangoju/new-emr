@@ -1,15 +1,14 @@
 'use client'
 
 import React, { useEffect } from 'react'
-import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useUIStore } from "@/lib/stores/uiStore"
-import { Settings, Moon, Sun, Globe, Bell, Shield, Database, Layout, Loader2 } from "lucide-react"
+import { Moon, Sun, Globe, Bell, Shield, Layout, Loader2 } from "lucide-react"
 import { useSettings } from "@/hooks/useSettings"
-import type { UserSettings, NotificationPreferences } from '@/types/admin'
+import type { UserSettings } from '@/types/admin'
 
 export default function SettingsPage() {
   const isDarkMode = useUIStore((state) => state.isDarkMode)
@@ -24,7 +23,7 @@ export default function SettingsPage() {
     isUpdatingSettings,
     notifications,
     updateNotifications,
-    isUpdatingNotifications
+    
   } = useSettings()
 
   // Sync dark mode from settings if available
@@ -36,7 +35,7 @@ export default function SettingsPage() {
         // toggleDarkMode() // We might want a setDarkMode instead
       }
     }
-  }, [settings])
+  }, [settings, isDarkMode])
 
   const handleToggleTheme = async (checked: boolean) => {
     const theme = checked ? 'dark' : 'light'

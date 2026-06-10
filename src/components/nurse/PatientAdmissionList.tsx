@@ -25,7 +25,6 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
   Dialog,
-  DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
@@ -39,7 +38,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -101,8 +99,7 @@ function getAdmissionDisplayName(admission: Admission): string {
 
 function getAdmissionDisplayId(
   admission: Admission,
-  revealedIds: RevealedIdsMap,
-  toggleReveal: (id: string) => void
+  revealedIds: RevealedIdsMap
 ): { displayValue: string | null; isRevealed: boolean; canReveal: boolean } {
   const nationalId = admission.patientNationalId?.trim()
   const patientId = admission.patientId?.trim()
@@ -292,7 +289,7 @@ export function PatientAdmissionList() {
               </TableHeader>
               <TableBody>
                 {admissions.map((admission) => {
-                  const idInfo = getAdmissionDisplayId(admission, revealedIds, toggleIdReveal)
+                  const idInfo = getAdmissionDisplayId(admission, revealedIds)
                   return (
                   <TableRow key={admission.id}>
                     <TableCell>

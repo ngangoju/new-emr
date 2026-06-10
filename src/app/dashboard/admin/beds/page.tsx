@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useBeds, useWards, useCreateBed, useUpdateBed, useDeleteBed, Bed, Ward } from "@/hooks/useWardManagement";
+import { useBeds, useWards, useCreateBed, useUpdateBed, useDeleteBed, Bed } from "@/hooks/useWardManagement";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -51,7 +51,7 @@ export default function BedsPage() {
             }
             setIsDialogOpen(false);
             resetForm();
-        } catch (error) {
+        } catch {
             alert("Failed to save bed");
         }
     };
@@ -71,7 +71,7 @@ export default function BedsPage() {
             try {
                 await deleteBed.mutateAsync(id);
                 alert("Bed deleted successfully");
-            } catch (error) {
+            } catch {
                 alert("Failed to delete bed");
             }
         }

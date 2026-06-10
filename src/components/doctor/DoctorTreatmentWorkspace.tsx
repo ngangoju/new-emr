@@ -19,7 +19,6 @@ import {
   ShieldCheck,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
-
 import { ClinicalAddendumModal } from '@/components/doctor/ClinicalAddendumModal'
 import { DoctorImagingResultDetail } from '@/components/doctor/DoctorImagingResultDetail'
 import { DoctorPharmacyQueue } from '@/components/doctor/DoctorPharmacyQueue'

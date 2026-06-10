@@ -2,9 +2,9 @@
 
 import { useState } from 'react'
 import toast from 'react-hot-toast'
-
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { useRole } from '@/hooks/useRole'
 import {
   Dialog,
   DialogContent,
@@ -37,6 +37,8 @@ function priorityClass(priority: string) {
 }
 
 export function LabOrderDetailDialog({ orderId, open, onOpenChange }: LabOrderDetailDialogProps) {
+  const { hasPermission, isLoading: roleLoading } = useRole()
+  const canEnterResults = !roleLoading && hasPermission('lab:result:enter')
   const detailQuery = useLabOrderDetail(orderId ?? '')
   const { rejectSample, rejecting } = useRejectSample()
   const [rejectOpen, setRejectOpen] = useState(false)
@@ -127,7 +129,7 @@ export function LabOrderDetailDialog({ orderId, open, onOpenChange }: LabOrderDe
                 </div>
               ) : null}
 
-              {(order.status === 'PENDING' || order.status === 'IN_PROGRESS') ? (
+              {canEnterResults && (order.status === 'PENDING' || order.status === 'IN_PROGRESS') ? (
                 <div className="flex justify-end">
                   <Button variant="destructive" onClick={() => setRejectOpen(true)}>
                     Reject Specimen
@@ -135,7 +137,7 @@ export function LabOrderDetailDialog({ orderId, open, onOpenChange }: LabOrderDe
                 </div>
               ) : null}
 
-              {order.status === 'IN_PROGRESS' ? (
+              {canEnterResults && order.status === 'IN_PROGRESS' ? (
                 <LabResultForm order={order} onSubmitted={() => onOpenChange(false)} />
               ) : (
                 <div className="rounded-xl border bg-white p-5 text-sm text-muted-foreground">

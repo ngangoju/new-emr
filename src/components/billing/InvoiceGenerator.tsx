@@ -24,7 +24,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Plus, Trash2, Save, CreditCard } from 'lucide-react'
+import { Trash2, Save, CreditCard } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { PaymentMethodsSelect } from './PaymentMethodsSelect'
 import { useCreateMobileMoneyPayment, useCreatePayment, useMobileMoneyTransaction } from '@/hooks/usePayments'
@@ -34,7 +34,6 @@ import { TariffSearchCombobox } from './TariffSearchCombobox'
 import { DoctorSelector } from '@/components/shared/DoctorSelector'
 import type { Patient } from '@/types/patient'
 import type { Tariff, PaymentMethod } from '@/types/billing'
-import { useTariffs } from '@/hooks/useTariffs'
 
 interface InvoiceItem {
   tariffId: string
@@ -69,7 +68,7 @@ function getEffectivePrice(tariff: Tariff, patient: Patient) {
     try {
       const parsed = JSON.parse(insuranceInfo);
       payer = (parsed.insurance || parsed.provider || payer).toUpperCase();
-    } catch (e) {
+    } catch {
        // fallback to payer
     }
   }
@@ -79,7 +78,7 @@ function getEffectivePrice(tariff: Tariff, patient: Patient) {
       try {
         const prices = JSON.parse(tariff.insurancePrices);
         if (prices.mutuelle) return prices.mutuelle;
-      } catch (e) {}
+      } catch {}
     }
     return tariff.rssbMmiPrice || tariff.basePrice;
   }
@@ -103,7 +102,7 @@ function getPatientShare(total: number, patient: Patient) {
       try {
         const parsed = JSON.parse(insuranceInfo);
         payer = (parsed.insurance || parsed.provider || payer).toUpperCase();
-      } catch (e) {}
+      } catch {}
     }
   
     if (payer.includes('MUTUELLE') || payer.includes('CBHI')) return total * 0.10;
@@ -155,6 +154,7 @@ export function InvoiceGenerator({ trigger }: { trigger: React.ReactNode }) {
   const insuranceDue = preview ? preview.insuranceDue : (subtotal - patientDue - discount)
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMomoPhoneNumber(patient.phone || '')
   }, [patient.id, patient.phone])
 
@@ -166,6 +166,7 @@ export function InvoiceGenerator({ trigger }: { trigger: React.ReactNode }) {
 
     if (momoTransaction.status === 'SUCCESSFUL' && momoTransaction.paymentId) {
       toast.success('Mobile Money payment approved and recorded.')
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setOpen(false)
       setPaymentAmount(0)
       setTransactionId('')
@@ -242,7 +243,7 @@ export function InvoiceGenerator({ trigger }: { trigger: React.ReactNode }) {
       lastMomoStatusRef.current = null
       toast.success('Invoice draft generated.')
       setActiveTab('payment')
-    } catch (e) {
+    } catch {
       toast.error('Failed to create invoice.')
     }
   }

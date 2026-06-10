@@ -20,7 +20,7 @@ import { getDashboardNavigationForRole, normalizeUserRole } from '@/lib/authz/po
 import { findDashboardSearchTarget } from '@/lib/utils/dashboardSearch'
   import { useUnreadCount, useNotificationsModule } from '@/hooks/useNotifications'
 import { formatRelativeTime } from '@/lib/utils/date'
-import { getNotificationIcon, getNotificationColor } from '@/types/notification'
+import { getNotificationColor } from '@/types/notification'
 
 type HeaderUser = SessionUser & {
   name?: string
@@ -42,6 +42,7 @@ export function Header() {
   const { notifications = [], isLoading: isLoadingNotifications, markAsRead, markAllAsRead, isMarkingAllAsRead, refetch: refetchNotifications } = useNotificationsModule({ limit: 10 })
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true)
     const sessionUser = getSessionUser()
     if (sessionUser) {
@@ -113,7 +114,7 @@ export function Header() {
     
     // Navigate to entity if applicable
     if (notification.entityType && notification.entityId) {
-      const route = getEntityRoute(notification.entityType, notification.entityId)
+      const route = getEntityRoute(notification.entityType)
       if (route) {
         router.push(route)
         setNotificationsOpen(false)
@@ -128,7 +129,7 @@ export function Header() {
   }
 
   // Helper to get route from entity type
-  const getEntityRoute = (entityType: string, entityId: string): string | null => {
+  const getEntityRoute = (entityType: string): string | null => {
     switch (entityType) {
       case 'CONSULTATION': return `/dashboard/doctor/consultations`
       case 'LAB_ORDER': return `/dashboard/lab`

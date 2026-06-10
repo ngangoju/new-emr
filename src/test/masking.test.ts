@@ -4,7 +4,6 @@ import {
     formatMaskedNationalId,
     maskPhoneNumber,
     getDisplayIdentifier,
-    type RevealedIdsMap
 } from '@/lib/utils/masking'
 
 describe('maskIdentifier', () => {

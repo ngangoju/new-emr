@@ -3,13 +3,11 @@
 import { useMemo, useState } from 'react'
 import { FlaskConical } from 'lucide-react'
 import toast from 'react-hot-toast'
-
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
   Dialog,
-  DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,

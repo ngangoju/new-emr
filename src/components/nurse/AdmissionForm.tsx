@@ -83,6 +83,7 @@ export function AdmissionForm({ onSuccess }: AdmissionFormProps) {
     },
   })
 
+  // eslint-disable-next-line react-hooks/incompatible-library
   const selectedWardId = watch('wardId')
 
   // Filter beds by selected ward

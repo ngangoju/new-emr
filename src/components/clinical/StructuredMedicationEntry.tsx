@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { Pill, Trash2, Search, AlertTriangle, CheckCircle, Info } from 'lucide-react'
+import { Pill, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -20,7 +20,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import { cn } from "@/lib/utils"
 import { useFormularySearch, MedicationFormulary, AddMedicationPayload } from '@/hooks/api/useConsultations'
 import { useDebounce } from '@/hooks/useDebounce'
 
@@ -54,6 +53,7 @@ export function StructuredMedicationEntry({ onAdd, isLoading }: StructuredMedica
     } else {
       setResults([])
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedSearch])
 
   const handleAdd = () => {

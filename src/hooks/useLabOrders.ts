@@ -1,16 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
-
 import { api } from '@/lib/api'
 import type {
   FinalizeStructuredResultPayload,
   LabInpatientFollowupItem,
   LabOrder,
   LabOrderDetail,
-  LabOrderResultPayload,
   LabOrderStatus,
   LabPanelDefinition,
-  LabResult,
   LabResultFinalizeRequest,
   LabResultSubmissionResponse,
   LabStats,
@@ -346,7 +343,7 @@ export function useFinalizeStructuredResult() {
       )
       return data
     },
-    onSuccess: (_, variables) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: labOrderKeys.all })
       queryClient.invalidateQueries({ queryKey: ['notifications'] })
       toast.success('Lab result finalized as structured panel.')

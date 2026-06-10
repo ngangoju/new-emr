@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react'
 import { format, isToday, parseISO } from 'date-fns'
-import { AlertCircle, CheckCircle2, Clock, ClipboardList, Pill, ScanLine, Syringe, TimerReset, X } from 'lucide-react'
+import { AlertCircle, CheckCircle2, Clock, ClipboardList, Pill, ScanLine, Syringe, TimerReset } from 'lucide-react'
 import {
   useAdmissionMedicationAdministrations,
   useAdmissionMedicationSchedule,
@@ -12,7 +12,6 @@ import { useDrugRequests } from '@/hooks/useDrugRequests'
 import type {
   Admission,
   MedicationAdministrationStatus,
-  MedicationScheduleEntry,
   MedicationScheduleTaskStatus
 } from '@/types/admission'
 import type { DrugRequest, DrugRequestItem } from '@/types/pharmacy'
@@ -212,6 +211,7 @@ export function MedicationAdministrationDialog({
     const preferredKey = firstScheduleOption
       ? `${firstScheduleOption.drugRequestId}:${firstScheduleOption.drugRequestItemIndex}`
       : medicationOptions[0]?.key
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelectedMedicationKey((current) => {
       if (current && medicationOptions.some((option) => option.key === current)) {
         return current
@@ -226,6 +226,7 @@ export function MedicationAdministrationDialog({
 
   useEffect(() => {
     if (!selectedMedication) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setQuantity(1)
       return
     }
