@@ -4,9 +4,32 @@ import { useMemo, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { Download, Loader2, Printer } from 'lucide-react'
 import toast from 'react-hot-toast'
+import DOMPurify from 'dompurify'
 import { Button } from '@/components/ui/button'
 import { useAfterVisitDocumentHistory, useExportAfterVisitDocument, usePrintableAfterVisitDocument } from '@/hooks/useWorkflow'
 import type { AfterVisitDocumentChangeDetail } from '@/types/workflow'
+
+/**
+ * Allowed HTML elements in discharge-packet body content.
+ * Restricted to clinical document formatting only — no script, iframe, form,
+ * input, or event-handler attributes. This prevents stored-XSS when the
+ * backend returns rich-text content authored by staff (or an attacker who
+ * managed to inject a payload into a patient record).
+ */
+const DISCHARGE_PURIFY_CONFIG: DOMPurify.Config = {
+  ALLOWED_TAGS: [
+    'div', 'span', 'p', 'strong', 'em', 'b', 'i', 'u',
+    'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+    'ul', 'ol', 'li', 'br', 'hr',
+    'table', 'thead', 'tbody', 'tfoot', 'tr', 'th', 'td',
+    'section', 'article', 'header', 'footer',
+    'blockquote', 'pre', 'code',
+  ],
+  ALLOWED_ATTR: ['class', 'style', 'id', 'colspan', 'rowspan'],
+  // Strip data-* and event handlers entirely
+  FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover', 'onfocus', 'onblur', 'onkeydown'],
+  KEEP_CONTENT: true,
+}
 
 type ChangeTone = 'added' | 'removed' | 'modified'
 
@@ -449,7 +472,7 @@ export default function ReceptionDischargePacketPage() {
         </div>
       ) : null}
 
-      <div dangerouslySetInnerHTML={{ __html: bodyHtml }} />
+      <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(bodyHtml, DISCHARGE_PURIFY_CONFIG) }} />
 
       <div className="no-print mx-auto max-w-5xl px-6 pb-10">
         <div className="mt-6 rounded-2xl border bg-white p-6 shadow-sm">
