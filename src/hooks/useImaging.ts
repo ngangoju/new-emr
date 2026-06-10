@@ -13,13 +13,14 @@ export function useImagingOrders(status?: string) {
     })
 }
 
-export function usePendingImagingOrders() {
+export function usePendingImagingOrders(options?: { enabled?: boolean }) {
     return useQuery({
         queryKey: ['imaging-orders', 'pending'],
         queryFn: async () => {
             const { data } = await api.get<ImagingOrder[]>('/imaging/orders/pending')
             return data
-        }
+        },
+        enabled: options?.enabled ?? true,
     })
 }
 

@@ -103,6 +103,17 @@ api.interceptors.response.use(
         const status = error.response?.status;
         const original = error.config;
 
+        // Requests aborted by client-side navigation (React Query unmount, route change)
+        // surface here with no HTTP response. They are not real failures — suppress them
+        // so fast page switches never raise a spurious "Action Failed" popup.
+        if (
+            axios.isCancel(error) ||
+            error.code === 'ERR_CANCELED' ||
+            error.code === 'ECONNABORTED'
+        ) {
+            return Promise.reject(error);
+        }
+
         // Handle 401 Unauthorized — attempt silent token refresh via cookie.
         // The refreshToken HttpOnly cookie is sent automatically by the browser.
         if (status === 401 && original && !original._retry) {
@@ -163,8 +174,19 @@ api.interceptors.response.use(
             window.dispatchEvent(new CustomEvent('emr:permission-denied'));
         }
 
-        // Auth/route guard states and expected not-found cases are handled by the caller.
-        if (status !== 401 && status !== 403 && status !== 404) {
+        // Rate limiting (429) is transient and self-resolving. Show a gentle, non-blocking
+        // notice (plain toast, NOT toast.error which renders the blocking "Action Failed"
+        // modal) and let React Query retry — never scare the user with a generic error.
+        if (status === 429) {
+            toast('You are going a little fast — please retry in a moment.', { icon: '⏳' });
+            return Promise.reject(error);
+        }
+
+        // Only raise the blocking error modal for an actual server response we can
+        // describe. Responseless errors (navigation aborts, transient network blips on
+        // background polls) must not pop "Action Failed". Auth/route-guard states (401/
+        // 403) and expected not-found (404) are handled by the caller / route guard.
+        if (error.response && status !== 401 && status !== 403 && status !== 404) {
             toast.error(errorMessage);
         }
 

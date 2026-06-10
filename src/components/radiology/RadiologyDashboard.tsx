@@ -33,7 +33,9 @@ export function RadiologyDashboard() {
   // radiology report (imaging:report:write). Viewer roles see the worklist read-only.
   const canAcquire = !roleLoading && hasPermission('imaging:study:update')
   const canReport = !roleLoading && hasPermission('imaging:report:write')
-  const { data: pending = [], isLoading: loadingPending } = usePendingImagingOrders()
+  // The pending worklist endpoint is radiology-operations only (imaging:study:update).
+  // Viewer roles (doctor, admin) load the completed-studies list instead — no 403.
+  const { data: pending = [], isLoading: loadingPending } = usePendingImagingOrders({ enabled: canAcquire })
   const { data: allOrders = [] } = useImagingOrders()
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedOrder, setSelectedOrder] = useState<ImagingOrder | null>(null)
@@ -111,6 +113,7 @@ export function RadiologyDashboard() {
         </Card>
       </div>
 
+      {canAcquire && (
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold">Active Worklist</h2>
@@ -200,10 +203,11 @@ export function RadiologyDashboard() {
           </CardContent>
         </Card>
       </div>
+      )}
 
       {completed.length > 0 && (
         <div className="space-y-4 pt-4">
-          <h2 className="text-lg font-semibold">Recently Completed</h2>
+          <h2 className="text-lg font-semibold">{canAcquire ? 'Recently Completed' : 'Imaging Studies'}</h2>
           <Card>
             <CardContent className="p-0">
               <Table>
