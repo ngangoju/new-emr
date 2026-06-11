@@ -101,8 +101,8 @@ export function CheckInModal({ open, onOpenChange }: CheckInModalProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[560px]">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-[560px] max-h-[90vh] flex flex-col p-0 gap-0">
+        <DialogHeader className="px-6 pt-6 pb-4 border-b shrink-0">
           <DialogTitle className="flex items-center gap-2 text-2xl">
             <User className="h-6 w-6 text-primary" />
             Register Visit
@@ -112,7 +112,7 @@ export function CheckInModal({ open, onOpenChange }: CheckInModalProps) {
           </DialogDescription>
         </DialogHeader>
         
-        <div className="space-y-6 py-4">
+        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
           <div className="space-y-3">
             <Label className="text-base font-semibold">1. Patient</Label>
             <PatientSelector onSelect={setSelectedPatient} selectedPatientId={selectedPatient?.id} />
@@ -177,7 +177,7 @@ export function CheckInModal({ open, onOpenChange }: CheckInModalProps) {
           </div>
         </div>
 
-        <DialogFooter className="gap-2 sm:gap-0">
+        <DialogFooter className="px-6 py-4 border-t shrink-0 gap-2 sm:gap-0">
           <Button variant="ghost" onClick={resetAndClose} disabled={isSubmitting}>Cancel</Button>
           <Button 
             onClick={handleCheckIn} 
