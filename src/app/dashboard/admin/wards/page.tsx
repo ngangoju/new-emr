@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Pencil, Trash2, Plus, Building2 } from "lucide-react";
+import toast from "react-hot-toast";
 
 export default function WardsPage() {
     const { data: wards, isLoading } = useWards();
@@ -44,15 +45,15 @@ export default function WardsPage() {
         try {
             if (editingWard) {
                 await updateWard.mutateAsync({ id: editingWard.id, data: formData });
-                alert("Ward updated successfully");
+                toast.success("Ward updated successfully");
             } else {
                 await createWard.mutateAsync(formData);
-                alert("Ward created successfully");
+                toast.success("Ward created successfully");
             }
             setIsDialogOpen(false);
             resetForm();
         } catch {
-            alert("Failed to save ward");
+            toast.error("Failed to save ward");
         }
     };
 
@@ -71,9 +72,9 @@ export default function WardsPage() {
         if (confirm("Are you sure you want to delete this ward?")) {
             try {
                 await deleteWard.mutateAsync(id);
-                alert("Ward deleted successfully");
+                toast.success("Ward deleted successfully");
             } catch {
-                alert("Failed to delete ward");
+                toast.error("Failed to delete ward");
             }
         }
     };

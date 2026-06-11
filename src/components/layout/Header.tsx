@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -36,6 +36,7 @@ export function Header() {
   })
   const [mounted, setMounted] = useState(false)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
+  const searchInputRef = useRef<HTMLInputElement>(null)
 
   // Notification hooks
   const { data: unreadCount = 0, isLoading: isLoadingUnreadCount, refetch: refetchUnreadCount } = useUnreadCount()
@@ -62,7 +63,7 @@ export function Header() {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.metaKey && e.key === 'k') {
         e.preventDefault()
-        alert('Command palette stub - Cmd+K for quick search patients/invoices/consults')
+        searchInputRef.current?.focus()
       }
     }
     window.addEventListener('keydown', handleKeyDown)
@@ -178,6 +179,7 @@ export function Header() {
           <form className="relative flex-1 flex md:w-80" onSubmit={handleDashboardSearchSubmit}>
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
+              ref={searchInputRef}
               type="search"
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}

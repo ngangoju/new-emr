@@ -40,6 +40,9 @@ jobs:
       - name: Lint
         run: npm run lint -- --max-warnings=0
 
+      - name: API contract check
+        run: npm run contract:api
+
       - name: Unit tests (Vitest)
         env:
           CI: true

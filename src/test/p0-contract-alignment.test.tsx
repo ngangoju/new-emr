@@ -10,7 +10,7 @@ import {
   useUpdateTariffPrice,
 } from '@/hooks/useTariffManagement'
 import { useTariffs } from '@/hooks/useTariffs'
-import { useUploadResult } from '@/hooks/useLabOrders'
+import { useFinalizeStructuredResult, useUploadResult } from '@/hooks/useLabOrders'
 
 vi.mock('@/lib/api', () => ({
   api: {
@@ -144,6 +144,31 @@ describe('P0 contract alignment', () => {
         isCritical: false,
         specimenQuality: 'ADEQUATE',
       }),
+    )
+  })
+
+  it('uses /api/lab-orders/{id}/structured-results for structured lab result submission', async () => {
+    const { api } = await getApiMock()
+    api.post.mockResolvedValueOnce({ data: { orderId: 'LAB-2', orderStatus: 'COMPLETED', resultStatus: 'submitted' } })
+
+    const { result } = renderHook(() => useFinalizeStructuredResult(), {
+      wrapper: createWrapper(),
+    })
+
+    await act(async () => {
+      await result.current.finalizeStructuredResult({
+        orderId: 'LAB-2',
+        payload: {
+          values: {
+            hemoglobin: 14,
+          },
+        },
+      })
+    })
+
+    expect(api.post).toHaveBeenCalledWith(
+      '/api/lab-orders/LAB-2/structured-results',
+      expect.objectContaining({ values: { hemoglobin: 14 } }),
     )
   })
 })

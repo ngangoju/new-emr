@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Pencil, Trash2, Plus, Bed as BedIcon } from "lucide-react";
+import toast from "react-hot-toast";
 
 export default function BedsPage() {
     const { data: beds, isLoading: bedsLoading } = useBeds();
@@ -44,15 +45,15 @@ export default function BedsPage() {
         try {
             if (editingBed) {
                 await updateBed.mutateAsync({ id: editingBed.id, data: formData });
-                alert("Bed updated successfully");
+                toast.success("Bed updated successfully");
             } else {
                 await createBed.mutateAsync(formData);
-                alert("Bed created successfully");
+                toast.success("Bed created successfully");
             }
             setIsDialogOpen(false);
             resetForm();
         } catch {
-            alert("Failed to save bed");
+            toast.error("Failed to save bed");
         }
     };
 
@@ -70,9 +71,9 @@ export default function BedsPage() {
         if (confirm("Are you sure you want to delete this bed?")) {
             try {
                 await deleteBed.mutateAsync(id);
-                alert("Bed deleted successfully");
+                toast.success("Bed deleted successfully");
             } catch {
-                alert("Failed to delete bed");
+                toast.error("Failed to delete bed");
             }
         }
     };

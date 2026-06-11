@@ -338,7 +338,7 @@ export function useFinalizeStructuredResult() {
       payload: FinalizeStructuredResultPayload
     }) => {
       const { data } = await api.post<LabResultSubmissionResponse>(
-        `/api/lab-orders/${orderId}/results/structured`,
+        `/api/lab-orders/${orderId}/structured-results`,
         payload,
       )
       return data
