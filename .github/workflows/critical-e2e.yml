@@ -1,0 +1,75 @@
+name: Critical E2E
+
+on:
+  workflow_dispatch:
+    inputs:
+      playwright_base_url:
+        description: Frontend base URL to test (defaults to repo variable PLAYWRIGHT_BASE_URL)
+        required: false
+        type: string
+      auth_api_base:
+        description: Backend auth/API base URL (defaults to repo variable E2E_AUTH_API_BASE)
+        required: false
+        type: string
+      e2e_username:
+        description: Doctor username used for generic login smoke (defaults to repo variable E2E_USERNAME or doctor1)
+        required: false
+        type: string
+  schedule:
+    - cron: '0 3 * * *'
+
+permissions:
+  contents: read
+
+jobs:
+  critical-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      PLAYWRIGHT_BASE_URL: ${{ github.event.inputs.playwright_base_url != '' && github.event.inputs.playwright_base_url || vars.PLAYWRIGHT_BASE_URL }}
+      E2E_AUTH_API_BASE: ${{ github.event.inputs.auth_api_base != '' && github.event.inputs.auth_api_base || vars.E2E_AUTH_API_BASE }}
+      E2E_USERNAME: ${{ github.event.inputs.e2e_username != '' && github.event.inputs.e2e_username || vars.E2E_USERNAME || 'doctor1' }}
+      E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate E2E environment
+        run: |
+          missing=0
+          for name in PLAYWRIGHT_BASE_URL E2E_AUTH_API_BASE E2E_PASSWORD; do
+            if [ -z "${!name}" ]; then
+              echo "::error title=Missing required E2E configuration::Set ${name} via workflow input, repository variable, or secret before running Critical E2E."
+              missing=1
+            fi
+          done
+
+          if [ "$missing" -ne 0 ]; then
+            exit 1
+          fi
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run critical browser flows
+        env:
+          CI: true
+        run: npm run test:e2e:critical
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-critical-report
+          path: |
+            playwright-report
+            test-results

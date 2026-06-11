@@ -251,9 +251,45 @@ From workflow compliance analysis, major UI-impact gaps still tracked:
 - Role-based smoke scenarios tied to backend API contracts
 
 ### Quality gates
-- Changed-files lint gate (transitional)
+- Full-repo `eslint --max-warnings=0`
+- `npm audit --audit-level=high`
+- API contract validation against the backend route surface
+- Dependency review on pull requests
 - Critical action regressions (payments/lab/results/export)
 - Guardrail checks for `401` and `403` semantics
+
+### Running the critical Playwright suite
+
+The lightweight, supported browser gate is:
+
+```bash
+npm run test:e2e:critical
+```
+
+It runs only the Chromium-based critical suites:
+- `e2e/critical-flows.spec.ts`
+- `e2e/qa-workflow.spec.ts`
+
+Local default assumptions:
+- frontend at `http://localhost:3000`
+- backend/auth API at `http://localhost:8888`
+- seeded users still available (`doctor1`, `receptionist`, `cashier`, `ngango`, `matt`)
+
+To target a hosted staging environment instead of starting `next dev`, set:
+
+```bash
+PLAYWRIGHT_BASE_URL=https://staging-frontend.example.com
+E2E_AUTH_API_BASE=https://staging-api.example.com
+E2E_USERNAME=doctor1
+E2E_PASSWORD=...
+npm run test:e2e:critical
+```
+
+For GitHub Actions, use the `Critical E2E` workflow and configure:
+- repository variable `PLAYWRIGHT_BASE_URL`
+- repository variable `E2E_AUTH_API_BASE`
+- optional repository variable `E2E_USERNAME`
+- repository secret `E2E_PASSWORD`
 
 ---
 

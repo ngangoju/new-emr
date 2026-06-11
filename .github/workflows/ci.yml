@@ -6,7 +6,22 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: read
+
 jobs:
+  dependency-review:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Dependency review
+        uses: actions/dependency-review-action@v5
+        with:
+          fail-on-severity: high
+
   frontend:
     runs-on: ubuntu-latest
     defaults:
@@ -14,7 +29,7 @@ jobs:
         shell: bash
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -28,11 +43,12 @@ jobs:
         run: npm ci
 
       - name: Secret scan
-        uses: gitleaks/gitleaks-action@v2
+        uses: gitleaks/gitleaks-action@v3
         with:
           args: detect --no-git --source . --redact --verbose
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
 
       - name: Dependency audit
         run: npm audit --audit-level=high
@@ -47,3 +63,8 @@ jobs:
         env:
           CI: true
         run: npm run test -- run
+
+      - name: Production build
+        env:
+          CI: true
+        run: npm run build

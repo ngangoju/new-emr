@@ -12,8 +12,8 @@ import { test, expect, type Page, type APIResponse } from '@playwright/test'
  *  5. Doctor:    the patient appears in the doctor's work area.
  */
 
-const API = 'http://localhost:8888'
-const PASSWORD = 'password123'
+const API = process.env.E2E_AUTH_API_BASE || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8888'
+const PASSWORD = process.env.E2E_PASSWORD || 'password123'
 const EV = '/tmp/emr-qa/evidence/workflow'
 
 test.describe.configure({ mode: 'serial' })
