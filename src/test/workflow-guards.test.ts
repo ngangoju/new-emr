@@ -82,4 +82,22 @@ describe('workflow guard helpers', () => {
       total: 5000,
     }, new Date('2026-06-07T09:00:00Z'))).toBe(false)
   })
+
+  it('matches the backend UTC day for the initial-payment gate', () => {
+    expect(shouldHoldTriageForInitialInvoice({
+      createdAt: '2026-06-07T21:30:00Z',
+      paymentStatus: 'UNPAID',
+      patientDue: 5000,
+      insuranceDue: 0,
+      total: 5000,
+    }, new Date('2026-06-07T22:30:00Z'))).toBe(true)
+
+    expect(shouldHoldTriageForInitialInvoice({
+      createdAt: '2026-06-07T22:30:00Z',
+      paymentStatus: 'UNPAID',
+      patientDue: 5000,
+      insuranceDue: 0,
+      total: 5000,
+    }, new Date('2026-06-08T00:30:00Z'))).toBe(false)
+  })
 })

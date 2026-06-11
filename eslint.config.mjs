@@ -7,6 +7,7 @@ const eslintConfig = defineConfig([
   ...nextTs,
   {
     rules: {
+      "no-empty": "error",
       "react-hooks/set-state-in-effect": "warn",
     },
   },

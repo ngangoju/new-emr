@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { Download, Loader2, Printer } from 'lucide-react'
 import toast from 'react-hot-toast'
-import DOMPurify from 'dompurify'
+import DOMPurify, { type Config as DOMPurifyConfig } from 'dompurify'
 import { Button } from '@/components/ui/button'
 import { useAfterVisitDocumentHistory, useExportAfterVisitDocument, usePrintableAfterVisitDocument } from '@/hooks/useWorkflow'
 import type { AfterVisitDocumentChangeDetail } from '@/types/workflow'
@@ -16,7 +16,7 @@ import type { AfterVisitDocumentChangeDetail } from '@/types/workflow'
  * backend returns rich-text content authored by staff (or an attacker who
  * managed to inject a payload into a patient record).
  */
-const DISCHARGE_PURIFY_CONFIG: DOMPurify.Config = {
+const DISCHARGE_PURIFY_CONFIG: DOMPurifyConfig = {
   ALLOWED_TAGS: [
     'div', 'span', 'p', 'strong', 'em', 'b', 'i', 'u',
     'h1', 'h2', 'h3', 'h4', 'h5', 'h6',

@@ -19,9 +19,10 @@ import { PatientRegistrationModal } from '@/components/shared/PatientRegistratio
 export default function ReceptionPage() {
   const router = useRouter()
   const { role, isLoading: roleLoading, hasPermission } = useRole()
-  const { data: stats } = useQueueStats({ enabled: !roleLoading })
   const [isCheckInModalOpen, setIsCheckInModalOpen] = useState(false)
   const [isRegisterPatientOpen, setIsRegisterPatientOpen] = useState(false)
+  const canReadQueue = !roleLoading && hasPermission('queue:read')
+  const { data: stats } = useQueueStats({ enabled: canReadQueue })
   const canRegisterPatient = hasPermission('CAN_REGISTER_PATIENT') || hasPermission('patient:create')
   const canCreateVisit = hasPermission('queue:manage') || canRegisterPatient
   const canManageSchedule = canAccessDashboardRoute(role, '/dashboard/doctor/schedule')

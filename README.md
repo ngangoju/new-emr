@@ -28,7 +28,7 @@ It merges frontend-relevant material previously spread across multiple markdown 
 A modern Electronic Medical Records frontend built with Next.js, TypeScript, and Tailwind CSS for role-based hospital workflows.
 
 - **Status**: Production-oriented frontend with real backend integration
-- **Backend dependency**: Spring Boot API (default `http://localhost:8080`)
+- **Backend dependency**: Spring Boot API (default `http://localhost:8888`)
 - **Primary goals**: clear role-based UX, safe critical actions, and operational reporting visibility
 
 ---
@@ -49,7 +49,7 @@ npm install
 ### Environment
 Create `.env.local`:
 ```bash
-NEXT_PUBLIC_API_URL=http://localhost:8080
+NEXT_PUBLIC_API_URL=http://localhost:8888
 ```
 
 ### Run
@@ -274,4 +274,3 @@ From workflow compliance analysis, major UI-impact gaps still tracked:
 
 - `BACKEND_README.md` — consolidated backend architecture, contracts, modules, reporting/radiology backend, insurance pricing logic, and implementation orchestration.
 - `QA_TEST_README.md` — consolidated QA plans, smoke scripts, regression workflows, evidence templates, and known issues.
-

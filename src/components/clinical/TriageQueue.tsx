@@ -19,14 +19,16 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useRole } from '@/hooks/useRole'
 
 export function TriageQueue() {
-  const { data: queue, isLoading } = useQueue()
   const queryClient = useQueryClient()
-  const { hasPermission, isRole } = useRole()
+  const { hasPermission, isRole, isLoading: roleLoading } = useRole()
+  const canReadQueue = !roleLoading && hasPermission('queue:read')
+  const { data: queue, isLoading } = useQueue({ enabled: canReadQueue })
   // vitals:write mirrors the backend guard on POST /patients/{id}/vitals; oversight
   // roles (ADMIN, directors) browse the queue without the record-vitals action.
   const canRecordVitals = hasPermission('vitals:write') || isRole(['NURSE', 'CHIEF_NURSE'])
 
   useSocketEvent('queue:update', () => {
+    if (!canReadQueue) return
     queryClient.invalidateQueries({ queryKey: ['queue'] })
   })
 
@@ -101,8 +103,27 @@ export function TriageQueue() {
     }
   }
 
-  if (isLoading) {
+  if (roleLoading || (canReadQueue && isLoading)) {
     return <div className="p-12 text-center animate-pulse text-muted-foreground italic">Updating live triage queue...</div>
+  }
+
+  if (!canReadQueue) {
+    return (
+      <Card className="border-none shadow-xl overflow-hidden bg-white/50 backdrop-blur-md">
+        <CardHeader className="bg-gradient-to-r from-slate-900 to-slate-800 text-white">
+          <CardTitle className="text-2xl font-bold flex items-center gap-2">
+            <Activity className="h-6 w-6 text-red-400" />
+            Live Triage Worklist
+          </CardTitle>
+          <CardDescription className="text-slate-400 font-medium tracking-wide">
+            Real-time patient flow and triage priority
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="py-12 text-center text-muted-foreground">
+          Queue visibility is not available for your current role.
+        </CardContent>
+      </Card>
+    )
   }
 
   return (

@@ -5,7 +5,7 @@ const E2E_CREDENTIALS = {
     password: process.env.E2E_PASSWORD || 'password123',
 }
 
-const AUTH_API_BASE = process.env.E2E_AUTH_API_BASE || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
+const AUTH_API_BASE = process.env.E2E_AUTH_API_BASE || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8888'
 
 async function submitLoginForm(page: Page) {
     await page.getByLabel(/username/i).fill(E2E_CREDENTIALS.username)

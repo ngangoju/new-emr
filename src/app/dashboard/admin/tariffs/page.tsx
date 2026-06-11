@@ -34,7 +34,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
 import { Plus, Search, Pencil, Trash2, FileUp, Download } from 'lucide-react'
-import { read, utils, write } from 'xlsx'
+import ExcelJS from 'exceljs'
 import {
   Dialog,
   DialogContent,
@@ -69,6 +69,122 @@ const defaultFormState: CreateTariffInput = {
 }
 
 type TariffImportRow = Record<string, string | number | null | undefined>
+
+const tariffTemplateRows = [
+  {
+    'Service Name': 'General Consultation',
+    'Billing Code': 'CONS-001',
+    'Category': 'CONSULTATION',
+    'Base Price': 15000,
+    'Private Price': 20000,
+    'RSSB MMI Price': 12000,
+    'Description': 'Initial general consultation'
+  },
+  {
+    'Service Name': 'Laboratory Test',
+    'Billing Code': 'LAB-001',
+    'Category': 'LAB',
+    'Base Price': 8000,
+    'Private Price': 10000,
+    'RSSB MMI Price': 6400,
+    'Description': 'Standard blood test'
+  }
+]
+
+const tariffImportHeaders = Object.keys(tariffTemplateRows[0])
+
+const stringifySpreadsheetCell = (value: ExcelJS.CellValue): string | number | null => {
+  if (value === null || value === undefined) return null
+  if (typeof value === 'string' || typeof value === 'number') return value
+  if (typeof value === 'boolean') return value ? 'true' : 'false'
+  if (value instanceof Date) return value.toISOString()
+  if (typeof value === 'object') {
+    if ('text' in value && typeof value.text === 'string') return value.text
+    if ('result' in value) return stringifySpreadsheetCell(value.result as ExcelJS.CellValue)
+    if ('richText' in value && Array.isArray(value.richText)) {
+      return value.richText.map(part => part.text).join('')
+    }
+  }
+  return String(value)
+}
+
+const parseCsvRows = (text: string): TariffImportRow[] => {
+  const rows: string[][] = []
+  let current = ''
+  let row: string[] = []
+  let inQuotes = false
+
+  for (let i = 0; i < text.length; i += 1) {
+    const char = text[i]
+    const nextChar = text[i + 1]
+
+    if (char === '"' && inQuotes && nextChar === '"') {
+      current += '"'
+      i += 1
+      continue
+    }
+    if (char === '"') {
+      inQuotes = !inQuotes
+      continue
+    }
+    if (char === ',' && !inQuotes) {
+      row.push(current.trim())
+      current = ''
+      continue
+    }
+    if ((char === '\n' || char === '\r') && !inQuotes) {
+      if (char === '\r' && nextChar === '\n') i += 1
+      row.push(current.trim())
+      if (row.some(cell => cell.length > 0)) rows.push(row)
+      row = []
+      current = ''
+      continue
+    }
+    current += char
+  }
+
+  row.push(current.trim())
+  if (row.some(cell => cell.length > 0)) rows.push(row)
+
+  const [headers = [], ...dataRows] = rows
+  return dataRows.map(dataRow => {
+    const record: TariffImportRow = {}
+    headers.forEach((header, index) => {
+      if (header) record[header] = dataRow[index] ?? ''
+    })
+    return record
+  })
+}
+
+const parseSpreadsheetRows = async (file: File): Promise<TariffImportRow[]> => {
+  if (file.name.toLowerCase().endsWith('.csv')) {
+    return parseCsvRows(await file.text())
+  }
+
+  const workbook = new ExcelJS.Workbook()
+  await workbook.xlsx.load(await file.arrayBuffer())
+  const worksheet = workbook.worksheets[0]
+  if (!worksheet) return []
+
+  const headers: string[] = []
+  worksheet.getRow(1).eachCell((cell, colNumber) => {
+    headers[colNumber] = String(stringifySpreadsheetCell(cell.value) ?? '').trim()
+  })
+
+  const rows: TariffImportRow[] = []
+  worksheet.eachRow((worksheetRow, rowNumber) => {
+    if (rowNumber === 1) return
+    const record: TariffImportRow = {}
+    headers.forEach((header, colNumber) => {
+      if (!header) return
+      record[header] = stringifySpreadsheetCell(worksheetRow.getCell(colNumber).value)
+    })
+    if (Object.values(record).some(value => value !== null && value !== undefined && value !== '')) {
+      rows.push(record)
+    }
+  })
+  return rows
+}
 
 export default function TariffManagementPage() {
   const router = useRouter()
@@ -245,80 +361,53 @@ export default function TariffManagementPage() {
     if (!file) return
 
     try {
-      const reader = new FileReader()
-      reader.onload = async (e) => {
-        const data = e.target?.result
-        const workbook = read(data, { type: 'binary' })
-        const sheetName = workbook.SheetNames[0]
-        const worksheet = workbook.Sheets[sheetName]
-        const jsonData = utils.sheet_to_json<TariffImportRow>(worksheet)
-        const readCell = (row: TariffImportRow, ...keys: string[]) =>
-          keys.map((key) => row[key]).find((value) => value !== undefined && value !== null && value !== '') ?? ''
-        const readText = (row: TariffImportRow, ...keys: string[]) => String(readCell(row, ...keys))
-        const readNumber = (row: TariffImportRow, ...keys: string[]) =>
-          Number.parseFloat(String(readCell(row, ...keys) || '0'))
+      const jsonData = await parseSpreadsheetRows(file)
+      const readCell = (row: TariffImportRow, ...keys: string[]) =>
+        keys.map((key) => row[key]).find((value) => value !== undefined && value !== null && value !== '') ?? ''
+      const readText = (row: TariffImportRow, ...keys: string[]) => String(readCell(row, ...keys))
+      const readNumber = (row: TariffImportRow, ...keys: string[]) =>
+        Number.parseFloat(String(readCell(row, ...keys) || '0'))
 
-        // Map Excel columns to Tariff fields
-        // Expecting headers: Service Name, Billing Code, Category, Base Price, Private Price, RSSB MMI Price, Description
-        const tariffsToCreate: CreateTariffInput[] = jsonData.map(row => ({
-          serviceName: readText(row, 'Service Name', 'serviceName'),
-          billingCode: readText(row, 'Billing Code', 'billingCode'),
-          category: readText(row, 'Category', 'category'),
-          basePrice: readNumber(row, 'Base Price', 'basePrice'),
-          privatePrice: readCell(row, 'Private Price', 'privatePrice') ? readNumber(row, 'Private Price', 'privatePrice') : undefined,
-          rssbMmiPrice: readCell(row, 'RSSB MMI Price', 'rssbMmiPrice') ? readNumber(row, 'RSSB MMI Price', 'rssbMmiPrice') : undefined,
-          description: readText(row, 'Description', 'description')
-        })).filter(t => t.serviceName)
+      const tariffsToCreate: CreateTariffInput[] = jsonData.map(row => ({
+        serviceName: readText(row, 'Service Name', 'serviceName'),
+        billingCode: readText(row, 'Billing Code', 'billingCode'),
+        category: readText(row, 'Category', 'category'),
+        basePrice: readNumber(row, 'Base Price', 'basePrice'),
+        privatePrice: readCell(row, 'Private Price', 'privatePrice') ? readNumber(row, 'Private Price', 'privatePrice') : undefined,
+        rssbMmiPrice: readCell(row, 'RSSB MMI Price', 'rssbMmiPrice') ? readNumber(row, 'RSSB MMI Price', 'rssbMmiPrice') : undefined,
+        description: readText(row, 'Description', 'description')
+      })).filter(t => t.serviceName)
 
-        if (tariffsToCreate.length === 0) {
-          toast.error('No valid tariffs found in the file')
-          return
-        }
-
-        try {
-          await bulkCreateTariffs(tariffsToCreate)
-          toast.success(`Successfully imported ${tariffsToCreate.length} tariffs`)
-          // Reset file input
-          if (fileInputRef.current) fileInputRef.current.value = ''
-        } catch {
-          // Handled by global interceptor, we just need to catch it here to prevent the outer catch
-        }
+      if (tariffsToCreate.length === 0) {
+        toast.error('No valid tariffs found in the file')
+        return
       }
-      reader.readAsBinaryString(file)
+
+      try {
+        await bulkCreateTariffs(tariffsToCreate)
+        toast.success(`Successfully imported ${tariffsToCreate.length} tariffs`)
+        if (fileInputRef.current) fileInputRef.current.value = ''
+      } catch {
+        // Handled by global interceptor, we just need to catch it here to prevent the outer catch
+      }
     } catch (error) {
       console.error('Import error:', error)
       toast.error('Failed to read import file. Please check the file format.')
     }
   }
 
-  const downloadTemplate = () => {
-    const template = [
-      {
-        'Service Name': 'General Consultation',
-        'Billing Code': 'CONS-001',
-        'Category': 'CONSULTATION',
-        'Base Price': 15000,
-        'Private Price': 20000,
-        'RSSB MMI Price': 12000,
-        'Description': 'Initial general consultation'
-      },
-      {
-        'Service Name': 'Laboratory Test',
-        'Billing Code': 'LAB-001',
-        'Category': 'LAB',
-        'Base Price': 8000,
-        'Private Price': 10000,
-        'RSSB MMI Price': 6400,
-        'Description': 'Standard blood test'
-      }
-    ]
+  const downloadTemplate = async () => {
+    const workbook = new ExcelJS.Workbook()
+    const worksheet = workbook.addWorksheet('Tariffs')
+    worksheet.addRow(tariffImportHeaders)
+    tariffTemplateRows.forEach((row) => {
+      worksheet.addRow(tariffImportHeaders.map((header) => row[header as keyof typeof row]))
+    })
+    worksheet.columns.forEach((column) => {
+      column.width = 24
+    })
 
-    const worksheet = utils.json_to_sheet(template)
-    const workbook = utils.book_new()
-    utils.book_append_sheet(workbook, worksheet, 'Tariffs')
-
-    // Create Excel file and trigger download
-    const excelBuffer = write(workbook, { bookType: 'xlsx', type: 'array' })
+    const excelBuffer = await workbook.xlsx.writeBuffer()
     const data = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
     const url = URL.createObjectURL(data)
     const link = document.createElement('a')
@@ -356,7 +445,7 @@ export default function TariffManagementPage() {
             type="file"
             ref={fileInputRef}
             className="hidden"
-            accept=".xlsx, .xls, .csv"
+            accept=".xlsx,.csv"
             onChange={handleFileChange}
           />
           <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isImporting}>

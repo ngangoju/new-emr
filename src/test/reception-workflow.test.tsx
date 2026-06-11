@@ -1,20 +1,29 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import ReceptionPage from '@/app/dashboard/reception/page'
 
-vi.mock('@/hooks/useRole', () => ({
-  useRole: () => ({
+const mocks = vi.hoisted(() => ({
+  roleState: {
     role: 'RECEPTIONIST',
     isLoading: false,
+    permissions: ['CAN_REGISTER_PATIENT', 'patient:create', 'queue:manage', 'queue:read'],
+  },
+  useQueueStats: vi.fn(() => ({ data: { waitingCount: 0, seenTodayCount: 0 } })),
+}))
+
+vi.mock('@/hooks/useRole', () => ({
+  useRole: () => ({
+    role: mocks.roleState.role,
+    isLoading: mocks.roleState.isLoading,
     hasPermission: (permission: string) => (
-      ['CAN_REGISTER_PATIENT', 'patient:create', 'queue:manage'].includes(permission)
+      mocks.roleState.permissions.includes(permission)
     ),
   }),
 }))
 
 vi.mock('@/hooks/useQueue', () => ({
-  useQueueStats: () => ({ data: { waitingCount: 0, seenTodayCount: 0 } }),
+  useQueueStats: mocks.useQueueStats,
 }))
 
 vi.mock('@/components/clinical/TriageQueue', () => ({
@@ -38,12 +47,21 @@ vi.mock('@/components/shared/PatientRegistrationModal', () => ({
 }))
 
 describe('Reception workflow actions', () => {
+  beforeEach(() => {
+    mocks.roleState.role = 'RECEPTIONIST'
+    mocks.roleState.isLoading = false
+    mocks.roleState.permissions = ['CAN_REGISTER_PATIENT', 'patient:create', 'queue:manage', 'queue:read']
+    mocks.useQueueStats.mockClear()
+    mocks.useQueueStats.mockReturnValue({ data: { waitingCount: 0, seenTodayCount: 0 } })
+  })
+
   it('opens the register visit workflow from the check-in action', () => {
     render(<ReceptionPage />)
 
     fireEvent.click(screen.getByRole('button', { name: /Check-in Patient/i }))
 
     expect(screen.getByRole('dialog')).toHaveTextContent('Register Visit')
+    expect(mocks.useQueueStats).toHaveBeenCalledWith({ enabled: true })
   })
 
   it('opens patient registration from the registration action', () => {
@@ -52,5 +70,13 @@ describe('Reception workflow actions', () => {
     fireEvent.click(screen.getByRole('button', { name: /Register New Patient/i }))
 
     expect(screen.getByRole('dialog')).toHaveTextContent('Register New Patient')
+  })
+
+  it('does not poll queue stats when the role lacks queue read permission', () => {
+    mocks.roleState.permissions = ['CAN_REGISTER_PATIENT', 'patient:create']
+
+    render(<ReceptionPage />)
+
+    expect(mocks.useQueueStats).toHaveBeenCalledWith({ enabled: false })
   })
 })

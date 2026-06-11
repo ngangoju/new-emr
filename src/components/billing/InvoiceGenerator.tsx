@@ -68,8 +68,8 @@ function getEffectivePrice(tariff: Tariff, patient: Patient) {
     try {
       const parsed = JSON.parse(insuranceInfo);
       payer = (parsed.insurance || parsed.provider || payer).toUpperCase();
-    } catch {
-       // fallback to payer
+    } catch (error) {
+       console.warn('Failed to parse patient insurance information for invoice pricing.', error)
     }
   }
 
@@ -78,7 +78,9 @@ function getEffectivePrice(tariff: Tariff, patient: Patient) {
       try {
         const prices = JSON.parse(tariff.insurancePrices);
         if (prices.mutuelle) return prices.mutuelle;
-      } catch {}
+      } catch (error) {
+        console.warn('Failed to parse tariff insurance prices for invoice pricing.', error)
+      }
     }
     return tariff.rssbMmiPrice || tariff.basePrice;
   }
@@ -102,7 +104,9 @@ function getPatientShare(total: number, patient: Patient) {
       try {
         const parsed = JSON.parse(insuranceInfo);
         payer = (parsed.insurance || parsed.provider || payer).toUpperCase();
-      } catch {}
+      } catch (error) {
+        console.warn('Failed to parse patient insurance information for payment split.', error)
+      }
     }
   
     if (payer.includes('MUTUELLE') || payer.includes('CBHI')) return total * 0.10;

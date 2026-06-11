@@ -42,6 +42,10 @@ function getEffectivePatientDue(invoice: InitialInvoiceGateInput) {
   return hasLegacyUnsplitTotal ? total : patientDue
 }
 
+function utcDateKey(date: Date) {
+  return date.toISOString().slice(0, 10)
+}
+
 export function shouldHoldTriageForInitialInvoice(invoice: InitialInvoiceGateInput, today = new Date()) {
   const dateSource = invoice.invoiceDate ?? invoice.createdAt
   if (!dateSource) return false
@@ -50,7 +54,7 @@ export function shouldHoldTriageForInitialInvoice(invoice: InitialInvoiceGateInp
     ? dateSource
     : new Date(dateSource)
 
-  if (Number.isNaN(invoiceDate.getTime()) || invoiceDate.toDateString() !== today.toDateString()) {
+  if (Number.isNaN(invoiceDate.getTime()) || utcDateKey(invoiceDate) !== utcDateKey(today)) {
     return false
   }
 

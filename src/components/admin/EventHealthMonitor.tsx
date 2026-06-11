@@ -53,7 +53,7 @@ export function EventHealthMonitor() {
             <ServerCrash className="w-10 h-10 text-destructive" />
             <p className="text-base font-semibold text-destructive">Backend Unavailable</p>
             <p className="text-sm text-center max-w-sm">
-              Cannot reach the server at <code className="text-xs bg-muted px-1 py-0.5 rounded">localhost:8080</code>.
+              Cannot reach the server at <code className="text-xs bg-muted px-1 py-0.5 rounded">localhost:8888</code>.
               Start the backend to view domain event health.
             </p>
             <div className="mt-2 rounded-md bg-muted px-4 py-3 text-xs font-mono text-left space-y-1 w-full max-w-sm">
