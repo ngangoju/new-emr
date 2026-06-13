@@ -28,11 +28,11 @@ class SocketClient {
         if (this.socket?.readyState === WebSocket.OPEN || this.socket?.readyState === WebSocket.CONNECTING) return;
 
         this.manualDisconnect = false;
-        console.log(`Connecting to WebSocket: ${SOCKET_URL}/ws/queue`);
+        console.debug(`Connecting to WebSocket: ${SOCKET_URL}/ws/queue`);
         this.socket = new WebSocket(`${SOCKET_URL}/ws/queue`);
 
         this.socket.onopen = () => {
-            console.log('WebSocket connected');
+            console.debug('WebSocket connected');
             this.reconnectAttempts = 0;
             this.triggerEvent('connect');
         };
@@ -64,12 +64,12 @@ class SocketClient {
         };
 
         this.socket.onclose = (event) => {
-            console.log('WebSocket disconnected', event.reason);
+            console.debug('WebSocket disconnected', event.reason);
             this.triggerEvent('disconnect');
 
             if (!this.manualDisconnect && this.reconnectAttempts < this.maxReconnectAttempts) {
                 this.reconnectAttempts++;
-                console.log(`Reconnecting in ${2 * this.reconnectAttempts}s... (Attempt ${this.reconnectAttempts})`);
+                console.debug(`Reconnecting in ${2 * this.reconnectAttempts}s... (Attempt ${this.reconnectAttempts})`);
                 setTimeout(() => this.connect(), 2000 * this.reconnectAttempts);
             }
         };

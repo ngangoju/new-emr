@@ -25,7 +25,6 @@ import type { Invoice } from '@/types/billing'
 import { format } from 'date-fns'
 import { useRole } from '@/hooks/useRole'
 import { useMyApprovals, usePendingApprovals, useRequestDiscountApproval, useRequestInvoiceVoid } from '@/hooks/useApprovals'
-import type { ApprovalRequest } from '@/types/approval'
 import toast from 'react-hot-toast'
 import { maskIdentifier, type RevealedIdsMap } from '@/lib/utils/masking'
 import { useMemo, useState } from 'react'
@@ -40,10 +39,6 @@ interface InvoicesTableProps {
 const MIN_VOID_REASON_LENGTH = 10
 const MIN_DISCOUNT_REASON_LENGTH = 8
 
-const getRequestTimestamp = (request: ApprovalRequest) => {
-  const timestamp = request.requestedAt ? new Date(request.requestedAt).getTime() : 0
-  return Number.isNaN(timestamp) ? 0 : timestamp
-}
 
 export function InvoicesTable({
   invoices,
@@ -203,9 +198,6 @@ const latestMyDiscountRequestsByInvoiceId = useMemo(() => {
                 || (!latestDiscountRequest && pendingDiscountInvoiceIds.has(invoice.id))
               )
               const isDiscountDenied = !isDiscountPending && !hasDiscountApplied && latestDiscountRequest?.status === 'denied'
-              const isDiscountApprovedOrApplied = !isDiscountPending
-                && !isDiscountDenied
-                && (latestDiscountRequest?.status === 'approved' || hasDiscountApplied)
 
               const patientFullName = invoice.patient?.fullName || 'Unknown'
               const patientInitials = patientFullName.trim() ? patientFullName.slice(0, 2).toUpperCase() : '??'

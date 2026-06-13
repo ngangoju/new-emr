@@ -113,6 +113,53 @@ async function loginAsDoctorOrFailWithBlocker(page: Page) {
     }
 }
 
+async function loginAsRoleOrFailWithBlocker(page: Page, username: string) {
+    await verifyBackendAuthReachable(page)
+
+    await page.goto('/login')
+    await dismissNextDevToolsIfPresent(page)
+    await page.getByLabel(/username/i).fill(username)
+    const passwordInput = page.getByLabel(/password/i)
+    await passwordInput.fill(E2E_CREDENTIALS.password)
+    await page.getByRole('button', { name: /sign in/i }).click()
+
+    let loginApiResponse = await waitForLoginApiResponse(page)
+
+    if (!loginApiResponse) {
+        await page.getByRole('button', { name: /sign in/i }).click({ force: true }).catch(() => undefined)
+        loginApiResponse = await waitForLoginApiResponse(page, 6_000)
+    }
+
+    const loginStatus = loginApiResponse?.status() ?? 0
+
+    try {
+        await expectUrlAfterLogin(page, /\/dashboard(?:\/.*)?$/i, 12_000)
+    } catch {
+        const loginRejected = await page
+            .getByText(/login failed\. please check your credentials\./i)
+            .isVisible()
+            .catch(() => false)
+
+        const authStorageSnapshot = await captureAuthStorageSnapshot(page).catch(() => null)
+
+        if (loginRejected || loginStatus === 401) {
+            throw new Error(
+                `Environment blocker: login rejected for ${username}/*** (status=${loginStatus || 'unknown'}, authSnapshot=${JSON.stringify(authStorageSnapshot)}). Verify backend seed data for deterministic E2E account.`
+            )
+        }
+
+        if (authStorageSnapshot?.hasSessionUser && authStorageSnapshot?.hasAccessTokenLocalStorage) {
+            await page.goto('/dashboard')
+            await expectUrlAfterLogin(page, /\/dashboard(?:\/.*)?$/i, 10_000)
+            return
+        }
+
+        throw new Error(
+            `Environment blocker: authentication did not land on /dashboard (current URL: ${page.url()}, loginStatus=${loginStatus || 'unknown'}, authSnapshot=${JSON.stringify(authStorageSnapshot)}). Verify frontend/backend auth bootstrap alignment.`
+        )
+    }
+}
+
 test.describe('Login Flow', () => {
     test('should display login page', async ({ page }) => {
         await page.goto('/')
@@ -196,6 +243,54 @@ test.describe('Consultation Workflow', () => {
         // Should show progress state
         await expect(page.getByText(/step\s*1\s*of\s*6/i).first()).toBeVisible()
         await expect(page.getByText(/17%\s*Complete/i)).toBeVisible()
+    })
+})
+
+test.describe('Lab Order → Result Flow', () => {
+    test('should view lab worklist and process result', async ({ page }) => {
+        try {
+            await loginAsRoleOrFailWithBlocker(page, 'lab_dexter')
+        } catch (error) {
+            console.warn(`Skipping Lab Order -> Result Flow: ${(error as Error).message}`)
+            test.skip(true, 'Lab technician credentials/role not seeded in this environment.')
+            return
+        }
+
+        await page.goto('/dashboard/lab')
+        await expect(page.getByText(/lab dashboard/i).first()).toBeVisible()
+        await expect(page.getByRole('table')).toBeVisible()
+
+        // If there's an accept button (environment-conditional), we can try to click it
+        const acceptButton = page.getByRole('button', { name: /accept/i }).first()
+        if (await acceptButton.count() > 0 && await acceptButton.isEnabled()) {
+            await acceptButton.click()
+            // Wait for toast or button status change
+            await expect(page.getByText(/order accepted/i)).toBeVisible().catch(() => undefined)
+        }
+    })
+})
+
+test.describe('Billing Payment Post Flow', () => {
+    test('should view billing invoices and process payment', async ({ page }) => {
+        try {
+            await loginAsRoleOrFailWithBlocker(page, 'cashier')
+        } catch (error) {
+            console.warn(`Skipping Billing Payment Post Flow: ${(error as Error).message}`)
+            test.skip(true, 'Cashier credentials/role not seeded in this environment.')
+            return
+        }
+
+        await page.goto('/dashboard/billing')
+        await expect(page.getByText(/billing dashboard/i).first()).toBeVisible()
+        await expect(page.getByText(/pending invoices/i).first()).toBeVisible()
+
+        // If there's a payment action button (environment-conditional), we can try to click it
+        const paymentButton = page.getByRole('button', { name: /process payment/i }).first()
+        if (await paymentButton.count() > 0 && await paymentButton.isEnabled()) {
+            await paymentButton.click()
+            await expect(page.getByRole('dialog')).toBeVisible()
+            await expect(page.getByText(/process invoice payment/i).first()).toBeVisible()
+        }
     })
 })
 

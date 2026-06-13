@@ -1,4 +1,5 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import TariffManagementPage from '@/app/dashboard/admin/tariffs/page'
@@ -115,25 +116,37 @@ describe('TariffManagementPage', () => {
     mocks.replace.mockReset()
   })
 
-  it('treats CLINICAL_DIRECTOR as price-only tariff editor', () => {
+  it('treats CLINICAL_DIRECTOR as price-only tariff editor', async () => {
+    const user = userEvent.setup()
     render(<TariffManagementPage />)
 
     expect(screen.getByRole('button', { name: /Add Tariff/i })).toBeDisabled()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Edit' }))
+    await user.click(screen.getByRole('button', { name: 'Edit' }))
 
     expect(screen.getByDisplayValue('General Consultation')).toBeDisabled()
     expect(screen.getByDisplayValue('CONS-001')).toBeDisabled()
   })
 
-  it('routes clinical-director edits through updateTariffPrice', () => {
+  it('routes clinical-director edits through updateTariffPrice', async () => {
+    const user = userEvent.setup()
     render(<TariffManagementPage />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Edit' }))
-    fireEvent.change(screen.getByDisplayValue('10000'), { target: { value: '12000' } })
-    fireEvent.change(screen.getByDisplayValue('15000'), { target: { value: '17000' } })
-    fireEvent.change(screen.getByDisplayValue('8000'), { target: { value: '9000' } })
-    fireEvent.click(screen.getByRole('button', { name: /Update Tariff|Save Changes|Update/i }))
+    await user.click(screen.getByRole('button', { name: 'Edit' }))
+
+    const basePriceInput = screen.getByDisplayValue('10000')
+    await user.clear(basePriceInput)
+    await user.type(basePriceInput, '12000')
+
+    const privatePriceInput = screen.getByDisplayValue('15000')
+    await user.clear(privatePriceInput)
+    await user.type(privatePriceInput, '17000')
+
+    const rssbPriceInput = screen.getByDisplayValue('8000')
+    await user.clear(rssbPriceInput)
+    await user.type(rssbPriceInput, '9000')
+
+    await user.click(screen.getByRole('button', { name: /Update Tariff|Save Changes|Update/i }))
 
     expect(mocks.updateTariffPrice).toHaveBeenCalledWith({
       id: 'tariff-1',
