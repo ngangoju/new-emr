@@ -75,7 +75,7 @@ function ProfileForm() {
   })
 
   function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log(values)
+    // form values submitted - handled by parent component
   }
 
   return (

@@ -76,6 +76,19 @@ export function useReports(options?: { enabled?: boolean }): UseReportsResult {
   }
 }
 
+export function useUsageReport(options?: { enabled?: boolean }) {
+  const enabled = options?.enabled ?? true
+
+  return useQuery({
+    queryKey: ['reports', 'usage'],
+    enabled,
+    queryFn: async () => {
+      const { data } = await api.get<Report>('/reports/usage')
+      return data ?? null
+    }
+  })
+}
+
 function triggerDownload(filename: string, contentType: string, content: string) {
   const blob = new Blob([content], { type: contentType })
   const url = URL.createObjectURL(blob)

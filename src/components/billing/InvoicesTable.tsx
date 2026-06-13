@@ -24,10 +24,11 @@ import { FileText, CreditCard, Trash2, Percent, Eye, EyeOff } from 'lucide-react
 import type { Invoice } from '@/types/billing'
 import { format } from 'date-fns'
 import { useRole } from '@/hooks/useRole'
-import { usePendingApprovals, useRequestDiscountApproval, useRequestInvoiceVoid } from '@/hooks/useApprovals'
+import { useMyApprovals, usePendingApprovals, useRequestDiscountApproval, useRequestInvoiceVoid } from '@/hooks/useApprovals'
+import type { ApprovalRequest } from '@/types/approval'
 import toast from 'react-hot-toast'
 import { maskIdentifier, type RevealedIdsMap } from '@/lib/utils/masking'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 
 interface InvoicesTableProps {
   invoices: Invoice[]
@@ -38,6 +39,11 @@ interface InvoicesTableProps {
 
 const MIN_VOID_REASON_LENGTH = 10
 const MIN_DISCOUNT_REASON_LENGTH = 8
+
+const getRequestTimestamp = (request: ApprovalRequest) => {
+  const timestamp = request.requestedAt ? new Date(request.requestedAt).getTime() : 0
+  return Number.isNaN(timestamp) ? 0 : timestamp
+}
 
 export function InvoicesTable({
   invoices,
@@ -69,12 +75,30 @@ export function InvoicesTable({
   const { data: pendingDiscountApprovals = [] } = usePendingApprovals('discount', {
     enabled: shouldFetchPendingDiscountApprovals,
   })
+  const { data: myDiscountApprovals = [] } = useMyApprovals({
+    type: 'discount',
+    enabled: !roleLoading && canRequestDiscountApproval,
+  })
 
-  const pendingDiscountInvoiceIds = new Set(
+  const pendingDiscountInvoiceIds = useMemo(() => new Set(
     pendingDiscountApprovals
       .filter((request) => request.type === 'discount' && request.status === 'pending' && request.targetId)
       .map((request) => request.targetId as string)
-  )
+  ), [pendingDiscountApprovals])
+
+const latestMyDiscountRequestsByInvoiceId = useMemo(() => {
+    // Sort by requestedAt descending to get the most recent request per invoice
+    const sorted = [...myDiscountApprovals].sort(
+      (a, b) => new Date(b.requestedAt).getTime() - new Date(a.requestedAt).getTime()
+    )
+    return sorted.reduce<Record<string, typeof myDiscountApprovals[number]>>((acc, request) => {
+      if (!request.targetId) return acc
+      if (!acc[request.targetId]) {
+        acc[request.targetId] = request
+      }
+      return acc
+    }, {})
+  }, [myDiscountApprovals])
 
   const openVoidDialog = (invoice: Invoice) => {
     setSelectedInvoiceForVoid(invoice)
@@ -172,7 +196,16 @@ export function InvoicesTable({
             {invoices.map((invoice) => {
               const statusValue = String(invoice.status).toUpperCase()
               const isVoidPending = statusValue === 'VOID_PENDING' || statusValue === 'PENDING_VOID'
-              const isDiscountPending = pendingDiscountInvoiceIds.has(invoice.id)
+              const latestDiscountRequest = latestMyDiscountRequestsByInvoiceId[invoice.id]
+              const hasDiscountApplied = typeof invoice.discountAmount === 'number' && invoice.discountAmount > 0
+              const isDiscountPending = !hasDiscountApplied && (
+                latestDiscountRequest?.status === 'pending'
+                || (!latestDiscountRequest && pendingDiscountInvoiceIds.has(invoice.id))
+              )
+              const isDiscountDenied = !isDiscountPending && !hasDiscountApplied && latestDiscountRequest?.status === 'denied'
+              const isDiscountApprovedOrApplied = !isDiscountPending
+                && !isDiscountDenied
+                && (latestDiscountRequest?.status === 'approved' || hasDiscountApplied)
 
               const patientFullName = invoice.patient?.fullName || 'Unknown'
               const patientInitials = patientFullName.trim() ? patientFullName.slice(0, 2).toUpperCase() : '??'
@@ -240,7 +273,12 @@ export function InvoicesTable({
                           DISCOUNT_PENDING_APPROVAL
                         </Badge>
                       )}
-                      {typeof invoice.discountAmount === 'number' && invoice.discountAmount > 0 && (
+                      {isDiscountDenied && (
+                        <Badge variant="secondary" className="bg-rose-100 text-rose-800">
+                          DISCOUNT_DENIED
+                        </Badge>
+                      )}
+                      {hasDiscountApplied && (
                         <Badge variant="outline" className="border-green-300 text-green-700">
                           DISCOUNT_APPLIED
                         </Badge>
@@ -280,7 +318,7 @@ export function InvoicesTable({
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     )}
-                    {!roleLoading && canRequestDiscountApproval && !isDiscountPending && (
+                    {!roleLoading && canRequestDiscountApproval && !isDiscountPending && !hasDiscountApplied && (
                       <Button
                         variant="outline"
                         size="sm"

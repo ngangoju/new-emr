@@ -7,6 +7,7 @@ import { TriageQueue } from '@/components/clinical/TriageQueue'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { useRole } from '@/hooks/useRole'
 import { NurseBilling } from '@/components/nurse/NurseBilling'
+import { NurseConsultationAssignmentForm } from '@/components/nurse/NurseConsultationAssignmentForm'
 import { DrugRequestForm } from '@/components/nurse/DrugRequestForm'
 import { NurseVitalsForm } from '@/components/nurse/NurseVitalsForm'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -39,6 +40,7 @@ function NurseDashboardContent() {
   // Mirror the backend guards so oversight roles that can open this page (e.g. ADMIN)
   // only see the tabs whose actions their permissions actually allow.
   const canRecordVitals = !roleLoading && hasPermission('vitals:write')
+  const canCreateConsultation = !roleLoading && hasPermission('consultation:create')
   const canBill = !roleLoading && hasPermission('billing:invoice:create')
   const canRequestDrugs = !roleLoading && hasPermission('drug_request:create')
   const defaultTab = selectedPatientId && canRecordVitals ? 'vitals' : 'queue'
@@ -53,6 +55,7 @@ function NurseDashboardContent() {
         <TabsList>
           <TabsTrigger value="queue">Queue</TabsTrigger>
           {canRecordVitals && <TabsTrigger value="vitals">Vitals</TabsTrigger>}
+          {canCreateConsultation && <TabsTrigger value="consultation">Consultation</TabsTrigger>}
           {canBill && <TabsTrigger value="billing">Billing</TabsTrigger>}
           {canRequestDrugs && <TabsTrigger value="drugs">Drug Requests</TabsTrigger>}
         </TabsList>
@@ -62,6 +65,11 @@ function NurseDashboardContent() {
         {canRecordVitals && (
           <TabsContent value="vitals">
             <NurseVitalsForm initialPatientId={selectedPatientId} />
+          </TabsContent>
+        )}
+        {canCreateConsultation && (
+          <TabsContent value="consultation">
+            <NurseConsultationAssignmentForm initialPatientId={selectedPatientId} />
           </TabsContent>
         )}
         {canBill && (

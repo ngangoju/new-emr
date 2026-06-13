@@ -77,7 +77,7 @@ export const DASHBOARD_ROUTE_POLICIES: readonly DashboardRoutePolicy[] = [
     },
     {
         routePrefix: '/dashboard/reports',
-        allowedRoles: ['ADMIN', 'DOCTOR', 'DAF', 'COO', 'MANAGER', 'CLINICAL_DIRECTOR', 'ACCOUNTANT', 'AUDITOR'],
+        allowedRoles: ['ADMIN', 'DOCTOR', 'DAF', 'COO', 'MANAGER', 'CLINICAL_DIRECTOR', 'CHIEF_NURSE', 'ACCOUNTANT', 'AUDITOR'],
     },
     {
         routePrefix: '/dashboard/approvals',

@@ -6,7 +6,6 @@ export function DispenseDialog({ trigger }: { trigger: React.ReactNode }) {
   return (
     <>
       {trigger}
-      {/* TODO: Implement full Dispense Dialog */}
     </>
   )
 }

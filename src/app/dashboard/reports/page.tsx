@@ -9,28 +9,37 @@ import {
   Users, 
   ArrowRight,
   TrendingUp,
-  AlertCircle
+  AlertCircle,
+  BarChart3
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { usePatientThroughputReport, useRevenueReport, usePendingItemsReport } from '@/hooks/useHmisReports'
 import { useRole } from '@/hooks/useRole'
 
 export default function ReportsDashboard() {
-  const { isRole } = useRole()
+  const { hasPermission, isLoading: roleLoading } = useRole()
+  const canViewReports =
+    !roleLoading
+    && (
+      hasPermission('CAN_VIEW_REPORTS')
+      || hasPermission('report:financial:read')
+      || hasPermission('report:operational:read')
+      || hasPermission('report:hmis:read')
+      || hasPermission('report:clinical:read')
+    )
 
-  if (isRole(['NURSE', 'CHIEF_NURSE'])) {
-    // TODO: Nurse reports flow still broken. Restore after dedicated reports stabilization work.
+  if (!roleLoading && !canViewReports) {
     return (
       <div className="space-y-6">
         <PageHeader
           title="Operational Reports"
-          description="Reports are temporarily unavailable for nurse workflows."
+          description="Your current role does not include report access."
         />
         <Card>
           <CardHeader>
-            <CardTitle>Reports - under maintenance</CardTitle>
+            <CardTitle>Reports unavailable</CardTitle>
             <CardDescription>
-              Nurse reports remain intentionally disabled in this release while the reports module is repaired.
+              This workspace can still open the dashboard shell, but report datasets require a reporting permission.
             </CardDescription>
           </CardHeader>
         </Card>
@@ -66,6 +75,14 @@ function ReportsDashboardContent() {
       href: '/dashboard/reports/pending-items',
       color: 'bg-orange-100 text-orange-700',
       stats: 'Open Encounters, Unsigned Notes'
+    },
+    {
+      title: 'System Usage',
+      description: 'Review platform adoption and staff activity distribution by role.',
+      icon: BarChart3,
+      href: '/dashboard/reports/usage',
+      color: 'bg-violet-100 text-violet-700',
+      stats: 'Users, Roles, Adoption'
     }
   ]
 

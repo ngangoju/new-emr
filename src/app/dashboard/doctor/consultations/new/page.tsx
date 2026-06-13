@@ -82,6 +82,8 @@ function ConsultationWizard() {
   const encounterId = searchParams.get('encounterId')
   const patientIdFromUrl = searchParams.get('patientId')
   const { isRole } = useRole()
+  const isNurseRole = isRole(['NURSE', 'CHIEF_NURSE'])
+  const canActAsDoctorWorkflow = isRole(['DOCTOR', 'CLINICAL_DIRECTOR'])
   
   const [currentStep, setCurrentStep] = useState(1)
   const [patientSearch, setPatientSearch] = useState('')
@@ -208,7 +210,7 @@ function ConsultationWizard() {
   const handleHandoff = async () => {
     if (!encounterId) return;
 
-    const isNurse = isRole('NURSE');
+    const isNurse = isNurseRole;
     const nextStage = isNurse ? 'CONSULTATION' : 'SIGN_OFF';
     
     // In a real app, we'd have a dropdown to select the specific doctor/user
@@ -239,11 +241,11 @@ function ConsultationWizard() {
     if (encounter?.workflowMode === 'SINGLE_ACTOR') return true;
     
     const stepRole = STEPS[currentStep - 1].role;
-    if (stepRole === 'NURSE' && isRole('NURSE')) return true;
-    if (stepRole === 'DOCTOR' && isRole('DOCTOR')) return true;
+    if (stepRole === 'NURSE' && isNurseRole) return true;
+    if (stepRole === 'DOCTOR' && canActAsDoctorWorkflow) return true;
     
     // Doctors can override nurse fields with audit
-    if (stepRole === 'NURSE' && isRole('DOCTOR')) return true; 
+    if (stepRole === 'NURSE' && canActAsDoctorWorkflow) return true;
 
     return false;
   }
@@ -1017,7 +1019,7 @@ Follow Up: ${data.followUp || 'N/A'}
                 Save Draft
               </Button>
 
-              {currentStep === 3 && isRole('NURSE') && encounter?.workflowMode === 'MULTI_ACTOR' ? (
+              {currentStep === 3 && isNurseRole && encounter?.workflowMode === 'MULTI_ACTOR' ? (
                 <Button 
                   onClick={handleHandoff} 
                   type="button" 

@@ -139,6 +139,11 @@ describe('frontend authz policy', () => {
         expect(auditorNavigation.some((item) => item.href === '/dashboard/admin')).toBe(false)
     })
 
+    it('allows chief nurse report access through the standard route policy', () => {
+        expect(canAccessDashboardRoute('CHIEF_NURSE', '/dashboard/reports')).toBe(true)
+        expect(canAccessDashboardRoute('CHIEF_NURSE', '/dashboard/reports/usage')).toBe(true)
+    })
+
     it('keeps security on public dashboard surfaces only by default', () => {
         expect(canAccessDashboardRoute('SECURITY', '/dashboard')).toBe(true)
         expect(canAccessDashboardRoute('SECURITY', '/dashboard/notifications')).toBe(true)

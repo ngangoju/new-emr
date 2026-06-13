@@ -1,11 +1,12 @@
 'use client'
 
 import React, { use } from 'react'
+import { useRouter } from 'next/navigation'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { useConsultation, useSignConsultation, useUpdateConsultation } from '@/hooks/api/useConsultations'
+import { useConsultation, useDeleteConsultation, useSignConsultation, useUpdateConsultation } from '@/hooks/api/useConsultations'
 import { formatDate } from '@/lib/utils/date'
-import { Clock, FileText, AlertCircle } from 'lucide-react'
+import { Clock, FileText, AlertCircle, Trash2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
@@ -19,10 +20,12 @@ export default function ConsultationDetailsPage({ params }: { params: Promise<{ 
   // Extract id from the new Next.js 15 params Promise
   const resolvedParams = use(params)
   const id = resolvedParams.id
+  const router = useRouter()
   
   const { data: consultation, isLoading, isError } = useConsultation(id)
   const signMutation = useSignConsultation()
   const updateMutation = useUpdateConsultation()
+  const deleteMutation = useDeleteConsultation()
 
   const [isEditing, setIsEditing] = React.useState(false)
   const [formData, setFormData] = React.useState({
@@ -58,6 +61,20 @@ export default function ConsultationDetailsPage({ params }: { params: Promise<{ 
       toast.success('Consultation updated successfully')
     } catch {
       toast.error('Failed to update consultation')
+    }
+  }
+
+  const handleDelete = async () => {
+    const confirmed = window.confirm('Delete this draft consultation? This cannot be undone.')
+    if (!confirmed) return
+
+    try {
+      await deleteMutation.mutateAsync(id)
+      toast.success('Draft consultation deleted.')
+      router.push('/dashboard/doctor/consultations')
+      router.refresh()
+    } catch {
+      toast.error('Failed to delete consultation')
     }
   }
 
@@ -222,14 +239,25 @@ export default function ConsultationDetailsPage({ params }: { params: Promise<{ 
               </div>
               <div className="flex flex-col gap-1 w-full mt-4">
                 {consultation.status === 'DRAFT' && (
-                  <Button 
-                    className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-semibold"
-                    onClick={handleSign}
-                    disabled={signMutation.isPending}
-                  >
-                    <CheckCircle className="h-4 w-4 mr-2" />
-                    {signMutation.isPending ? 'Signing...' : 'Finalize & Sign'}
-                  </Button>
+                  <div className="space-y-2">
+                    <Button
+                      className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-semibold"
+                      onClick={handleSign}
+                      disabled={signMutation.isPending}
+                    >
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                      {signMutation.isPending ? 'Signing...' : 'Finalize & Sign'}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      onClick={handleDelete}
+                      disabled={deleteMutation.isPending}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      {deleteMutation.isPending ? 'Deleting...' : 'Delete Draft Consultation'}
+                    </Button>
+                  </div>
                 )}
               </div>
             </CardContent>

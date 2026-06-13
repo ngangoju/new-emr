@@ -1,12 +1,14 @@
 'use client'
 
 import React from 'react'
+import { useRouter } from 'next/navigation'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { EmptyState } from '@/components/ui/empty-state'
-import { Stethoscope, Eye, ClipboardList } from 'lucide-react'
+import { Stethoscope, Eye, ClipboardList, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
-import { useConsultations } from '@/hooks/api/useConsultations'
+import { useConsultations, useDeleteConsultation } from '@/hooks/api/useConsultations'
+import { useRole } from '@/hooks/useRole'
 import { 
   Table, 
   TableBody, 
@@ -18,9 +20,34 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { formatDate } from '@/lib/utils/date'
 import { Skeleton } from '@/components/ui/skeleton'
+import toast from 'react-hot-toast'
 
 export default function ConsultationsPage() {
+  const router = useRouter()
   const { data: consultations, isLoading } = useConsultations()
+  const deleteConsultation = useDeleteConsultation()
+  const { hasPermission, isLoading: roleLoading } = useRole()
+  const canCreateConsultation =
+    !roleLoading
+    && (
+      hasPermission('CAN_PRESCRIBE')
+      || hasPermission('consultation:create')
+      || hasPermission('prescription:create')
+    )
+  const canEditConsultation = !roleLoading && hasPermission('consultation:addendum')
+
+  const handleDelete = async (consultationId: string) => {
+    const confirmed = window.confirm('Delete this draft consultation? This cannot be undone.')
+    if (!confirmed) return
+
+    try {
+      await deleteConsultation.mutateAsync(consultationId)
+      toast.success('Draft consultation deleted.')
+      router.refresh()
+    } catch {
+      toast.error('Failed to delete consultation.')
+    }
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -29,12 +56,14 @@ export default function ConsultationsPage() {
           title="Consultations" 
           description="Manage patient consultations and medical records"
         />
-        <Button asChild>
-          <Link href="/dashboard/doctor/consultations/new">
-            <ClipboardList className="h-4 w-4 mr-2" />
-            New Consultation
-          </Link>
-        </Button>
+        {canCreateConsultation && (
+          <Button asChild>
+            <Link href="/dashboard/doctor/consultations/new">
+              <ClipboardList className="h-4 w-4 mr-2" />
+              New Consultation
+            </Link>
+          </Button>
+        )}
       </div>
       
       <div className="rounded-lg border bg-card">
@@ -49,11 +78,11 @@ export default function ConsultationsPage() {
             <EmptyState
               icon={Stethoscope}
               title="No consultations found"
-              description="Start a new consultation or view past records."
-              action={{
+              description={canCreateConsultation ? 'Start a new consultation or view past records.' : 'View consultation records once encounters are created.'}
+              action={canCreateConsultation ? {
                 label: "New Consultation",
                 onClick: () => window.location.href = '/dashboard/doctor/consultations/new'
-              }}
+              } : undefined}
             />
           </div>
         ) : (
@@ -96,12 +125,25 @@ export default function ConsultationsPage() {
                     {consultation.type?.toLowerCase() || 'Consultation'}
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button variant="ghost" size="sm" asChild>
-                      <Link href={`/dashboard/doctor/consultations/${consultation.id}`}>
-                        <Eye className="h-4 w-4 mr-2" />
-                        View
-                      </Link>
-                    </Button>
+                    <div className="flex justify-end gap-2">
+                      {canEditConsultation && consultation.status === 'DRAFT' ? (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => void handleDelete(consultation.id)}
+                          disabled={deleteConsultation.isPending}
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete
+                        </Button>
+                      ) : null}
+                      <Button variant="ghost" size="sm" asChild>
+                        <Link href={`/dashboard/doctor/consultations/${consultation.id}`}>
+                          <Eye className="h-4 w-4 mr-2" />
+                          View
+                        </Link>
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}

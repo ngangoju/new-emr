@@ -164,6 +164,17 @@ Mandatory negative scenarios:
 - discount request remains pending with no premature invoice reduction
 - invalid state transitions rejected with explicit transition semantics
 
+### Critical Playwright lane
+
+Use the focused critical lane for deterministic regression coverage of the highest-risk flows:
+
+- `npm run test:e2e:critical`
+- `critical-flows.spec.ts`: auth bootstrap, patient navigation, consultation wizard guardrails
+- `critical-finance-guards.spec.ts`: doctor discount approval deferral; invoice stays unchanged until approval
+- `qa-workflow.spec.ts`: reception -> nurse payment gate -> cashier settlement -> nurse success -> doctor load
+
+This lane is intentionally narrower than the full smoke suite and is the preferred pre-refactor gate for clinical and billing workflow changes.
+
 ---
 
 ## 🧾 Evidence Capture Standards
@@ -229,4 +240,3 @@ Recommended run order:
 10. Sys Admin
 
 This order preserves stateful dependency flow and minimizes false negatives due to missing upstream actions.
-

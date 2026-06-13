@@ -255,6 +255,7 @@ From workflow compliance analysis, major UI-impact gaps still tracked:
 - `npm audit --audit-level=high`
 - API contract validation against the backend route surface
 - Dependency review on pull requests
+- Scheduled/manual `Security History Scan` workflow for git-history secret detection
 - Critical action regressions (payments/lab/results/export)
 - Guardrail checks for `401` and `403` semantics
 
@@ -290,6 +291,10 @@ For GitHub Actions, use the `Critical E2E` workflow and configure:
 - repository variable `E2E_AUTH_API_BASE`
 - optional repository variable `E2E_USERNAME`
 - repository secret `E2E_PASSWORD`
+
+For repository-wide secret hygiene, use the `Security History Scan` workflow.
+It scans full git history with Gitleaks. If the repository lives under a GitHub
+organization, set the `GITLEAKS_LICENSE` secret before enabling the workflow.
 
 ---
 

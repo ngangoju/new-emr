@@ -51,6 +51,31 @@ export function useApprovals(filters?: {
 }
 
 /**
+ * Fetch approval requests created by the current user.
+ */
+export function useMyApprovals(filters?: {
+    type?: 'invoice_deletion' | 'discount'
+    enabled?: boolean
+}) {
+    const { type } = filters || {}
+
+    return useQuery({
+        queryKey: ['approvals', 'mine', { type }],
+        queryFn: async () => {
+            const params = new URLSearchParams()
+            if (type) params.append('type', type)
+
+            const queryString = params.toString()
+            const url = `/api/approvals/mine${queryString ? `?${queryString}` : ''}`
+
+            const { data } = await api.get<ApprovalRequest[]>(url)
+            return data
+        },
+        enabled: filters?.enabled ?? true,
+    })
+}
+
+/**
  * Get approval statistics
  */
 export function useApprovalStats() {

@@ -5,7 +5,7 @@ const shouldLaunchLocalDevServer = !process.env.PLAYWRIGHT_BASE_URL
 
 export default defineConfig({
     testDir: './e2e',
-    testMatch: ['critical-flows.spec.ts', 'qa-workflow.spec.ts'],
+    testMatch: ['critical-*.spec.ts', 'qa-workflow.spec.ts'],
     fullyParallel: false,
     forbidOnly: !!process.env.CI,
     retries: process.env.CI ? 1 : 0,

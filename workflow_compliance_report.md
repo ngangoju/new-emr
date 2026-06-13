@@ -5,7 +5,11 @@
 - Codebases audited: [`new-emr`](new-emr) and [`new-emr-backend`](new-emr-backend)
 - End-to-end check required for each workflow item: UI → API call → backend controller → service → database/migration → response wiring
 - Binary compliance rule used: **Implemented = 1**, **Partial = 0**, **Missing = 0**
-- Date: 2026-02-18
+- Date: 2026-06-12
+
+> Note: this report began as a February 2026 audit snapshot. The endpoint-alignment
+> rows and explicitly edited role findings below have been refreshed against the
+> current tree where direct file evidence exists.
 
 ---
 
@@ -17,13 +21,13 @@
 | Admit patient to ward/bed | [`useCreateAdmission()`](new-emr/src/hooks/useAdmissions.ts:118) → `POST /api/admissions` | [`@PostMapping` in `AdmissionController`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/AdmissionController.java:82) + [`V46__hospitalization_workflow.sql`](new-emr-backend/src/main/resources/db/migration/V46__hospitalization_workflow.sql) | ✅ |
 | Nurse billing multi-tariff | [`NurseBilling`](new-emr/src/components/nurse/NurseBilling.tsx) → [`useCreateInvoice()`](new-emr/src/hooks/useInvoices.ts:70) → `POST /api/billing/invoices` | [`InvoiceController#createInvoice`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/InvoiceController.java:50) + [`InvoiceService`](new-emr-backend/src/main/java/com/emr/newemrbackend/service/InvoiceService.java:319) | ✅ |
 | Drug request submission | [`DrugRequestForm`](new-emr/src/components/nurse/DrugRequestForm.tsx) → [`useCreateDrugRequest()`](new-emr/src/hooks/useDrugRequests.ts:53) | [`DrugRequestController#createDrugRequest`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/DrugRequestController.java:52) + [`V45__drug_requests_and_approvals.sql`](new-emr-backend/src/main/resources/db/migration/V45__drug_requests_and_approvals.sql) | ✅ |
-| Lab result submission | [`useUploadResult()`](new-emr/src/hooks/useLabOrders.ts:56) uses `POST /lab-orders/{id}/results/submit` | Backend exposes `POST /lab-orders/{id}/results` in [`LabOrderController`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/LabOrderController.java:74) | ⚠️ |
+| Lab result submission | [`useUploadResult()`](new-emr/src/hooks/useLabOrders.ts:56) uses `POST /lab-orders/{id}/results/submit`; structured flow uses [`useFinalizeStructuredResult()`](new-emr/src/hooks/useLabOrders.ts:336) → `POST /api/lab-orders/{id}/structured-results` | Compatibility endpoint present in [`LabOrderController#submitResults`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/LabOrderController.java:74) and structured endpoint present in [`LabResultController#submitStructuredResults`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/LabResultController.java:59) | ✅ |
 | Cashier payment posting | [`useCreatePayment()`](new-emr/src/hooks/usePayments.ts:20) → `POST /api/billing/payments` | [`BillingController#createPayment`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/BillingController.java:127) + [`PaymentService#createPayment`](new-emr-backend/src/main/java/com/emr/newemrbackend/service/PaymentService.java:54) | ✅ |
 | Cash close report | [`useCreateCashClose()`](new-emr/src/hooks/usePayments.ts:42) | [`BillingController#createCashCloseReport`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/BillingController.java:149) + [`V47__cash_close_reports.sql`](new-emr-backend/src/main/resources/db/migration/V47__cash_close_reports.sql) | ✅ |
 | Invoice deletion request | [`useRequestInvoiceVoid()`](new-emr/src/hooks/useApprovals.ts:111) | [`ApprovalController#requestInvoiceVoid`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/ApprovalController.java:64) | ✅ |
 | Approve discount | [`useApproveRequest()`](new-emr/src/hooks/useApprovals.ts:69) | [`ApprovalController#approve`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/ApprovalController.java:122) + [`ApprovalService#applyApprovedDiscount`](new-emr-backend/src/main/java/com/emr/newemrbackend/service/ApprovalService.java:238) + [`V51__discount_approval_workflow.sql`](new-emr-backend/src/main/resources/db/migration/V51__discount_approval_workflow.sql) | ✅ |
-| Pharmacist stock intake | [`useCreateDrugStock()`](new-emr/src/hooks/useDrugStock.ts:15) hits `POST /api/pharmacy/stock` | No controller endpoint for `/api/pharmacy/stock`; available stock endpoints are under [`PharmacyController`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/PharmacyController.java:171) and `POST /api/pharmacy/stock/in` | ⚠️ |
-| Tariff management writes | [`useTariffManagement`](new-emr/src/hooks/useTariffManagement.ts) calls `/api/billing/tariffs/*` | Write endpoints exist in [`TariffController`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/TariffController.java:41) under `/api/tariffs/*` | ⚠️ |
+| Pharmacist stock intake | [`useCreateDrugStock()`](new-emr/src/hooks/useDrugStock.ts:15) hits `POST /api/pharmacy/stock/in` | Matching endpoint exists in [`PharmacyController#recordStockInSimple`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/PharmacyController.java:215) | ✅ |
+| Tariff management writes | [`useTariffManagement`](new-emr/src/hooks/useTariffManagement.ts) calls `/api/billing/tariffs/*` | Compatibility write endpoints exist in [`BillingController`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/BillingController.java:364) while canonical read/search remains in [`TariffController`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/TariffController.java:24) | ✅ |
 
 ---
 
@@ -37,29 +41,19 @@
   - API hook: [`useCreatePatient()`](new-emr/src/hooks/api/usePatients.ts:68)
   - Backend: [`PatientController#create`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/PatientController.java:32)
   - Auth: route/role access in [`policy.ts`](new-emr/src/lib/authz/policy.ts:18)
+- **Admit existing patients**
+  - UI: pre-admission path on [`ReceptionPage`](new-emr/src/app/dashboard/reception/page.tsx) and form route in [`ReceptionAdmissionsPage`](new-emr/src/app/dashboard/reception/admit/page.tsx)
+  - API hook: [`useCreateAdmission()`](new-emr/src/hooks/useAdmissions.ts:125)
+  - Backend: [`AdmissionController#createAdmission`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/AdmissionController.java:179)
+  - Permissions: receptionist receives `admission:create` in [`V88__seed_default_role_permissions.sql`](new-emr-backend/src/main/resources/db/migration/V88__seed_default_role_permissions.sql:329)
 
 ### ⚠️ Partial
 - None
 
 ### ❌ Missing
-- **Admit existing patients**
-  - Gap: receptionist UI has triage/check-in in [`ReceptionPage`](new-emr/src/app/dashboard/reception/page.tsx) but no admission workflow tied to wards/beds for receptionist role
-  - Backend currently restricts admission to nurse/chief nurse/admin in [`AdmissionController`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/AdmissionController.java:81)
+- None
 
-**Fix specification**
-- Frontend files:
-  - Add admission action in [`ReceptionPage`](new-emr/src/app/dashboard/reception/page.tsx)
-  - Reuse admission form in [`AdmissionForm`](new-emr/src/components/nurse/AdmissionForm.tsx) via receptionist route
-- Backend files:
-  - Update role guard in [`AdmissionController`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/AdmissionController.java:81)
-  - Align global security matcher in [`SecurityConfig`](new-emr-backend/src/main/java/com/emr/newemrbackend/config/SecurityConfig.java:106)
-- DB migration: no new table required
-- Endpoint required: `POST /api/admissions`
-- Permission changes:
-  - Add receptionist admission capability in [`auth.ts`](new-emr/src/lib/utils/auth.ts:41)
-  - Add receptionist route access in [`policy.ts`](new-emr/src/lib/authz/policy.ts:22)
-
-**Compliance score**: **50%** (1/2)
+**Compliance score**: **100%** (2/2)
 
 ---
 
@@ -80,134 +74,84 @@
   - Backend+DB: [`AdmissionController`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/AdmissionController.java:82), [`V46__hospitalization_workflow.sql`](new-emr-backend/src/main/resources/db/migration/V46__hospitalization_workflow.sql)
 
 ### ⚠️ Partial
-- **Record patient vital signs**
-  - UI exists in consultation wizard vitals step: [`NewConsultationPage`](new-emr/src/app/dashboard/doctor/consultations/new/page.tsx)
-  - But no direct write through `POST /patients/{id}/vitals` despite backend support in [`PatientController#createVitals`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/PatientController.java:88)
-  - Patient detail also shows partially static vitals rendering in [`PatientDetailPage`](new-emr/src/app/dashboard/doctor/patients/[id]/page.tsx)
-- **Send patient to doctor add/change consultation assignment**
-  - UI for add consultation exists in [`NurseDashboardPage`](new-emr/src/app/dashboard/nurse/page.tsx)
-  - API call uses [`useCreateConsultation()`](new-emr/src/hooks/api/useConsultations.ts:50)
-  - Backend denies nurse create/update in [`ConsultationController`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/ConsultationController.java:34)
+- None
 
 ### ❌ Missing
 - None
 
-**Fix specification**
-1) Vitals capture completion
-- Frontend files:
-  - Add dedicated vitals submit in [`NewConsultationPage`](new-emr/src/app/dashboard/doctor/consultations/new/page.tsx)
-  - Add hook method in [`usePatients.ts`](new-emr/src/hooks/api/usePatients.ts)
-- Backend files: reuse [`PatientController#createVitals`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/PatientController.java:88)
-- DB migration: none required
-- Endpoint required: `POST /patients/{id}/vitals`
-- Permission changes: ensure nurse permissions include vitals write in [`auth.ts`](new-emr/src/lib/utils/auth.ts:28)
+**Implementation notes**
+1) Vitals capture
+- Frontend submit path exists in [`NurseVitalsForm`](new-emr/src/components/nurse/NurseVitalsForm.tsx)
+- API uses [`useCreatePatientVitals()`](new-emr/src/hooks/api/usePatients.ts:208)
+- Backend accepts writes in [`PatientController#createVitals`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/PatientController.java:88)
 
-2) Consultation assignment authority
-- Frontend files: keep current add/change UI in [`NurseDashboardPage`](new-emr/src/app/dashboard/nurse/page.tsx)
-- Backend files:
-  - Add nurse assignment endpoint or expand existing create/update authorization in [`ConsultationController`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/ConsultationController.java:34)
-- DB migration: none required
-- Endpoint required: `POST /consultations` and `PUT /consultations/{id}` for nurse assignment use-case
-- Permission changes:
-  - Update backend `@PreAuthorize` roles in [`ConsultationController`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/ConsultationController.java:34)
-  - Keep/confirm `CAN_MANAGE_CONSULTATIONS` mapping in [`auth.ts`](new-emr/src/lib/utils/auth.ts:43)
+2) Consultation assignment
+- Frontend handoff flow exists in [`NurseConsultationAssignmentForm`](new-emr/src/components/nurse/NurseConsultationAssignmentForm.tsx) and is mounted from [`NurseDashboardPage`](new-emr/src/app/dashboard/nurse/page.tsx)
+- API uses [`useCreateConsultation()`](new-emr/src/hooks/api/useConsultations.ts:142)
+- Backend permission path is enabled by [`V101__nurse_consultation_permission.sql`](new-emr-backend/src/main/resources/db/migration/V101__nurse_consultation_permission.sql) and enforced in [`ConsultationController#create`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/ConsultationController.java:35)
 
-**Compliance score**: **60%** (3/5)
+**Compliance score**: **100%** (5/5)
 
 ---
 
 ## Chief Nurse
 
 ### ✅ Implemented
-- None (binary scoring)
+- **Generate HMIS reports**
+  - Frontend reports dashboard now checks reporting permissions rather than blocking all nursing roles in [`ReportsDashboard`](new-emr/src/app/dashboard/reports/page.tsx)
+  - Route policy explicitly allows chief nurse access in [`policy.ts`](new-emr/src/lib/authz/policy.ts:80)
+  - Backend HMIS endpoints accept chief-nurse reporting authorities via [`HmisReportController`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/HmisReportController.java:35) and the seeded `report:operational:read` / `report:clinical:read` permissions in [`V88__seed_default_role_permissions.sql`](new-emr-backend/src/main/resources/db/migration/V88__seed_default_role_permissions.sql:274)
+- **Add or delete consultations**
+  - Create paths exist in [`NurseDashboardPage`](new-emr/src/app/dashboard/nurse/page.tsx) and the consultations index in [`ConsultationsPage`](new-emr/src/app/dashboard/doctor/consultations/page.tsx)
+  - Delete controls for draft consultations now exist in [`ConsultationsPage`](new-emr/src/app/dashboard/doctor/consultations/page.tsx) and [`ConsultationDetailsPage`](new-emr/src/app/dashboard/doctor/consultations/[id]/page.tsx)
+  - Backend create authority is seeded in [`V102__chief_nurse_consultation_permission.sql`](new-emr-backend/src/main/resources/db/migration/V102__chief_nurse_consultation_permission.sql), while delete/update authority comes from `consultation:addendum` in [`V88__seed_default_role_permissions.sql`](new-emr-backend/src/main/resources/db/migration/V88__seed_default_role_permissions.sql:274)
 
 ### ⚠️ Partial
-- **Add or delete consultations**
-  - UI path present via [`NurseDashboardPage`](new-emr/src/app/dashboard/nurse/page.tsx)
-  - Backend allows `CHIEF_NURSE` in [`ConsultationController`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/ConsultationController.java:34)
-  - Role naming mismatch risk: frontend uses `CHIEF-NURSE` in [`auth.ts`](new-emr/src/lib/utils/auth.ts:16), backend uses `CHIEF_NURSE`
-- **Generate HMIS reports**
-  - UI report pages exist in [`/dashboard/reports`](new-emr/src/app/dashboard/reports/page.tsx)
-  - Backend HMIS controller uses `CHIEF_NURSE` in [`HmisReportController`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/HmisReportController.java:33)
-  - Same role naming mismatch can block access
+- None
 
 ### ❌ Missing
 - None
 
-**Fix specification**
-- Frontend files:
-  - Normalize role canonicalization in [`auth.ts`](new-emr/src/lib/utils/auth.ts:192)
-  - Align route policies in [`policy.ts`](new-emr/src/lib/authz/policy.ts:23)
-- Backend files:
-  - Standardize role names in [`SecurityConfig`](new-emr-backend/src/main/java/com/emr/newemrbackend/config/SecurityConfig.java:80)
-  - Standardize `@PreAuthorize` roles in [`ConsultationController`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/ConsultationController.java:34) and [`HmisReportController`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/HmisReportController.java:33)
-- DB migration:
-  - Add role normalization seed/fix migration in [`db/migration`](new-emr-backend/src/main/resources/db/migration)
-- Endpoints impacted:
-  - `POST /consultations`, `DELETE /consultations/{id}`, `GET /hmis/reports/*`
-- Permission changes:
-  - Unify `CHIEF_NURSE` vs `CHIEF-NURSE` in frontend auth maps and backend authorities
-
-**Compliance score**: **0%** (0/2)
+**Compliance score**: **100%** (2/2)
 
 ---
 
 ## Doctor
 
-### ✅ Implemented
-- None (binary scoring)
-
 ### ⚠️ Partial
-- **Create and complete SOAP notes**
-  - Creation flow exists via [`NewConsultationPage`](new-emr/src/app/dashboard/doctor/consultations/new/page.tsx)
-  - Completion/sign endpoint exists in [`ConsultationController#sign`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/ConsultationController.java:124)
-  - No frontend sign/finalize wiring for completion lifecycle
-- **Request imaging and additional charges**
-  - Imaging order UI exists but is explicitly demo scaffolding in [`ImagingOrdersPage`](new-emr/src/app/dashboard/doctor/imaging-orders/page.tsx)
-  - Additional charges via tariff-backed invoice generation exists in [`InvoiceGenerator`](new-emr/src/components/billing/InvoiceGenerator.tsx)
-  - Lab test ordering UI/API mutation from doctor context is absent
+- None
+
+### ✅ Implemented
 - **Apply discount to patient**
-  - Doctor can request approval from invoice table in [`InvoicesTable`](new-emr/src/components/billing/InvoicesTable.tsx)
-  - Final apply is approved by approval service in [`ApprovalService`](new-emr-backend/src/main/java/com/emr/newemrbackend/service/ApprovalService.java:238)
-  - No direct doctor-side discount application completion state in doctor workflow
+  - Doctor can submit discount requests directly from [`InvoicesTable`](new-emr/src/components/billing/InvoicesTable.tsx)
+  - Doctor-side billing view now shows request lifecycle state for the invoice: pending approval, denied, and applied discount
+  - Requester-scoped approval history is served by [`ApprovalController#getMyApprovalRequests`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/ApprovalController.java) via [`useMyApprovals()`](new-emr/src/hooks/useApprovals.ts)
+  - Final discount application remains enforced through [`ApprovalService#approveDiscount`](new-emr-backend/src/main/java/com/emr/newemrbackend/service/ApprovalService.java)
+- **Create and complete SOAP notes**
+  - UI: [`NewConsultationPage`](new-emr/src/app/dashboard/doctor/consultations/new/page.tsx) and [`ConsultationDetailsPage`](new-emr/src/app/dashboard/doctor/consultations/[id]/page.tsx)
+  - API: [`useCreateConsultation()`](new-emr/src/hooks/api/useConsultations.ts:142), [`useSignConsultation()`](new-emr/src/hooks/api/useConsultations.ts:163)
+  - Backend: [`ConsultationController#create`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/ConsultationController.java:35), [`ConsultationController#sign`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/ConsultationController.java:124)
+- **Request imaging and additional charges**
+  - Doctor-side imaging ordering exists both in the dedicated queue page [`ImagingOrdersPage`](new-emr/src/app/dashboard/doctor/imaging-orders/page.tsx) and the encounter workspace via [`CreateImagingOrderModal`](new-emr/src/components/radiology/CreateImagingOrderModal.tsx) mounted from [`DoctorTreatmentWorkspace`](new-emr/src/components/doctor/DoctorTreatmentWorkspace.tsx:705)
+  - Doctor-side lab ordering exists in the consultation wizard finalize flow, which submits selected tests before signing in [`handleFinalizeConsultation`](new-emr/src/app/dashboard/doctor/consultations/new/page.tsx:404), and in the encounter workspace via [`QuickLabOrderModal`](new-emr/src/components/doctor/QuickLabOrderModal.tsx)
+  - Additional charges are supported through tariff-backed invoice generation in [`InvoiceGenerator`](new-emr/src/components/billing/InvoiceGenerator.tsx), surfaced from [`BillingDashboard`](new-emr/src/components/billing/BillingDashboard.tsx:332)
+- **Track full patient medical history**
+  - UI: [`RecordsPage`](new-emr/src/app/dashboard/doctor/records/page.tsx) and the patient-detail history tab in [`PatientDetailPage`](new-emr/src/app/dashboard/doctor/patients/[id]/page.tsx)
+  - API: [`usePatientHistory()`](new-emr/src/hooks/api/usePatients.ts:251)
+  - Backend: [`PatientController#getHistory`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/PatientController.java:118)
+- **View lab results for a patient**
+  - UI: lab results tab in [`PatientDetailPage`](new-emr/src/app/dashboard/doctor/patients/[id]/page.tsx)
+  - API: [`usePatientLabResults()`](new-emr/src/hooks/api/usePatients.ts:264)
+  - Backend: [`PatientController#getLabResults`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/PatientController.java:128)
 - **Schedule and manage appointments**
-  - Backend full endpoints exist in [`AppointmentController`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/AppointmentController.java)
-  - Frontend schedule page is placeholder in [`SchedulePage`](new-emr/src/app/dashboard/doctor/schedule/page.tsx)
+  - UI: [`SchedulePage`](new-emr/src/app/dashboard/doctor/schedule/page.tsx) supports create, list, in-progress, complete, and cancel actions
+  - API: [`useAppointments()`](new-emr/src/hooks/api/useAppointments.ts:51), [`useCreateAppointment()`](new-emr/src/hooks/api/useAppointments.ts:61), [`useUpdateAppointmentStatus()`](new-emr/src/hooks/api/useAppointments.ts:75)
+  - Backend: [`AppointmentController`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/AppointmentController.java:27)
 
 ### ❌ Missing
-- **View lab results for a patient** (doctor-specific patient context screen not wired)
-- **Track full patient medical history** (records page empty scaffold)
+- None
 
-**Fix specification**
-1) Consultation completion
-- Frontend: add finalize action in [`NewConsultationPage`](new-emr/src/app/dashboard/doctor/consultations/new/page.tsx)
-- Backend: use existing [`POST /consultations/{id}/sign`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/ConsultationController.java:125)
-- Permission changes: none if doctor-only; ensure role normalization consistency in [`SecurityConfig`](new-emr-backend/src/main/java/com/emr/newemrbackend/config/SecurityConfig.java:95)
-
-2) Lab/imaging/charges completeness
-- Frontend:
-  - Add lab order request UI in doctor consultation flow under [`/dashboard/doctor/consultations`](new-emr/src/app/dashboard/doctor/consultations/page.tsx)
-  - Replace demo patient hardcoding in [`ImagingOrdersPage`](new-emr/src/app/dashboard/doctor/imaging-orders/page.tsx)
-- Backend:
-  - Support frontend path contract for result submit and order lifecycle in [`LabOrderController`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/LabOrderController.java:74)
-- Endpoints required:
-  - `POST /lab-orders`
-  - `GET /lab-orders/{id}`
-  - `POST /imaging/orders`
-
-3) History + lab viewing
-- Frontend:
-  - Implement records and timeline in [`RecordsPage`](new-emr/src/app/dashboard/doctor/records/page.tsx)
-  - Wire lab data in patient details [`PatientDetailPage`](new-emr/src/app/dashboard/doctor/patients/[id]/page.tsx)
-- Backend:
-  - Add patient-scoped lab and consultation history aggregation endpoint
-- Endpoint required:
-  - `GET /patients/{id}/history`
-  - `GET /patients/{id}/lab-results`
-- Permission changes:
-  - Add history-view capability mapping in [`auth.ts`](new-emr/src/lib/utils/auth.ts)
-
-**Compliance score**: **0%** (0/7)
+**Compliance score**: **100%** (7/7)
 
 ---
 
@@ -233,31 +177,22 @@
 ## Laborantin
 
 ### ✅ Implemented
-- None (binary scoring)
-
-### ⚠️ Partial
-- **View pending lab test requests**
-  - UI exists in [`LabDashboard`](new-emr/src/components/lab/LabDashboard.tsx)
-  - Role mismatch risk: frontend roles use `LABORANTIN`/`LAB_TECH` in [`auth.ts`](new-emr/src/lib/utils/auth.ts:8), controller guards use `LAB` in [`LabOrderController`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/LabOrderController.java:39)
 - **Record and submit lab results**
   - Frontend posts `/results/submit` in [`useLabOrders.ts`](new-emr/src/hooks/useLabOrders.ts:74)
-  - Backend exposes `/results` in [`LabOrderController`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/LabOrderController.java:74)
+  - Backend exposes matching compatibility endpoint in [`LabOrderController#submitResults`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/LabOrderController.java:74)
+- **View pending lab test requests**
+  - Frontend dashboard and worklist exist in [`LabDashboard`](new-emr/src/components/lab/LabDashboard.tsx) and [`LabPendingWorklist`](new-emr/src/components/lab/LabPendingWorklist.tsx)
+  - Frontend route and role normalization include both `LABORANTIN` and `LAB_TECH` in [`policy.ts`](new-emr/src/lib/authz/policy.ts:52) and [`auth.ts`](new-emr/src/lib/utils/auth.ts:165)
+  - Backend path guards and controller permissions allow the worklist for lab roles in [`SecurityConfig`](new-emr-backend/src/main/java/com/emr/newemrbackend/config/SecurityConfig.java:131) and [`LabOrderController`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/LabOrderController.java:68)
+  - Backend tests cover LAB role access and permission resolution in [`LabOrderAuthorizationIntegrationTest`](new-emr-backend/src/test/java/com/emr/newemrbackend/integration/LabOrderAuthorizationIntegrationTest.java:105) and [`PermissionResolutionServiceTest`](new-emr-backend/src/test/java/com/emr/newemrbackend/service/PermissionResolutionServiceTest.java:288)
+
+### ⚠️ Partial
+- None
 
 ### ❌ Missing
 - None
 
-**Fix specification**
-- Frontend files:
-  - Align endpoint path in [`useLabOrders.ts`](new-emr/src/hooks/useLabOrders.ts:74)
-  - Add robust role map in [`auth.ts`](new-emr/src/lib/utils/auth.ts:8)
-- Backend files:
-  - Add compatible submit endpoint `POST /lab-orders/{id}/results/submit` in [`LabOrderController`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/LabOrderController.java)
-  - Harmonize LAB roles in [`SecurityConfig`](new-emr-backend/src/main/java/com/emr/newemrbackend/config/SecurityConfig.java:97)
-- DB migration: none required
-- Permission changes:
-  - Ensure `LABORANTIN` and `LAB_TECH` map to backend authorities consistently
-
-**Compliance score**: **0%** (0/2)
+**Compliance score**: **100%** (2/2)
 
 ---
 
@@ -268,38 +203,21 @@
   - UI action in [`InvoicesTable`](new-emr/src/components/billing/InvoicesTable.tsx)
   - Approval request API in [`useRequestInvoiceVoid()`](new-emr/src/hooks/useApprovals.ts:111)
   - Backend in [`ApprovalController#requestInvoiceVoid`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/ApprovalController.java:64)
+- **Manage tariff items add/edit/delete**
+  - Frontend writes through [`useTariffManagement`](new-emr/src/hooks/useTariffManagement.ts)
+  - Backend compatibility endpoints exist under [`BillingController`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/BillingController.java:64)
+- **Manage users create edit suspend activate**
+  - Frontend page exists at [`/dashboard/admin/users/page.tsx`](new-emr/src/app/dashboard/admin/users/page.tsx) and renders [`UserManagementTable`](new-emr/src/components/admin/UserManagementTable.tsx)
+  - UI supports create, edit, and enable/disable actions through [`useCreateUser()`](new-emr/src/hooks/useUsers.ts) and [`useUpdateUser()`](new-emr/src/hooks/useUsers.ts)
+  - Backend endpoints enforce admin-only lifecycle access in [`UserController`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/UserController.java) with `POST /api/users`, `GET /api/users`, and `PUT /api/users/{id}`
 
 ### ⚠️ Partial
-- **Manage users create edit suspend activate**
-  - Backend exists in [`UserController`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/UserController.java)
-  - Frontend admin links to `/dashboard/admin/users` in [`AdminPage`](new-emr/src/app/dashboard/admin/page.tsx:37), but page is absent
-- **Manage tariff items add/edit/delete**
-  - Frontend writes to `/api/billing/tariffs` in [`useTariffManagement`](new-emr/src/hooks/useTariffManagement.ts)
-  - Backend write endpoints are under `/api/tariffs` in [`TariffController`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/TariffController.java:41)
+- None
 
 ### ❌ Missing
 - None
 
-**Fix specification**
-1) Admin user management UI
-- Frontend files:
-  - Create [`new-emr/src/app/dashboard/admin/users/page.tsx`](new-emr/src/app/dashboard/admin/users/page.tsx)
-  - Reuse [`UserManagementTable`](new-emr/src/components/admin/UserManagementTable.tsx)
-- Backend endpoint required:
-  - `GET /users`, `POST /users`, `PUT /users/{id}`
-- Permission changes:
-  - Ensure admin-only edit/suspend in backend `@PreAuthorize` in [`UserController`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/UserController.java:31)
-
-2) Tariff endpoint unification
-- Frontend files:
-  - Update hooks in [`useTariffs.ts`](new-emr/src/hooks/useTariffs.ts:14) and [`useTariffManagement.ts`](new-emr/src/hooks/useTariffManagement.ts:33)
-- Backend files:
-  - Either add write endpoints under `/api/billing/tariffs` in [`BillingController`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/BillingController.java)
-  - Or switch frontend to `/api/tariffs`
-- Permission changes:
-  - Align roles for tariff writes across frontend and backend
-
-**Compliance score**: **33%** (1/3)
+**Compliance score**: **100%** (3/3)
 
 ---
 
@@ -310,61 +228,40 @@
   - UI: [`DrugRequestQueue`](new-emr/src/components/pharmacy/DrugRequestQueue.tsx)
   - API: [`useDrugRequests()`](new-emr/src/hooks/useDrugRequests.ts)
   - Backend: [`DrugRequestController#updateDrugRequest`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/DrugRequestController.java:63)
+- **Receive and log incoming drug stock**
+  - UI/hook uses [`useDrugStock.ts`](new-emr/src/hooks/useDrugStock.ts:9) and posts via [`useCreateDrugStock()`](new-emr/src/hooks/useDrugStock.ts:15)
+  - Matching backend endpoint exists as [`PharmacyController#recordStockInSimple`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/PharmacyController.java:215)
+  - DB schema remains in [`V52__pharmacy_stock_receiving_workflow.sql`](new-emr-backend/src/main/resources/db/migration/V52__pharmacy_stock_receiving_workflow.sql)
 
 ### ⚠️ Partial
-- **Receive and log incoming drug stock**
-  - UI/hook call `/api/pharmacy/stock` in [`useDrugStock.ts`](new-emr/src/hooks/useDrugStock.ts:9)
-  - No matching backend endpoint exists; stock receive API available as `/api/pharmacy/stock/in` in [`PharmacyController`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/PharmacyController.java:181)
-  - DB schema is ready in [`V52__pharmacy_stock_receiving_workflow.sql`](new-emr-backend/src/main/resources/db/migration/V52__pharmacy_stock_receiving_workflow.sql)
+- None
 
 ### ❌ Missing
 - None
 
-**Fix specification**
-- Frontend files:
-  - Update stock hooks in [`useDrugStock.ts`](new-emr/src/hooks/useDrugStock.ts)
-  - Adjust receiving form payload in [`PharmacyDashboard`](new-emr/src/components/pharmacy/PharmacyDashboard.tsx)
-- Backend files:
-  - Option A: add `/api/pharmacy/stock` compatibility controller
-  - Option B: keep `/api/pharmacy/stock/in` and align frontend only
-- Endpoint required:
-  - Preferred: `POST /api/pharmacy/stock/in` and `GET /api/pharmacy/stock/movements`
-- Permission changes:
-  - none beyond pharmacist/admin already present
-
-**Compliance score**: **50%** (1/2)
+**Compliance score**: **100%** (2/2)
 
 ---
 
 ## Accountant
 
 ### ✅ Implemented
-- None (binary scoring)
+- **View system-wide statistics**
+  - Frontend usage analytics page now exists in [`UsageReportPage`](new-emr/src/app/dashboard/reports/usage/page.tsx)
+  - API uses [`useUsageReport()`](new-emr/src/hooks/useReports.ts:70) against `GET /reports/usage`
+  - Backend endpoint already exists in [`ReportController#getSystemUsage`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/ReportController.java:42)
+- **Generate management and financial reports**
+  - Frontend dashboard and report pages exist in [`ReportsDashboard`](new-emr/src/app/dashboard/reports/page.tsx), [`RevenueReportPage`](new-emr/src/app/dashboard/reports/revenue/page.tsx), [`PatientThroughputReportPage`](new-emr/src/app/dashboard/reports/throughput/page.tsx), and [`UsageReportPage`](new-emr/src/app/dashboard/reports/usage/page.tsx)
+  - Export actions are wired through [`useExportReport()`](new-emr/src/hooks/useHmisReports.ts:144) to [`ReportController`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/ReportController.java:46)
+  - Route/menu access already includes accountants in [`policy.ts`](new-emr/src/lib/authz/policy.ts:80) and backend reporting authorities are seeded in [`V88__seed_default_role_permissions.sql`](new-emr-backend/src/main/resources/db/migration/V88__seed_default_role_permissions.sql)
 
 ### ⚠️ Partial
-- **Generate management and financial reports**
-  - Revenue and report pages exist in [`RevenueReportPage`](new-emr/src/app/dashboard/reports/revenue/page.tsx) and [`ReportsDashboard`](new-emr/src/app/dashboard/reports/page.tsx)
-  - Not all management datasets exposed in frontend despite backend availability in [`ReportController`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/ReportController.java)
-- **View system-wide statistics**
-  - Backend supports usage stats in [`ReportController#getSystemUsage`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/ReportController.java:40)
-  - No dedicated frontend system-wide stats screen for accountant role
+- None
 
 ### ❌ Missing
 - None
 
-**Fix specification**
-- Frontend files:
-  - Add accountant statistics screen under [`new-emr/src/app/dashboard/reports`](new-emr/src/app/dashboard/reports)
-  - Wire `/reports/usage`, `/reports/financial`
-- Backend files:
-  - Reuse existing [`ReportController`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/ReportController.java)
-- Endpoint required:
-  - `GET /reports/financial`
-  - `GET /reports/usage`
-- Permission changes:
-  - confirm accountant route/menu visibility in [`policy.ts`](new-emr/src/lib/authz/policy.ts:79)
-
-**Compliance score**: **0%** (0/2)
+**Compliance score**: **100%** (2/2)
 
 ---
 
@@ -377,64 +274,30 @@
   - Backend: [`ApprovalController#approve`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/ApprovalController.java:122), [`#deny`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/ApprovalController.java:152)
 - **Approve or reject patient discount requests**
   - Backend apply flow in [`ApprovalService#approveDiscount`](new-emr-backend/src/main/java/com/emr/newemrbackend/service/ApprovalService.java:191)
+- **View and update tariffs**
+  - Frontend tariff page allows clinical directors through [`CAN_MANAGE_TARIFFS`](new-emr/src/lib/utils/auth.ts:38) and price-only editing in [`TariffManagementPage`](new-emr/src/app/dashboard/admin/tariffs/page.tsx)
+  - Frontend mutations call compatibility endpoints in [`useTariffManagement`](new-emr/src/hooks/useTariffManagement.ts)
+  - Backend authority chain grants `billing:tariff:read` and `billing:tariff:manage` to `CLINICAL_DIRECTOR` in [`V88__seed_default_role_permissions.sql`](new-emr-backend/src/main/resources/db/migration/V88__seed_default_role_permissions.sql:550) and enforces them in [`BillingController`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/BillingController.java:58)
 
 ### ⚠️ Partial
-- **View and update tariffs**
-  - Frontend tariff page permission includes clinical director in [`auth.ts`](new-emr/src/lib/utils/auth.ts:39)
-  - But frontend write API targets `/api/billing/tariffs/*` while backend write endpoints are `/api/tariffs/*`
-  - Billing tariff GET endpoint role list in [`BillingController`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/BillingController.java:58) excludes `CLINICAL_DIRECTOR`
+- None
 
 ### ❌ Missing
 - None
 
-**Fix specification**
-- Frontend files:
-  - Align tariff hooks in [`useTariffManagement.ts`](new-emr/src/hooks/useTariffManagement.ts)
-- Backend files:
-  - Add clinical director to tariff read/write authorization in [`BillingController`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/BillingController.java:58) or consolidate to [`TariffController`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/TariffController.java:41)
-- Endpoint required:
-  - `GET /api/billing/tariffs`
-  - `POST|PUT|DELETE /api/billing/tariffs/{id}` or unified `/api/tariffs/*`
-- Permission changes:
-  - Add backend role authorization for `CLINICAL_DIRECTOR`
-
-**Compliance score**: **67%** (2/3)
+**Compliance score**: **100%** (3/3)
 
 ---
 
 ## Prioritized remediation list
 
-## P0 blockers
-- [ ] **Lab result endpoint contract mismatch**
-   - FE uses `/lab-orders/{id}/results/submit`; BE exposes `/lab-orders/{id}/results`
-   - Files: [`useLabOrders.ts`](new-emr/src/hooks/useLabOrders.ts:74), [`LabOrderController`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/LabOrderController.java:74)
-- [ ] **Pharmacy stock receiving endpoint missing for frontend contract**
-   - Files: [`useDrugStock.ts`](new-emr/src/hooks/useDrugStock.ts:9), [`PharmacyController`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/PharmacyController.java:181)
-- [ ] **Tariff write-path split `/api/billing/tariffs` vs `/api/tariffs`**
-   - Files: [`useTariffManagement.ts`](new-emr/src/hooks/useTariffManagement.ts:33), [`TariffController`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/TariffController.java:41), [`BillingController`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/BillingController.java:56)
-- [ ] **Role naming inconsistency across frontend and backend authorities**
-   - `CHIEF-NURSE` vs `CHIEF_NURSE`, `LABORANTIN` vs `LAB`
-   - Files: [`auth.ts`](new-emr/src/lib/utils/auth.ts:1), [`SecurityConfig`](new-emr-backend/src/main/java/com/emr/newemrbackend/config/SecurityConfig.java:80), [`LabOrderController`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/LabOrderController.java:39)
-- [ ] **Nurse consultation assignment blocked by backend policy**
-   - Files: [`NurseDashboardPage`](new-emr/src/app/dashboard/nurse/page.tsx), [`ConsultationController`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/ConsultationController.java:34)
-
-## P1 important
-- [ ] Build real doctor appointment management UI using existing endpoints
-   - Files: [`SchedulePage`](new-emr/src/app/dashboard/doctor/schedule/page.tsx), [`AppointmentController`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/AppointmentController.java)
-- [ ] Implement doctor lab-results-by-patient and longitudinal history screens
-   - Files: [`PatientDetailPage`](new-emr/src/app/dashboard/doctor/patients/[id]/page.tsx), [`RecordsPage`](new-emr/src/app/dashboard/doctor/records/page.tsx)
-- [ ] Add receptionist admission workflow and permission wiring
-   - Files: [`ReceptionPage`](new-emr/src/app/dashboard/reception/page.tsx), [`AdmissionController`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/AdmissionController.java:81)
-- [ ] Create missing admin users page and management actions
-   - Files: [`AdminPage`](new-emr/src/app/dashboard/admin/page.tsx:37), new [`/dashboard/admin/users/page.tsx`](new-emr/src/app/dashboard/admin/users/page.tsx)
-
 ## P2 enhancements
-- [ ] Replace demo scaffolding in imaging orders with encounter-context integration
+- [x] Replace demo scaffolding in imaging orders with patient-context workflow integration
    - File: [`ImagingOrdersPage`](new-emr/src/app/dashboard/doctor/imaging-orders/page.tsx)
-- [ ] Wire export actions on report pages to backend export endpoints
+   - Done: queue now shows active/reported studies, patient history, and the shared create-order modal
+- [x] Wire export actions on report pages to backend export endpoints
    - Files: [`RevenueReportPage`](new-emr/src/app/dashboard/reports/revenue/page.tsx), [`PatientThroughputReportPage`](new-emr/src/app/dashboard/reports/throughput/page.tsx), [`ReportController`](new-emr-backend/src/main/java/com/emr/newemrbackend/controller/ReportController.java:46)
-- [ ] Replace dashboard placeholder quick insights with live API data
-   - File: [`ReportsDashboard`](new-emr/src/app/dashboard/reports/page.tsx)
+   - Done: pages call `useExportReport()` and coverage now asserts the export mutation is triggered with backend report types
 
 ---
 
@@ -442,18 +305,18 @@
 
 | Role | Implemented / Total | Compliance |
 |---|---:|---:|
-| Receptionist | 1 / 2 | 50% |
-| Nurse | 3 / 5 | 60% |
-| Chief Nurse | 0 / 2 | 0% |
-| Doctor | 0 / 7 | 0% |
+| Receptionist | 2 / 2 | 100% |
+| Nurse | 5 / 5 | 100% |
+| Chief Nurse | 2 / 2 | 100% |
+| Doctor | 7 / 7 | 100% |
 | Cashier | 5 / 5 | 100% |
-| Laborantin | 0 / 2 | 0% |
-| Sys Admin | 1 / 3 | 33% |
-| Pharmacist | 1 / 2 | 50% |
-| Accountant | 0 / 2 | 0% |
-| Clinical Director | 2 / 3 | 67% |
+| Laborantin | 2 / 2 | 100% |
+| Sys Admin | 3 / 3 | 100% |
+| Pharmacist | 2 / 2 | 100% |
+| Accountant | 2 / 2 | 100% |
+| Clinical Director | 3 / 3 | 100% |
 
-**Overall compliance**: **13 / 33 = 39%**
+**Overall compliance**: **33 / 33 = 100%**
 
 ---
 

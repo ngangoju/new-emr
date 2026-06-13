@@ -226,7 +226,7 @@ export default function TariffManagementPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { updateTariffPrice, isUpdatingPrice } = useUpdateTariffPrice()
 
-  const isClinicalDirector = currentRole === 'CLINICAL-DIRECTOR'
+  const isClinicalDirector = currentRole === 'CLINICAL_DIRECTOR'
   const isAdmin = currentRole === 'ADMIN'
 
   // Filter active/inactive for display
