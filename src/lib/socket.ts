@@ -4,8 +4,24 @@
  * Provides a Socket.IO-compatible interface (on, off, emit).
  */
 
-const SOCKET_URL = (process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:8888')
-    .replace('http', 'ws');
+function getJwtToken(): string | null {
+    if (typeof document === 'undefined') return null;
+    const match = document.cookie.match(/(?:^|; )accessToken=([^;]+)/);
+    return match ? decodeURIComponent(match[1]) : null;
+}
+
+const getBaseUrl = () => {
+    // Prefer dedicated WS URL
+    if (process.env.NEXT_PUBLIC_WS_URL) {
+        return process.env.NEXT_PUBLIC_WS_URL.replace(/\/$/, '');
+    }
+    // Fallback to API URL with ws protocol
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8888';
+    return apiUrl.replace(/^http/, 'ws').replace(/\/$/, '') + '/ws';
+};
+
+const SOCKET_URL = getBaseUrl();
+const SOCKET_PATH = '/queue';
 
 type SocketCallback = (data?: unknown) => void;
 
@@ -28,8 +44,10 @@ class SocketClient {
         if (this.socket?.readyState === WebSocket.OPEN || this.socket?.readyState === WebSocket.CONNECTING) return;
 
         this.manualDisconnect = false;
-        console.debug(`Connecting to WebSocket: ${SOCKET_URL}/ws/queue`);
-        this.socket = new WebSocket(`${SOCKET_URL}/ws/queue`);
+        const token = getJwtToken();
+        const url = token ? `${SOCKET_URL}${SOCKET_PATH}?token=${encodeURIComponent(token)}` : `${SOCKET_URL}${SOCKET_PATH}`;
+        console.debug(`Connecting to WebSocket: ${url}`);
+        this.socket = new WebSocket(url);
 
         this.socket.onopen = () => {
             console.debug('WebSocket connected');
