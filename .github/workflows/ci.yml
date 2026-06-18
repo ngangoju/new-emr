@@ -36,7 +36,7 @@ jobs:
       - name: Checkout backend
         uses: actions/checkout@v6
         with:
-          repository: ${{ github.repository }}
+          repository: ngangoju/new-emr-backend
           ref: main
           path: backend
 
@@ -65,7 +65,7 @@ jobs:
 
       - name: API contract check
         env:
-          BACKEND_DIR: ${{ github.workspace }}/backend/src/main/java/com
+          BACKEND_DIR: ${{ github.workspace }}/backend
         run: npm run contract:api
 
       - name: Unit tests (Vitest)

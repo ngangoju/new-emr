@@ -175,6 +175,24 @@ Use the focused critical lane for deterministic regression coverage of the highe
 
 This lane is intentionally narrower than the full smoke suite and is the preferred pre-refactor gate for clinical and billing workflow changes.
 
+### Critical API smoke lane
+
+Use the API smoke lane when you need workflow proof without depending on a local browser runtime:
+
+- `npm run smoke:api:critical`
+- verifies health, receptionist login, patient creation, tariff lookup, reception visit creation, nurse payment gate, cashier payment, and post-payment vitals
+- writes a JSON evidence artifact under `/tmp/emr-qa/evidence/api-smoke/`
+
+Useful environment overrides:
+
+- `E2E_AUTH_API_BASE`
+- `E2E_PASSWORD`
+- `E2E_RECEPTIONIST_USERNAME`
+- `E2E_NURSE_USERNAME`
+- `E2E_CASHIER_USERNAME`
+
+This is the preferred fallback when Playwright Chromium is blocked by local host permissions.
+
 ---
 
 ## 🧾 Evidence Capture Standards

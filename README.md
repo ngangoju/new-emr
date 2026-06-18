@@ -292,6 +292,34 @@ For GitHub Actions, use the `Critical E2E` workflow and configure:
 - optional repository variable `E2E_USERNAME`
 - repository secret `E2E_PASSWORD`
 
+### Running the critical API smoke lane
+
+For a browser-independent proof of the highest-risk billing and workflow path:
+
+```bash
+npm run smoke:api:critical
+```
+
+Default assumptions:
+- backend/auth API at `http://127.0.0.1:8888`
+- password `password123`
+- receptionist username `receptionist`
+- nurse username `ngango`
+- cashier username `cashier`
+
+Override identities or API host when your environment differs:
+
+```bash
+E2E_AUTH_API_BASE=http://127.0.0.1:8888 \
+E2E_RECEPTIONIST_USERNAME=receptionist_emr \
+E2E_NURSE_USERNAME=nurse_jackie \
+E2E_CASHIER_USERNAME=cashier_emr \
+E2E_PASSWORD=password123 \
+npm run smoke:api:critical
+```
+
+The command writes a JSON evidence artifact under `/tmp/emr-qa/evidence/api-smoke/`.
+
 For repository-wide secret hygiene, use the `Security History Scan` workflow.
 It scans full git history with Gitleaks. If the repository lives under a GitHub
 organization, set the `GITLEAKS_LICENSE` secret before enabling the workflow.
