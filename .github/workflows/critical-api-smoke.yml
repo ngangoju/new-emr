@@ -1,0 +1,105 @@
+name: Critical API Smoke
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/critical-api-smoke.yml'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'scripts/run-critical-api-smoke.mjs'
+      - 'src/**'
+      - 'README.md'
+      - 'QA_TEST_README.md'
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout frontend
+        uses: actions/checkout@v6
+
+      - name: Checkout backend
+        uses: actions/checkout@v6
+        with:
+          repository: ngangoju/new-emr-backend
+          ref: main
+          path: backend
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: maven
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Prepare backend env
+        working-directory: backend
+        run: |
+          cat > .env <<'EOF'
+          MINIO_ROOT_USER=minioadmin
+          MINIO_ROOT_PASSWORD=minioadmin
+          MINIO_ACCESS_KEY=minioadmin
+          MINIO_SECRET_KEY=minioadmin
+          JWT_SECRET=default-dev-secret-for-emr-backend-which-must-be-at-least-64-bytes-long-for-hs512-signing
+          MAIL_USERNAME=
+          MAIL_PASSWORD=
+          MAIL_HOST=smtp.gmail.com
+          MAIL_PORT=587
+          EOF
+
+      - name: Start backend dependencies
+        working-directory: backend
+        run: docker compose up -d
+
+      - name: Start backend
+        working-directory: backend
+        run: ./mvnw -q spring-boot:run > /tmp/new-emr-backend.log 2>&1 &
+
+      - name: Wait for backend health
+        run: |
+          for _ in {1..60}; do
+            if curl --silent --fail http://127.0.0.1:8888/actuator/health > /tmp/emr-health.json; then
+              cat /tmp/emr-health.json
+              exit 0
+            fi
+            sleep 2
+          done
+          cat /tmp/new-emr-backend.log || true
+          exit 1
+
+      - name: Seed critical API smoke users
+        working-directory: backend
+        run: docker compose exec -T postgres psql -U postgres -d emr_db < ../scripts/seed-critical-api-smoke-users.sql
+
+      - name: Run critical API smoke
+        env:
+          E2E_AUTH_API_BASE: http://127.0.0.1:8888
+          E2E_PASSWORD: password123
+          E2E_RECEPTIONIST_USERNAME: receptionist_emr
+          E2E_NURSE_USERNAME: nurse_emr
+          E2E_CASHIER_USERNAME: cashier_emr
+        run: npm run smoke:api:critical
+
+      - name: Upload backend log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-log
+          path: /tmp/new-emr-backend.log

@@ -42,6 +42,10 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
+function usernameCandidates(primary, fallbacks) {
+  return [...new Set([primary, ...fallbacks].filter(Boolean))]
+}
+
 function buildHealthBaseCandidates(baseUrl) {
   const trimmed = baseUrl.replace(/\/+$/, '')
   const candidates = [trimmed]
@@ -163,6 +167,29 @@ class SessionClient {
   }
 }
 
+async function loginWithCandidates(baseUrl, usernames) {
+  let lastError = null
+
+  for (const username of usernames) {
+    const client = new SessionClient(baseUrl)
+    try {
+      await client.login(username)
+      return { client, username }
+    } catch (error) {
+      lastError = error
+    }
+  }
+
+  if (lastError instanceof Error) {
+    lastError.details = {
+      ...(lastError.details ?? {}),
+      attemptedUsernames: usernames,
+    }
+  }
+
+  throw lastError ?? new Error(`Login failed for candidate usernames: ${usernames.join(', ')}`)
+}
+
 async function waitForHealth(baseUrl) {
   const deadline = Date.now() + STARTUP_TIMEOUT_MS
   const candidates = buildHealthBaseCandidates(baseUrl)
@@ -242,9 +269,12 @@ async function run() {
     })
     assert(health.status < 300, 'Health endpoint is not healthy', { status: health.status, body: summarizeBody(health.json ?? health.text) })
 
-    const receptionist = new SessionClient(baseUrl)
-    await receptionist.login(RECEPTIONIST_USERNAME)
-    record('login-receptionist', 'passed', { username: RECEPTIONIST_USERNAME })
+    const receptionistLogin = await loginWithCandidates(
+      baseUrl,
+      usernameCandidates(RECEPTIONIST_USERNAME, ['receptionist_emr', 'recep_pam']),
+    )
+    const receptionist = receptionistLogin.client
+    record('login-receptionist', 'passed', { username: receptionistLogin.username })
 
     const stamp = Date.now()
     const patientResp = await receptionist.post('/patients', {
@@ -315,9 +345,12 @@ async function run() {
     assert(invoiceId, 'Reception visit response missing invoice id', { body: summarizeBody(visitResp.json) })
     record('create-reception-visit', 'passed', { invoiceId })
 
-    const nurse = new SessionClient(baseUrl)
-    await nurse.login(NURSE_USERNAME)
-    record('login-nurse', 'passed', { username: NURSE_USERNAME })
+    const nurseLogin = await loginWithCandidates(
+      baseUrl,
+      usernameCandidates(NURSE_USERNAME, ['nurse_emr', 'nurse_jackie']),
+    )
+    const nurse = nurseLogin.client
+    record('login-nurse', 'passed', { username: nurseLogin.username })
 
     const vitalsBlockedResp = await nurse.post(`/patients/${patient.id}/vitals`, {
       temperature: 36.8,
@@ -336,9 +369,12 @@ async function run() {
     })
     record('vitals-blocked-before-payment', 'passed', { httpStatus: vitalsBlockedResp.status })
 
-    const cashier = new SessionClient(baseUrl)
-    await cashier.login(CASHIER_USERNAME)
-    record('login-cashier', 'passed', { username: CASHIER_USERNAME })
+    const cashierLogin = await loginWithCandidates(
+      baseUrl,
+      usernameCandidates(CASHIER_USERNAME, ['cashier_emr']),
+    )
+    const cashier = cashierLogin.client
+    record('login-cashier', 'passed', { username: cashierLogin.username })
 
     const invoiceResp = await cashier.get(`/invoices/${invoiceId}`)
     assert(invoiceResp.status < 300, 'Invoice lookup failed before payment', {

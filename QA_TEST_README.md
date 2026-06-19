@@ -191,6 +191,18 @@ Useful environment overrides:
 - `E2E_NURSE_USERNAME`
 - `E2E_CASHIER_USERNAME`
 
+The smoke runner also tries stable fallback identities when the preferred username is absent:
+
+- receptionist: `receptionist_emr`, `recep_pam`
+- nurse: `nurse_emr`, `nurse_jackie`
+- cashier: `cashier_emr`
+
+For clean CI or local databases that need the deterministic smoke identities, apply the SQL fixture after backend migrations complete:
+
+```bash
+docker compose -f ../new-emr-backend/docker-compose.yml exec -T postgres psql -U postgres -d emr_db < scripts/seed-critical-api-smoke-users.sql
+```
+
 This is the preferred fallback when Playwright Chromium is blocked by local host permissions.
 
 ---

@@ -307,6 +307,14 @@ Default assumptions:
 - nurse username `ngango`
 - cashier username `cashier`
 
+If those preferred usernames are absent, the runner automatically falls back to deterministic role-backed smoke users such as `receptionist_emr`, `nurse_emr`, and `cashier_emr`.
+
+For clean CI or local databases that need those deterministic identities, apply the test-only SQL fixture after backend migrations complete:
+
+```bash
+docker compose -f ../new-emr-backend/docker-compose.yml exec -T postgres psql -U postgres -d emr_db < scripts/seed-critical-api-smoke-users.sql
+```
+
 Override identities or API host when your environment differs:
 
 ```bash
@@ -319,6 +327,8 @@ npm run smoke:api:critical
 ```
 
 The command writes a JSON evidence artifact under `/tmp/emr-qa/evidence/api-smoke/`.
+
+For GitHub Actions, use the `Critical API Smoke` workflow. It boots the backend stack, waits for health, applies the CI-only smoke-user fixture, and runs the same smoke command against deterministic smoke users.
 
 For repository-wide secret hygiene, use the `Security History Scan` workflow.
 It scans full git history with Gitleaks. If the repository lives under a GitHub
