@@ -1,5 +1,6 @@
 "use client"
 
+import { useMemo } from "react"
 import { useForm, Controller } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { CalendarPlus } from "lucide-react"
@@ -22,7 +23,9 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { PatientSelector } from "@/components/shared/PatientSelector"
-import { useAvailableTheatres, useCreateSurgerySchedule } from "@/hooks/api/useTheatre"
+import { useAvailableTheatres, useScheduleSurgery } from "@/hooks/api/useTheatre"
+import { useAdmissions } from "@/hooks/useAdmissions"
+import { useProfile } from "@/hooks/useProfile"
 import {
   scheduleSurgerySchema,
   type ScheduleSurgeryFormValues,
@@ -36,35 +39,56 @@ interface ScheduleSurgeryDialogProps {
 /** Book a theatre slot; overlapping bookings are rejected by the backend. */
 export function ScheduleSurgeryDialog({ open, onOpenChange }: ScheduleSurgeryDialogProps) {
   const { data: theatres } = useAvailableTheatres()
-  const createSchedule = useCreateSurgerySchedule()
+  const createCase = useScheduleSurgery()
+  const { profile } = useProfile()
 
   const {
     control,
     register,
     handleSubmit,
+    watch,
     reset,
+    setValue,
     formState: { errors },
   } = useForm<ScheduleSurgeryFormValues>({
     resolver: zodResolver(scheduleSurgerySchema),
     defaultValues: {
       theatreId: "",
+      surgeonId: "",
       patientId: "",
+      admissionId: "",
       procedureName: "",
-      surgeonName: "",
+      procedureCode: "",
+      notes: "",
       scheduledStart: "",
       scheduledEnd: "",
     },
   })
 
+  const patientId = watch("patientId")
+  // Look up the patient's active admission to satisfy admissionId (FK required by backend).
+  const { data: admissions } = useAdmissions(
+    patientId ? { patientId, status: "admitted" } : undefined,
+    { enabled: Boolean(patientId) }
+  )
+  const activeAdmissionId = useMemo(
+    () => admissions?.[0]?.id ?? "",
+    [admissions]
+  )
+
   const onSubmit = handleSubmit((values) => {
-    createSchedule.mutate(
+    createCase.mutate(
       {
         theatreId: values.theatreId,
+        surgeonId: profile?.userId ?? values.surgeonId,
+        anaesthetistId: values.anaesthetistId || undefined,
         patientId: values.patientId,
+        admissionId: values.admissionId || activeAdmissionId,
         procedureName: values.procedureName,
-        surgeonName: values.surgeonName || undefined,
+        procedureCode: values.procedureCode || undefined,
+        notes: values.notes || undefined,
         scheduledStart: values.scheduledStart,
-        scheduledEnd: values.scheduledEnd || undefined,
+        scheduledEnd: values.scheduledEnd,
       },
       {
         onSuccess: () => {
@@ -97,12 +121,51 @@ export function ScheduleSurgeryDialog({ open, onOpenChange }: ScheduleSurgeryDia
               render={({ field }) => (
                 <PatientSelector
                   selectedPatientId={field.value || undefined}
-                  onSelect={(patient) => field.onChange(patient.id)}
+                  onSelect={(patient) => {
+                    field.onChange(patient.id)
+                    // Reset admission when patient changes
+                    setValue("admissionId", "")
+                  }}
                 />
               )}
             />
             {errors.patientId && (
               <p className="text-sm text-destructive">{errors.patientId.message}</p>
+            )}
+            {patientId && !activeAdmissionId && (
+              <p className="text-sm text-amber-600">
+                No active admission found for this patient — select one below.
+              </p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="surgery-admission">Admission</Label>
+            <Controller
+              control={control}
+              name="admissionId"
+              render={({ field }) => (
+                <Select
+                  value={field.value}
+                  onValueChange={field.onChange}
+                  disabled={!patientId}
+                >
+                  <SelectTrigger id="surgery-admission" aria-invalid={!!errors.admissionId}>
+                    <SelectValue placeholder="Select admission" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(admissions ?? []).map((adm) => (
+                      <SelectItem key={adm.id} value={adm.id}>
+                        #{adm.id.slice(0, 8)} · {adm.wardName ?? "Ward"}
+                        {adm.bedNumber ? ` · Bed ${adm.bedNumber}` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+            {errors.admissionId && (
+              <p className="text-sm text-destructive">{errors.admissionId.message}</p>
             )}
           </div>
 
@@ -146,8 +209,17 @@ export function ScheduleSurgeryDialog({ open, onOpenChange }: ScheduleSurgeryDia
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="surgery-surgeon">Surgeon</Label>
-            <Input id="surgery-surgeon" placeholder="Lead surgeon" {...register("surgeonName")} />
+            <Label htmlFor="surgery-procedure-code">Procedure code (optional)</Label>
+            <Input
+              id="surgery-procedure-code"
+              placeholder="e.g. ICD-9-CM 47.09"
+              {...register("procedureCode")}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="surgery-notes">Notes (optional)</Label>
+            <Input id="surgery-notes" placeholder="Any scheduling notes" {...register("notes")} />
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -164,7 +236,7 @@ export function ScheduleSurgeryDialog({ open, onOpenChange }: ScheduleSurgeryDia
               )}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="surgery-end">End (defaults to 2h)</Label>
+              <Label htmlFor="surgery-end">End</Label>
               <Input
                 id="surgery-end"
                 type="datetime-local"
@@ -182,12 +254,12 @@ export function ScheduleSurgeryDialog({ open, onOpenChange }: ScheduleSurgeryDia
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
-              disabled={createSchedule.isPending}
+              disabled={createCase.isPending}
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={createSchedule.isPending}>
-              {createSchedule.isPending ? "Scheduling…" : "Schedule surgery"}
+            <Button type="submit" disabled={createCase.isPending}>
+              {createCase.isPending ? "Scheduling…" : "Schedule surgery"}
             </Button>
           </DialogFooter>
         </form>

@@ -1,6 +1,7 @@
 "use client"
 
 import { useForm, Controller, useWatch } from "react-hook-form"
+import { useMemo } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { HeartPulse } from "lucide-react"
@@ -25,18 +26,21 @@ import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { PatientSelector } from "@/components/shared/PatientSelector"
 import { useRecordDelivery } from "@/hooks/api/useMaternity"
+import { useAdmissions } from "@/hooks/useAdmissions"
 
 const numeric = z.string().regex(/^\d*$/, "Whole number").optional().or(z.literal(""))
 
 const deliverySchema = z
   .object({
     patientId: z.string().uuid({ message: "Select the mother" }),
+    admissionId: z.string().uuid({ message: "Select the admission" }),
     deliveryMode: z.string().min(1, "Select delivery mode"),
     outcome: z.string().min(1, "Select outcome"),
     deliveredAt: z.string().min(1, "Delivery time is required"),
     apgar1min: numeric,
     apgar5min: numeric,
     birthWeightGrams: numeric,
+    estimatedBloodLossMl: numeric,
     registerNewborn: z.boolean(),
     newbornFirstName: z.string().max(100).optional().or(z.literal("")),
     newbornGender: z.string().optional().or(z.literal("")),
@@ -65,11 +69,13 @@ export function RecordDeliveryDialog({ open, onOpenChange }: RecordDeliveryDialo
     handleSubmit,
     reset,
     setValue,
+    watch,
     formState: { errors },
   } = useForm<DeliveryFormValues>({
     resolver: zodResolver(deliverySchema),
     defaultValues: {
       patientId: "",
+      admissionId: "",
       deliveryMode: "",
       outcome: "",
       deliveredAt: "",
@@ -77,19 +83,32 @@ export function RecordDeliveryDialog({ open, onOpenChange }: RecordDeliveryDialo
     },
   })
 
+  const patientId = watch("patientId")
+  const { data: admissions } = useAdmissions(
+    patientId ? { patientId, status: "admitted" } : undefined,
+    { enabled: Boolean(patientId) }
+  )
+  const activeAdmissionId = useMemo(
+    () => admissions?.[0]?.id ?? "",
+    [admissions]
+  )
   const registerNewborn = useWatch({ control, name: "registerNewborn" })
 
   const onSubmit = handleSubmit((values) => {
     recordDelivery.mutate(
       {
         patientId: values.patientId,
-        deliveryMode: values.deliveryMode,
+        admissionId: values.admissionId || activeAdmissionId,
+        mode: values.deliveryMode,
         outcome: values.outcome,
         deliveredAt: values.deliveredAt,
         apgar1min: values.apgar1min ? Number(values.apgar1min) : undefined,
         apgar5min: values.apgar5min ? Number(values.apgar5min) : undefined,
         birthWeightGrams: values.birthWeightGrams
           ? Number(values.birthWeightGrams)
+          : undefined,
+        estimatedBloodLossMl: values.estimatedBloodLossMl
+          ? Number(values.estimatedBloodLossMl)
           : undefined,
         registerNewborn: values.registerNewborn,
         newbornFirstName: values.newbornFirstName || undefined,
@@ -126,12 +145,50 @@ export function RecordDeliveryDialog({ open, onOpenChange }: RecordDeliveryDialo
               render={({ field }) => (
                 <PatientSelector
                   selectedPatientId={field.value || undefined}
-                  onSelect={(patient) => field.onChange(patient.id)}
+                  onSelect={(patient) => {
+                    field.onChange(patient.id)
+                    setValue("admissionId", "")
+                  }}
                 />
               )}
             />
             {errors.patientId && (
               <p className="text-sm text-destructive">{errors.patientId.message}</p>
+            )}
+            {patientId && !activeAdmissionId && (
+              <p className="text-sm text-amber-600">
+                No active admission found for this mother — select one below.
+              </p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="delivery-admission">Admission</Label>
+            <Controller
+              control={control}
+              name="admissionId"
+              render={({ field }) => (
+                <Select
+                  value={field.value}
+                  onValueChange={field.onChange}
+                  disabled={!patientId}
+                >
+                  <SelectTrigger id="delivery-admission" aria-invalid={!!errors.admissionId}>
+                    <SelectValue placeholder="Select admission" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(admissions ?? []).map((adm) => (
+                      <SelectItem key={adm.id} value={adm.id}>
+                        #{adm.id.slice(0, 8)} · {adm.wardName ?? "Ward"}
+                        {adm.bedNumber ? ` · Bed ${adm.bedNumber}` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+            {errors.admissionId && (
+              <p className="text-sm text-destructive">{errors.admissionId.message}</p>
             )}
           </div>
 

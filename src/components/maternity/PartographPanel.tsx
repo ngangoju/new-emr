@@ -22,16 +22,22 @@ import {
   usePartograph,
   useRecordPartographObservation,
 } from "@/hooks/api/useMaternity"
+import { useAdmissions } from "@/hooks/useAdmissions"
 
-const numeric = z.string().regex(/^-?\d*$/, "Whole number").optional().or(z.literal(""))
+const numeric = z
+  .string()
+  .regex(/^-?\d*$/, "Whole number")
+  .optional()
+  .or(z.literal(""))
 
 const observationSchema = z.object({
+  observedAt: z.string().min(1, "Time is required"),
   cervicalDilationCm: numeric,
-  descentStation: numeric,
-  foetalHeartRate: numeric,
-  contractionsPer10min: numeric,
-  systolicBp: numeric,
-  diastolicBp: numeric,
+  cervicalDilationEffacementPercent: numeric,
+  fetalHeartRateBpm: numeric,
+  maternalContractionsPer10min: numeric,
+  maternalBloodPressureSystolic: numeric,
+  maternalBloodPressureDiastolic: numeric,
 })
 
 type ObservationFormValues = z.infer<typeof observationSchema>
@@ -41,6 +47,11 @@ export function PartographPanel() {
   const [patientId, setPatientId] = useState<string | undefined>(undefined)
   const { data: observations, isLoading } = usePartograph(patientId)
   const record = useRecordPartographObservation()
+  const { data: admissions } = useAdmissions(
+    patientId ? { patientId, status: "admitted" } : undefined,
+    { enabled: Boolean(patientId) }
+  )
+  const activeAdmissionId = admissions?.[0]?.id
 
   const {
     register,
@@ -57,7 +68,7 @@ export function PartographPanel() {
       minute: "2-digit",
     }),
     dilation: o.cervicalDilationCm,
-    fhr: o.foetalHeartRate,
+    fhr: o.fetalHeartRateBpm,
   }))
 
   const toNum = (v?: string) => (v ? Number(v) : undefined)
@@ -67,12 +78,16 @@ export function PartographPanel() {
     record.mutate(
       {
         patientId,
+        admissionId: activeAdmissionId,
+        observedAt: values.observedAt,
         cervicalDilationCm: toNum(values.cervicalDilationCm),
-        descentStation: toNum(values.descentStation),
-        foetalHeartRate: toNum(values.foetalHeartRate),
-        contractionsPer10min: toNum(values.contractionsPer10min),
-        systolicBp: toNum(values.systolicBp),
-        diastolicBp: toNum(values.diastolicBp),
+        cervicalDilationEffacementPercent: toNum(
+          values.cervicalDilationEffacementPercent
+        ),
+        fetalHeartRateBpm: toNum(values.fetalHeartRateBpm),
+        maternalContractionsPer10min: toNum(values.maternalContractionsPer10min),
+        maternalBloodPressureSystolic: toNum(values.maternalBloodPressureSystolic),
+        maternalBloodPressureDiastolic: toNum(values.maternalBloodPressureDiastolic),
       },
       { onSuccess: () => reset() }
     )
@@ -143,31 +158,51 @@ export function PartographPanel() {
             className="rounded-lg border p-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-7 items-end"
           >
             <div className="space-y-1">
-              <Label htmlFor="pg-dilation">Dilation (cm)</Label>
-              <Input id="pg-dilation" inputMode="numeric" {...register("cervicalDilationCm")} />
-              {errors.cervicalDilationCm && (
-                <p className="text-xs text-destructive">{errors.cervicalDilationCm.message}</p>
+              <Label htmlFor="pg-time">Time</Label>
+              <Input id="pg-time" type="datetime-local" {...register("observedAt")} />
+              {errors.observedAt && (
+                <p className="text-xs text-destructive">{errors.observedAt.message}</p>
               )}
             </div>
             <div className="space-y-1">
-              <Label htmlFor="pg-station">Station</Label>
-              <Input id="pg-station" inputMode="numeric" {...register("descentStation")} />
+              <Label htmlFor="pg-dilation">Dilation (cm)</Label>
+              <Input id="pg-dilation" inputMode="numeric" {...register("cervicalDilationCm")} />
             </div>
             <div className="space-y-1">
-              <Label htmlFor="pg-fhr">FHR</Label>
-              <Input id="pg-fhr" inputMode="numeric" {...register("foetalHeartRate")} />
+              <Label htmlFor="pg-effacement">Effacement (%)</Label>
+              <Input
+                id="pg-effacement"
+                inputMode="numeric"
+                {...register("cervicalDilationEffacementPercent")}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="pg-fhr">FHR (bpm)</Label>
+              <Input id="pg-fhr" inputMode="numeric" {...register("fetalHeartRateBpm")} />
             </div>
             <div className="space-y-1">
               <Label htmlFor="pg-contractions">Contr./10min</Label>
-              <Input id="pg-contractions" inputMode="numeric" {...register("contractionsPer10min")} />
+              <Input
+                id="pg-contractions"
+                inputMode="numeric"
+                {...register("maternalContractionsPer10min")}
+              />
             </div>
             <div className="space-y-1">
               <Label htmlFor="pg-sbp">Systolic</Label>
-              <Input id="pg-sbp" inputMode="numeric" {...register("systolicBp")} />
+              <Input
+                id="pg-sbp"
+                inputMode="numeric"
+                {...register("maternalBloodPressureSystolic")}
+              />
             </div>
             <div className="space-y-1">
               <Label htmlFor="pg-dbp">Diastolic</Label>
-              <Input id="pg-dbp" inputMode="numeric" {...register("diastolicBp")} />
+              <Input
+                id="pg-dbp"
+                inputMode="numeric"
+                {...register("maternalBloodPressureDiastolic")}
+              />
             </div>
             <Button type="submit" disabled={record.isPending}>
               {record.isPending ? "Saving…" : "Record"}
@@ -203,19 +238,20 @@ export function PartographPanel() {
               {
                 id: "fhr",
                 header: "FHR",
-                cell: (row) => row.foetalHeartRate ?? "—",
+                cell: (row) => row.fetalHeartRateBpm ?? "—",
               },
               {
                 id: "contractions",
                 header: "Contr./10min",
-                cell: (row) => row.contractionsPer10min ?? "—",
+                cell: (row) => row.maternalContractionsPer10min ?? "—",
               },
               {
                 id: "bp",
                 header: "BP",
                 cell: (row) =>
-                  row.systolicBp != null && row.diastolicBp != null
-                    ? `${row.systolicBp}/${row.diastolicBp}`
+                  row.maternalBloodPressureSystolic != null &&
+                  row.maternalBloodPressureDiastolic != null
+                    ? `${row.maternalBloodPressureSystolic}/${row.maternalBloodPressureDiastolic}`
                     : "—",
               },
             ]}
@@ -225,3 +261,4 @@ export function PartographPanel() {
     </div>
   )
 }
+

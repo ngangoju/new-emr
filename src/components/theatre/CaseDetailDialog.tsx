@@ -18,22 +18,27 @@ import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
 import { StatusBadge } from "@/components/shared"
 import {
-  type SurgeryScheduleEntry,
+  type TheatreCase,
   type ChecklistStage,
   usePreopChecklist,
   useCompleteChecklistStage,
   useOperationNote,
   useWriteOperationNote,
   useSignOperationNote,
-  useUpdateSurgeryStatus,
+  useUpdateTheatreCase,
 } from "@/hooks/api/useTheatre"
 import {
   operationNoteSchema,
   type OperationNoteFormValues,
 } from "@/lib/validations/theatre"
 
+// Form values (post-transform) type for react-hook-form
+type OpNoteFormState = Omit<OperationNoteFormValues, "bloodLossMl"> & {
+  bloodLossMl?: number
+}
+
 interface CaseDetailDialogProps {
-  surgeryCase: SurgeryScheduleEntry | null
+  surgeryCase: TheatreCase | null
   onOpenChange: (open: boolean) => void
 }
 
@@ -45,13 +50,13 @@ const STAGES: { key: ChecklistStage; label: string; hint: string }[] = [
 
 /** Theatre case detail: WHO checklist stepper, operation note, status flow. */
 export function CaseDetailDialog({ surgeryCase, onOpenChange }: CaseDetailDialogProps) {
-  const scheduleId = surgeryCase?.id
-  const { data: checklist } = usePreopChecklist(scheduleId)
-  const { data: note } = useOperationNote(scheduleId)
-  const completeStage = useCompleteChecklistStage(scheduleId)
-  const writeNote = useWriteOperationNote(scheduleId)
-  const signNote = useSignOperationNote(scheduleId)
-  const updateStatus = useUpdateSurgeryStatus()
+  const caseId = surgeryCase?.id
+  const { data: checklist } = usePreopChecklist(caseId)
+  const { data: note } = useOperationNote(caseId)
+  const completeStage = useCompleteChecklistStage(caseId)
+  const writeNote = useWriteOperationNote(caseId)
+  const signNote = useSignOperationNote(caseId)
+  const updateCase = useUpdateTheatreCase(caseId ?? "")
 
   const {
     register,
@@ -60,25 +65,23 @@ export function CaseDetailDialog({ surgeryCase, onOpenChange }: CaseDetailDialog
     setValue,
     control,
     formState: { errors },
-  } = useForm<OperationNoteFormValues>({
+  } = useForm<OpNoteFormState>({
     resolver: zodResolver(operationNoteSchema),
-    defaultValues: { procedurePerformed: "", countsConfirmed: false },
+    defaultValues: { procedure: "", countsConfirmed: false },
   })
 
   useEffect(() => {
     if (note) {
       reset({
-        procedurePerformed: note.procedurePerformed ?? "",
+        procedure: note.procedure ?? note.procedurePerformed ?? "",
         findings: note.findings ?? "",
-        anesthesiaType: note.anesthesiaType ?? "",
-        estimatedBloodLossMl:
-          note.estimatedBloodLossMl != null ? String(note.estimatedBloodLossMl) : "",
+        anesthesiaNotes: note.anesthesiaNotes ?? "",
+        bloodLossMl:
+          note.bloodLossMl != null ? note.bloodLossMl : undefined,
         countsConfirmed: note.countsConfirmed ?? false,
-        complications: note.complications ?? "",
-        postopInstructions: note.postopInstructions ?? "",
       })
     } else {
-      reset({ procedurePerformed: "", countsConfirmed: false })
+      reset({ procedure: "", countsConfirmed: false })
     }
   }, [note, reset])
 
@@ -96,15 +99,11 @@ export function CaseDetailDialog({ surgeryCase, onOpenChange }: CaseDetailDialog
 
   const onSaveNote = handleSubmit((values) => {
     writeNote.mutate({
-      procedurePerformed: values.procedurePerformed,
+      procedure: values.procedure,
       findings: values.findings || undefined,
-      anesthesiaType: values.anesthesiaType || undefined,
-      estimatedBloodLossMl: values.estimatedBloodLossMl
-        ? Number(values.estimatedBloodLossMl)
-        : undefined,
+      anesthesiaNotes: values.anesthesiaNotes || undefined,
+      bloodLossMl: values.bloodLossMl ?? undefined,
       countsConfirmed: values.countsConfirmed,
-      complications: values.complications || undefined,
-      postopInstructions: values.postopInstructions || undefined,
     })
   })
 
@@ -117,7 +116,7 @@ export function CaseDetailDialog({ surgeryCase, onOpenChange }: CaseDetailDialog
             <StatusBadge status={surgeryCase.status} label={surgeryCase.status} />
           </DialogTitle>
           <DialogDescription>
-            {surgeryCase.surgeonName ? `${surgeryCase.surgeonName} · ` : ""}
+            {surgeryCase.surgeonId ? `Surgeon ${surgeryCase.surgeonId.slice(0, 8)} · ` : ""}
             {new Date(surgeryCase.scheduledStart).toLocaleString()}
           </DialogDescription>
         </DialogHeader>
@@ -128,27 +127,36 @@ export function CaseDetailDialog({ surgeryCase, onOpenChange }: CaseDetailDialog
             <>
               <Button
                 size="sm"
-                onClick={() => updateStatus.mutate({ id: surgeryCase.id, status: "IN_PROGRESS" })}
-                disabled={updateStatus.isPending}
+                onClick={() => updateCase.mutate({ status: "IN_THEATRE" })}
+                disabled={updateCase.isPending}
               >
                 <Play className="mr-1 h-4 w-4" aria-hidden /> Start case
               </Button>
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => updateStatus.mutate({ id: surgeryCase.id, status: "CANCELLED" })}
-                disabled={updateStatus.isPending}
+                onClick={() => updateCase.mutate({ status: "CANCELLED" })}
+                disabled={updateCase.isPending}
               >
                 <XCircle className="mr-1 h-4 w-4" aria-hidden /> Cancel case
               </Button>
             </>
           )}
-          {surgeryCase.status === "IN_PROGRESS" && (
+          {surgeryCase.status === "IN_THEATRE" && (
             <Button
               size="sm"
-              onClick={() => updateStatus.mutate({ id: surgeryCase.id, status: "COMPLETED" })}
-              disabled={updateStatus.isPending}
+              onClick={() => updateCase.mutate({ status: "RECOVERY" })}
+              disabled={updateCase.isPending}
               title="Requires WHO checklist sign-out"
+            >
+              <CheckCheck className="mr-1 h-4 w-4" aria-hidden /> Send to recovery
+            </Button>
+          )}
+          {surgeryCase.status === "RECOVERY" && (
+            <Button
+              size="sm"
+              onClick={() => updateCase.mutate({ status: "COMPLETED" })}
+              disabled={updateCase.isPending}
             >
               <CheckCheck className="mr-1 h-4 w-4" aria-hidden /> Complete case
             </Button>
@@ -203,17 +211,17 @@ export function CaseDetailDialog({ surgeryCase, onOpenChange }: CaseDetailDialog
                 <Label htmlFor="opnote-procedure">Procedure performed</Label>
                 <Input
                   id="opnote-procedure"
-                  aria-invalid={!!errors.procedurePerformed}
-                  {...register("procedurePerformed")}
+                  aria-invalid={!!errors.procedure}
+                  {...register("procedure")}
                 />
-                {errors.procedurePerformed && (
-                  <p className="text-sm text-destructive">{errors.procedurePerformed.message}</p>
+                {errors.procedure && (
+                  <p className="text-sm text-destructive">{errors.procedure.message}</p>
                 )}
               </div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="space-y-1">
                   <Label htmlFor="opnote-anesthesia">Anesthesia</Label>
-                  <Input id="opnote-anesthesia" {...register("anesthesiaType")} />
+                  <Input id="opnote-anesthesia" {...register("anesthesiaNotes")} />
                 </div>
                 <div className="space-y-1">
                   <Label htmlFor="opnote-ebl">Estimated blood loss (ml)</Label>
@@ -221,7 +229,7 @@ export function CaseDetailDialog({ surgeryCase, onOpenChange }: CaseDetailDialog
                     id="opnote-ebl"
                     type="number"
                     min={0}
-                    {...register("estimatedBloodLossMl")}
+                    {...register("bloodLossMl", { valueAsNumber: true })}
                   />
                 </div>
               </div>
@@ -229,17 +237,9 @@ export function CaseDetailDialog({ surgeryCase, onOpenChange }: CaseDetailDialog
                 <Label htmlFor="opnote-findings">Findings</Label>
                 <Textarea id="opnote-findings" rows={2} {...register("findings")} />
               </div>
-              <div className="space-y-1">
-                <Label htmlFor="opnote-complications">Complications</Label>
-                <Textarea id="opnote-complications" rows={2} {...register("complications")} />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="opnote-postop">Post-op instructions</Label>
-                <Textarea id="opnote-postop" rows={2} {...register("postopInstructions")} />
-              </div>
               <label className="flex items-center gap-2 text-sm">
                 <Checkbox
-                  checked={countsConfirmed}
+                  checked={countsConfirmed ?? false}
                   onCheckedChange={(checked) => setValue("countsConfirmed", checked === true)}
                 />
                 Instrument &amp; swab counts confirmed
@@ -276,3 +276,4 @@ export function CaseDetailDialog({ surgeryCase, onOpenChange }: CaseDetailDialog
     </Dialog>
   )
 }
+
