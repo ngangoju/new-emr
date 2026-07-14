@@ -9,6 +9,7 @@ import { canAccessDashboardRoute, getRoleDefaultDashboardRoute } from "@/lib/aut
 
 import { Header } from "@/components/layout/Header"
 import { Sidebar } from "@/components/layout/Sidebar"
+import { CommandPalette } from "@/components/layout/CommandPalette"
 import { DashboardRouteGuard } from "@/components/auth/DashboardRouteGuard"
 
 export default function DashboardLayout({
@@ -75,6 +76,7 @@ export default function DashboardLayout({
       <Sidebar />
       <div className="flex flex-col flex-1 min-w-0">
         <Header />
+        <CommandPalette />
         <Suspense fallback={<div className="flex h-screen items-center justify-center p-8">
           <Spinner />
         </div>}>

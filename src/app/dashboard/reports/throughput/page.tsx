@@ -160,14 +160,14 @@ export default function PatientThroughputReportPage() {
                       <CartesianGrid strokeDasharray="3 3" vertical={false} />
                       <XAxis 
                         dataKey="status" 
-                        stroke="#888888" 
+                        stroke="var(--muted-foreground)" 
                         fontSize={12} 
                         tickLine={false} 
                         axisLine={false}
                         tickFormatter={(value) => value.slice(0, 3)}
                       />
                       <YAxis
-                        stroke="#888888"
+                        stroke="var(--muted-foreground)"
                         fontSize={12}
                         tickLine={false}
                         axisLine={false}
@@ -204,7 +204,7 @@ export default function PatientThroughputReportPage() {
                       <CartesianGrid strokeDasharray="3 3" vertical={false} />
                       <XAxis 
                         dataKey="hour" 
-                        stroke="#888888" 
+                        stroke="var(--muted-foreground)" 
                         fontSize={12} 
                         tickLine={false} 
                         axisLine={false}

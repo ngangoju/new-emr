@@ -16,20 +16,20 @@ interface LabPendingWorklistProps {
 function priorityClass(priority: string) {
   switch (priority) {
     case 'STAT':
-      return 'bg-red-100 text-red-700 border-red-200'
+      return 'bg-critical-muted text-critical border-critical/30'
     case 'URGENT':
-      return 'bg-amber-100 text-amber-700 border-amber-200'
+      return 'bg-warning-muted text-warning-foreground border-warning/40'
     default:
-      return 'bg-slate-100 text-slate-700 border-slate-200'
+      return 'bg-muted text-foreground border-border'
   }
 }
 
 function statusClass(status: string) {
   switch (status) {
     case 'IN_PROGRESS':
-      return 'bg-blue-100 text-blue-700 border-blue-200'
+      return 'bg-info-muted text-info-foreground border-info/40'
     default:
-      return 'bg-slate-100 text-slate-700 border-slate-200'
+      return 'bg-muted text-foreground border-border'
   }
 }
 
@@ -58,7 +58,7 @@ export function LabPendingWorklist({ onViewOrder }: LabPendingWorklistProps) {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-xl border bg-white p-4">
+      <div className="rounded-xl border bg-card p-4">
         <Table>
           <TableHeader>
             <TableRow>

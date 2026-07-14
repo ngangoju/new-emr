@@ -110,7 +110,7 @@ export function QuickLabOrderModal({
         <div className="px-6 py-4 border-b">
           <DialogHeader className="pr-8">
             <div className="flex items-center justify-between gap-3 mb-2">
-              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+              <Badge variant="outline" className="bg-info-muted text-info-foreground border-info/40">
                 <FlaskConical className="mr-1 h-3 w-3" />
                 Quick Lab Order
               </Badge>
@@ -127,30 +127,30 @@ export function QuickLabOrderModal({
           </DialogHeader>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6 space-y-5 bg-slate-50/50">
+        <div className="flex-1 overflow-y-auto p-6 space-y-5 bg-muted/50">
           <div className="space-y-3">
-            <Label className="text-sm font-semibold text-slate-700">Common Tests</Label>
+            <Label className="text-sm font-semibold text-foreground">Common Tests</Label>
             <div className="grid gap-3 sm:grid-cols-2">
               {COMMON_LAB_TESTS.map((test) => (
-                <label key={test} className="flex items-start gap-3 rounded-xl border bg-white p-3.5 text-sm shadow-sm hover:border-slate-300 transition-colors cursor-pointer">
+                <label key={test} className="flex items-start gap-3 rounded-xl border bg-card p-3.5 text-sm shadow-sm hover:border-border transition-colors cursor-pointer">
                   <Checkbox
                     checked={selectedTests.includes(test)}
                     onCheckedChange={() => toggleTest(test)}
                     className="mt-0.5"
                   />
-                  <span className="font-medium text-slate-700">{test}</span>
+                  <span className="font-medium text-foreground">{test}</span>
                 </label>
               ))}
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="custom-tests" className="text-sm font-semibold text-slate-700">
+            <Label htmlFor="custom-tests" className="text-sm font-semibold text-foreground">
               Additional Tests
             </Label>
             <Input
               id="custom-tests"
-              className="bg-white"
+              className="bg-card"
               placeholder="Enter custom tests, separated by commas"
               value={customTests}
               onChange={(event) => setCustomTests(event.target.value)}
@@ -158,9 +158,9 @@ export function QuickLabOrderModal({
           </div>
 
           <div className="space-y-2">
-            <Label className="text-sm font-semibold text-slate-700">Priority</Label>
+            <Label className="text-sm font-semibold text-foreground">Priority</Label>
             <Select value={priority} onValueChange={(value) => setPriority(value as 'ROUTINE' | 'URGENT' | 'STAT')}>
-              <SelectTrigger className="bg-white">
+              <SelectTrigger className="bg-card">
                 <SelectValue placeholder="Select priority" />
               </SelectTrigger>
               <SelectContent>
@@ -172,12 +172,12 @@ export function QuickLabOrderModal({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="scheduled-exam-date" className="text-sm font-semibold text-slate-700">
+            <Label htmlFor="scheduled-exam-date" className="text-sm font-semibold text-foreground">
               Schedule for date
             </Label>
             <Input
               id="scheduled-exam-date"
-              className="bg-white"
+              className="bg-card"
               type="date"
               value={scheduledExamDate}
               onChange={(event) => setScheduledExamDate(event.target.value)}
@@ -185,7 +185,7 @@ export function QuickLabOrderModal({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="clinical-note" className="text-sm font-semibold text-slate-700">
+            <Label htmlFor="clinical-note" className="text-sm font-semibold text-foreground">
               Clinical Indication
             </Label>
             <Textarea
@@ -193,23 +193,23 @@ export function QuickLabOrderModal({
               value={clinicalNote}
               onChange={(event) => setClinicalNote(event.target.value)}
               placeholder="Optional context for the lab team and downstream clinical review."
-              className="min-h-24 bg-white"
+              className="min-h-24 bg-card"
             />
           </div>
 
-          <div className="rounded-xl border bg-white p-4 shadow-sm">
-            <p className="text-sm font-semibold text-slate-900">Order Preview</p>
-            <p className="mt-1.5 text-sm text-slate-600 leading-relaxed">
+          <div className="rounded-xl border bg-card p-4 shadow-sm">
+            <p className="text-sm font-semibold text-foreground">Order Preview</p>
+            <p className="mt-1.5 text-sm text-muted-foreground leading-relaxed">
               {allTests.length ? allTests.join(', ') : 'No tests selected yet.'}
             </p>
           </div>
         </div>
 
-        <DialogFooter className="px-6 py-4 bg-slate-50 border-t shrink-0">
+        <DialogFooter className="px-6 py-4 bg-muted border-t shrink-0">
           <Button variant="outline" onClick={() => handleClose(false)} disabled={createLabOrder.isPending}>
             Cancel
           </Button>
-          <Button onClick={handleSubmit} disabled={createLabOrder.isPending || allTests.length === 0} className="bg-blue-600 hover:bg-blue-700">
+          <Button onClick={handleSubmit} disabled={createLabOrder.isPending || allTests.length === 0} className="bg-info hover:bg-info/90">
             {createLabOrder.isPending ? 'Placing Order...' : 'Place Lab Order'}
           </Button>
         </DialogFooter>

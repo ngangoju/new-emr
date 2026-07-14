@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/popover'
 import { useTariffs } from '@/hooks/useTariffs'
 import type { Tariff } from '@/types/billing'
+import { formatMoney } from '@/lib/format'
 
 interface TariffSearchComboboxProps {
   value: string
@@ -55,7 +56,7 @@ export function TariffSearchCombobox({
             <>
               {selectedTariff.serviceName}
               <span className="ml-2 text-muted-foreground">
-                RWF {selectedTariff.basePrice.toLocaleString()}
+                {formatMoney(selectedTariff.basePrice)}
               </span>
             </>
           ) : (
@@ -102,7 +103,7 @@ export function TariffSearchCombobox({
                       {tariff.category.toUpperCase()}
                     </div>
                     <span className="ml-2 font-medium">
-                      RWF {tariff.basePrice.toLocaleString()}
+                      {formatMoney(tariff.basePrice)}
                     </span>
                   </CommandItem>
                 ))}

@@ -1,6 +1,7 @@
 import axios, { AxiosRequestConfig, Method } from 'axios';
 import toast from 'react-hot-toast';
 import { handleUnauthorized } from '@/lib/utils/auth';
+import { toEmrError, type EmrError } from '@/lib/errors';
 
 export const api = axios.create({
     baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8888',
@@ -170,24 +171,37 @@ api.interceptors.response.use(
             errorMessage = `${errorMessage} [Trace: ${errData.traceId}]`;
         }
 
+        const emrError: EmrError = toEmrError({
+            status,
+            message: errorMessage,
+            code: typeof errData?.code === 'string' ? errData.code : undefined,
+            details: errData?.fieldErrors ?? errData?.details,
+            traceId: typeof errData?.traceId === 'string' ? errData.traceId : undefined,
+            blocking: Boolean(errData?.blocking),
+        });
+        // Attach typed error for callers / React Query
+        error.emrError = emrError;
+
         if (status === 403 && typeof window !== 'undefined') {
-            window.dispatchEvent(new CustomEvent('emr:permission-denied'));
+            window.dispatchEvent(new CustomEvent('emr:permission-denied', { detail: emrError }));
+            // Typed path only — do not string-match permission messages
+            return Promise.reject(error);
         }
 
-        // Rate limiting (429) is transient and self-resolving. Show a gentle, non-blocking
-        // notice (plain toast, NOT toast.error which renders the blocking "Action Failed"
-        // modal) and let React Query retry — never scare the user with a generic error.
+        // Rate limiting (429) is transient and self-resolving.
         if (status === 429) {
             toast('You are going a little fast — please retry in a moment.', { icon: '⏳' });
             return Promise.reject(error);
         }
 
-        // Only raise the blocking error modal for an actual server response we can
-        // describe. Responseless errors (navigation aborts, transient network blips on
-        // background polls) must not pop "Action Failed". Auth/route-guard states (401/
-        // 403) and expected not-found (404) are handled by the caller / route guard.
-        if (error.response && status !== 401 && status !== 403 && status !== 404) {
-            toast.error(errorMessage);
+        // Auth/route-guard (401/404) silent; recoverable server errors → non-blocking toast;
+        // blocking modal only when server marks blocking or severity modal.
+        if (error.response && status !== 401 && status !== 404) {
+            if (typeof window !== 'undefined' && (emrError.severity === 'modal' || emrError.blocking)) {
+                window.dispatchEvent(new CustomEvent('emr:error', { detail: emrError }));
+            } else if (emrError.severity === 'toast' || emrError.severity === 'field') {
+                toast.error(errorMessage);
+            }
         }
 
         return Promise.reject(error);

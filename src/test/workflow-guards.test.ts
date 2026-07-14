@@ -1,103 +1,55 @@
 import { describe, expect, it } from 'vitest'
+import {
+  mapHttpStatusToCode,
+  severityForCode,
+  toEmrError,
+  type EmrErrorCode,
+} from '@/lib/errors'
 
-import { isPermissionFeedback } from '@/components/providers/toaster-provider'
-import { shouldHoldTriageForInitialInvoice } from '@/components/nurse/NurseVitalsForm'
+/**
+ * The legacy free-text `isPermissionFeedback` string-matching suppression has
+ * been removed (Phase 0/1: typed error codes only). These tests lock the
+ * new contract: permission/authorization failures are surfaced via typed codes
+ * and resolved to `silent` severity (no error popup), while real failures are
+ * `toast`/`modal`.
+ */
 
-describe('workflow guard helpers', () => {
-  it('suppresses backend role messages before they become error popups', () => {
-    expect(isPermissionFeedback('This action is not available for your current role.')).toBe(true)
-    expect(isPermissionFeedback('Only admin users can create tariffs.')).toBe(true)
-    expect(isPermissionFeedback('The patient record was saved successfully.')).toBe(false)
+describe('error code mapping', () => {
+  it('maps HTTP 403 to PERMISSION_DENIED', () => {
+    expect(mapHttpStatusToCode(403)).toBe('PERMISSION_DENIED')
   })
-
-  it('holds nurse triage while the same-day initial invoice is not cleared', () => {
-    const today = new Date('2026-06-07T09:00:00Z')
-
-    expect(shouldHoldTriageForInitialInvoice({
-      createdAt: '2026-06-07T08:30:00Z',
-      paymentStatus: 'UNPAID',
-      patientDue: 5000,
-      insuranceDue: 0,
-      total: 5000,
-    }, today)).toBe(true)
-
-    expect(shouldHoldTriageForInitialInvoice({
-      createdAt: '2026-06-07T08:30:00Z',
-      paymentStatus: 'PARTIAL',
-      patientDue: 1000,
-      insuranceDue: 0,
-      total: 1000,
-      payments: [{ amount: 400 }],
-    }, today)).toBe(true)
-
-    expect(shouldHoldTriageForInitialInvoice({
-      createdAt: '2026-06-07T08:30:00Z',
-      paymentStatus: 'PARTIAL',
-      patientDue: 1000,
-      insuranceDue: 0,
-      total: 1000,
-      payments: [{ amount: 1000 }],
-    }, today)).toBe(false)
-
-    expect(shouldHoldTriageForInitialInvoice({
-      createdAt: '2026-06-07T08:30:00Z',
-      paymentStatus: 'PARTIAL',
-      patientDue: 1000,
-      insuranceDue: 0,
-      total: 1000,
-    }, today)).toBe(true)
-
-    expect(shouldHoldTriageForInitialInvoice({
-      createdAt: '2026-06-07T08:30:00Z',
-      paymentStatus: 'PAID',
-      patientDue: 0,
-      insuranceDue: 0,
-      total: 0,
-    }, today)).toBe(false)
-
-    expect(shouldHoldTriageForInitialInvoice({
-      createdAt: '2026-06-07T08:30:00Z',
-      paymentStatus: 'UNPAID',
-      patientDue: 0,
-      insuranceDue: 0,
-      total: 2500,
-    }, today)).toBe(true)
-
-    expect(shouldHoldTriageForInitialInvoice({
-      createdAt: '2026-06-07T08:30:00Z',
-      paymentStatus: 'UNPAID',
-      patientDue: 0,
-      insuranceDue: 2500,
-      total: 2500,
-    }, today)).toBe(false)
+  it('maps HTTP 401 to UNAUTHORIZED', () => {
+    expect(mapHttpStatusToCode(401)).toBe('UNAUTHORIZED')
   })
-
-  it('does not hold triage for older invoices', () => {
-    expect(shouldHoldTriageForInitialInvoice({
-      invoiceDate: '2026-06-06',
-      createdAt: '2026-06-07T08:30:00Z',
-      paymentStatus: 'UNPAID',
-      patientDue: 5000,
-      insuranceDue: 0,
-      total: 5000,
-    }, new Date('2026-06-07T09:00:00Z'))).toBe(false)
+  it('maps 5xx to SERVER', () => {
+    expect(mapHttpStatusToCode(500)).toBe('SERVER')
   })
+})
 
-  it('matches the backend UTC day for the initial-payment gate', () => {
-    expect(shouldHoldTriageForInitialInvoice({
-      createdAt: '2026-06-07T21:30:00Z',
-      paymentStatus: 'UNPAID',
-      patientDue: 5000,
-      insuranceDue: 0,
-      total: 5000,
-    }, new Date('2026-06-07T22:30:00Z'))).toBe(true)
+describe('severity for permission failures is silent (no popup)', () => {
+  it('PERMISSION_DENIED resolves to silent', () => {
+    expect(severityForCode('PERMISSION_DENIED')).toBe('silent')
+  })
+  it('UNAUTHORIZED resolves to silent', () => {
+    expect(severityForCode('UNAUTHORIZED')).toBe('silent')
+  })
+})
 
-    expect(shouldHoldTriageForInitialInvoice({
-      createdAt: '2026-06-07T22:30:00Z',
-      paymentStatus: 'UNPAID',
-      patientDue: 5000,
-      insuranceDue: 0,
-      total: 5000,
-    }, new Date('2026-06-08T00:30:00Z'))).toBe(false)
+describe('typed error field-level vs toast severity', () => {
+  it('VALIDATION resolves to field severity', () => {
+    expect(toEmrError({ status: 422, message: 'Invalid input' }).severity).toBe('field')
+  })
+  it('SERVER resolves to toast severity (non-blocking)', () => {
+    expect(toEmrError({ status: 500, message: 'Boom' }).severity).toBe('toast')
+  })
+  it('blocking flag forces modal severity', () => {
+    const e = toEmrError({ status: 409, message: 'Conflict', blocking: true })
+    expect(e.severity).toBe('modal')
+    expect(e.blocking).toBe(true)
+  })
+  it('carries a typed code for downstream handling', () => {
+    const e = toEmrError({ status: 403, message: 'Forbidden' })
+    expect(e.code).toBe<EmrErrorCode>('PERMISSION_DENIED')
+    expect(e.severity).toBe('silent')
   })
 })

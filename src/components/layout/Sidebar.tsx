@@ -67,6 +67,8 @@ export function Sidebar({ className }: { className?: string }) {
   const pathname = usePathname()
   const router = useRouter()
   const sidebarCollapsed = useUIStore((state) => state.sidebarCollapsed)
+  const mobileNavOpen = useUIStore((state) => state.mobileNavOpen)
+  const setMobileNavOpen = useUIStore((state) => state.setMobileNavOpen)
   const { data: unreadCount = 0 } = useUnreadCount()
 
   useEffect(() => {
@@ -125,15 +127,27 @@ export function Sidebar({ className }: { className?: string }) {
   }))
 
   return (
+    <>
+    {/* Mobile drawer overlay */}
+    {mobileNavOpen ? (
+      <button
+        type="button"
+        className="fixed inset-0 z-40 bg-foreground/40 md:hidden"
+        aria-label="Close navigation"
+        onClick={() => setMobileNavOpen(false)}
+      />
+    ) : null}
     <div className={cn(
       "flex flex-col h-full border-r bg-card p-4 shadow-sm animate-slide-in-right transition-all duration-300",
-      sidebarCollapsed ? "w-20" : "w-64",
+      "fixed inset-y-0 left-0 z-50 w-64 md:static md:z-auto",
+      mobileNavOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0",
+      sidebarCollapsed ? "md:w-20" : "md:w-64",
       className
     )}>
       {/* Logo */}
       <div className={cn(
         "mb-8 p-3 rounded-xl bg-gradient-to-r from-primary/10 to-accent/10 border transition-all duration-300",
-        sidebarCollapsed && "p-2"
+        sidebarCollapsed && "md:p-2"
       )}>
         <div className={cn(
           "flex items-center",
@@ -165,9 +179,10 @@ export function Sidebar({ className }: { className?: string }) {
             <Link
               key={item.href}
               href={item.href}
+              onClick={() => setMobileNavOpen(false)}
               className={cn(
                 "group relative flex items-center rounded-lg p-3 text-sm font-medium transition-all",
-                sidebarCollapsed ? "justify-center" : "space-x-3",
+                sidebarCollapsed ? "md:justify-center space-x-3 md:space-x-0" : "space-x-3",
                 isActive 
                   ? "bg-primary text-primary-foreground shadow-md" 
                   : "hover:bg-primary/15 hover:text-foreground"
@@ -222,5 +237,14 @@ export function Sidebar({ className }: { className?: string }) {
         </Button>
       </div>
     </div>
+    {/* Desktop spacer so fixed mobile drawer doesn't collapse layout on md+ */}
+    <div
+      className={cn(
+        "hidden md:block shrink-0 transition-all duration-300",
+        sidebarCollapsed ? "w-20" : "w-64",
+      )}
+      aria-hidden
+    />
+    </>
   )
 }

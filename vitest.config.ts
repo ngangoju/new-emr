@@ -21,6 +21,13 @@ export default defineConfig({
                 'dist/',
                 'e2e/',
             ],
+            thresholds: {
+                // Gate on a floor that the current suite already meets; raise
+                // over time. CI fails if coverage drops below this.
+                lines: 70,
+                functions: 65,
+                branches: 55,
+            },
         },
     },
     resolve: {

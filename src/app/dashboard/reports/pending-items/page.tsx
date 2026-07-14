@@ -104,7 +104,7 @@ export default function PendingItemsReportPage() {
                     <p className="text-xs font-medium text-muted-foreground">Unreported Imaging</p>
                     <p className="text-2xl font-bold">{report.unreportedImagingOrderCount}</p>
                   </div>
-                  <ImageIcon className="h-8 w-8 text-purple-500 opacity-80" />
+                  <ImageIcon className="h-8 w-8 text-info opacity-80" />
                 </div>
               </CardContent>
             </Card>

@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -13,12 +13,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
-  import { Bell, Search, Menu, User, Settings, LogOut, Sun, Moon, Loader2, CheckCheck } from "lucide-react"
+import { Bell, Search, Menu, User, Settings, LogOut, Sun, Moon, Loader2, CheckCheck } from "lucide-react"
+import { useTheme } from "next-themes"
 import { useUIStore } from "@/lib/stores/uiStore"
 import { AUTH_EVENTS, clearSession, getSessionUser, type SessionUser } from '@/lib/utils/auth'
-import { getDashboardNavigationForRole, normalizeUserRole } from '@/lib/authz/policy'
-import { findDashboardSearchTarget } from '@/lib/utils/dashboardSearch'
-  import { useUnreadCount, useNotificationsModule } from '@/hooks/useNotifications'
+import { useUnreadCount, useNotificationsModule } from '@/hooks/useNotifications'
 import { formatRelativeTime } from '@/lib/utils/date'
 import { getNotificationColor } from '@/types/notification'
 
@@ -28,7 +27,6 @@ type HeaderUser = SessionUser & {
 
 export function Header() {
   const router = useRouter()
-  const [searchQuery, setSearchQuery] = useState('')
   const [user, setUser] = useState<HeaderUser>({ 
     username: 'User', 
     name: 'User',
@@ -36,7 +34,6 @@ export function Header() {
   })
   const [mounted, setMounted] = useState(false)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
-  const searchInputRef = useRef<HTMLInputElement>(null)
 
   // Notification hooks
   const { data: unreadCount = 0, isLoading: isLoadingUnreadCount, refetch: refetchUnreadCount } = useUnreadCount()
@@ -59,42 +56,20 @@ export function Header() {
     return () => window.removeEventListener(AUTH_EVENTS.SESSION_CLEARED, handleSessionCleared)
   }, [])
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.metaKey && e.key === 'k') {
-        e.preventDefault()
-        searchInputRef.current?.focus()
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [])
+  // Cmd+K opens the global CommandPalette (mounted in dashboard layout)
   
   // Use username or name, whichever is available
   const displayName = user.name || user.username || 'User'
   const initials = displayName.split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase()
  
-  const isDarkMode = useUIStore((state) => state.isDarkMode)
-  const toggleDarkMode = useUIStore((state) => state.toggleDarkMode)
+  const { resolvedTheme, setTheme } = useTheme()
+  const isDarkMode = resolvedTheme === 'dark'
   const toggleSidebar = useUIStore((state) => state.toggleSidebar)
+  const toggleDarkMode = () => setTheme(isDarkMode ? 'light' : 'dark')
  
   const handleLogout = () => {
     clearSession({ redirectToLogin: false, reason: 'manual-logout' })
     router.replace('/login')
-  }
-
-  const handleDashboardSearchSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-
-    const role = normalizeUserRole(user.role)
-    const allowedTargets = getDashboardNavigationForRole(role)
-    const target = findDashboardSearchTarget(searchQuery, allowedTargets)
-
-    if (!target) {
-      return
-    }
-
-    router.push(target.href)
   }
 
   // Handle notification dropdown open
@@ -171,22 +146,25 @@ export function Header() {
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-14 items-center">
-        <Button variant="ghost" size="sm" className="mr-4 hidden md:flex animate-scale-in" onClick={toggleSidebar}>
+        <Button variant="ghost" size="sm" className="mr-2 md:mr-4 flex animate-scale-in" onClick={toggleSidebar}>
           <Menu className="h-5 w-5" />
-          <span className="sr-only">Toggle sidebar</span>
+          <span className="sr-only">Toggle navigation</span>
         </Button>
         <div className="flex flex-1 items-center space-x-2 md:justify-end">
-          <form className="relative flex-1 flex md:w-80" onSubmit={handleDashboardSearchSubmit}>
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              ref={searchInputRef}
-              type="search"
-              value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder="Search patients, consultations, appointments..."
-              className="pl-10 pr-4 h-9 w-full"
-            />
-          </form>
+          <button
+            type="button"
+            className="relative flex-1 flex md:w-80 h-9 items-center rounded-md border border-input bg-background px-3 text-sm text-muted-foreground hover:bg-muted/50 text-left"
+            onClick={() => {
+              window.dispatchEvent(new CustomEvent('emr:open-command-palette'))
+            }}
+            aria-label="Open command palette"
+          >
+            <Search className="mr-2 h-4 w-4 shrink-0" />
+            <span className="truncate flex-1">Search patients, modules…</span>
+            <kbd className="pointer-events-none hidden sm:inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
+              ⌘K
+            </kbd>
+          </button>
           <DropdownMenu open={notificationsOpen} onOpenChange={handleNotificationsOpenChange}>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-9 w-9 rounded-full">

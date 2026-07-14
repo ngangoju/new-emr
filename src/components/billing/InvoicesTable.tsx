@@ -28,6 +28,7 @@ import { useMyApprovals, usePendingApprovals, useRequestDiscountApproval, useReq
 import toast from 'react-hot-toast'
 import { maskIdentifier, type RevealedIdsMap } from '@/lib/utils/masking'
 import { useMemo, useState } from 'react'
+import { formatMoney } from '@/lib/format'
 
 interface InvoicesTableProps {
   invoices: Invoice[]
@@ -242,11 +243,11 @@ const latestMyDiscountRequestsByInvoiceId = useMemo(() => {
                     {invoice.doctorName || (invoice.doctorId ? `Dr. ${invoice.doctorId.slice(0, 8)}` : '—')}
                   </TableCell>
                   <TableCell className="font-medium">
-                    RWF {invoice.total.toLocaleString()}
+                    {formatMoney(invoice.total)}
                   </TableCell>
                   <TableCell>
                     <span className="font-semibold text-primary">
-                      RWF {invoice.patientDue.toLocaleString()}
+                      {formatMoney(invoice.patientDue)}
                     </span>
                   </TableCell>
                   <TableCell>

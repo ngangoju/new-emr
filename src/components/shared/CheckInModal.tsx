@@ -21,6 +21,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { useTariffs } from '@/hooks/useTariffs'
 import { useRegisterReceptionVisit } from '@/hooks/useReceptionVisits'
 import type { Tariff } from '@/types/billing'
+import { formatMoney } from '@/lib/format'
 
 interface CheckInModalProps {
   open: boolean
@@ -82,7 +83,7 @@ export function CheckInModal({ open, onOpenChange }: CheckInModalProps) {
 
   const formatTariffLabel = (tariff: Tariff) => {
     const price = Number(tariff.basePrice || 0).toLocaleString()
-    return `${tariff.serviceName} · RWF ${price}`
+    return `${tariff.serviceName} · ${formatMoney(price)}`
   }
 
   const canSubmit = Boolean(selectedPatient && selectedDoctorId && selectedTariff && !isSubmitting)

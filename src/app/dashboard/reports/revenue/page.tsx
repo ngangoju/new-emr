@@ -31,7 +31,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8']
+const COLORS = ['var(--chart-3)', 'var(--chart-2)', 'var(--chart-5)', 'var(--warning)', 'var(--chart-4)']
 
 export default function RevenueReportPage() {
   const [date, setDate] = useState<DateRange | undefined>({
@@ -169,13 +169,13 @@ export default function RevenueReportPage() {
                       <CartesianGrid strokeDasharray="3 3" vertical={false} />
                       <XAxis 
                         dataKey="insuranceType" 
-                        stroke="#888888" 
+                        stroke="var(--muted-foreground)" 
                         fontSize={12} 
                         tickLine={false} 
                         axisLine={false}
                       />
                       <YAxis
-                        stroke="#888888"
+                        stroke="var(--muted-foreground)"
                         fontSize={12}
                         tickLine={false}
                         axisLine={false}

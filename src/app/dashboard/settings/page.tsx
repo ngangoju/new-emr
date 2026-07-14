@@ -5,14 +5,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useTheme } from "next-themes"
 import { useUIStore } from "@/lib/stores/uiStore"
 import { Moon, Sun, Globe, Bell, Shield, Layout, Loader2 } from "lucide-react"
 import { useSettings } from "@/hooks/useSettings"
 import type { UserSettings } from '@/types/admin'
 
 export default function SettingsPage() {
-  const isDarkMode = useUIStore((state) => state.isDarkMode)
-  const toggleDarkMode = useUIStore((state) => state.toggleDarkMode)
+  const { resolvedTheme, setTheme } = useTheme()
+  const isDarkMode = resolvedTheme === 'dark'
   const sidebarCollapsed = useUIStore((state) => state.sidebarCollapsed)
   const toggleSidebar = useUIStore((state) => state.toggleSidebar)
   
@@ -26,20 +27,18 @@ export default function SettingsPage() {
     
   } = useSettings()
 
-  // Sync dark mode from settings if available
+  // Sync theme from persisted user settings into next-themes (canonical)
   useEffect(() => {
-    if (settings?.theme) {
-      const isSettingsDark = settings.theme === 'dark'
-      if (isSettingsDark !== isDarkMode) {
-        // Only toggle if different, but be careful of infinite loops
-        // toggleDarkMode() // We might want a setDarkMode instead
+    if (settings?.theme === 'dark' || settings?.theme === 'light') {
+      if (settings.theme !== resolvedTheme) {
+        setTheme(settings.theme)
       }
     }
-  }, [settings, isDarkMode])
+  }, [settings?.theme, resolvedTheme, setTheme])
 
   const handleToggleTheme = async (checked: boolean) => {
     const theme = checked ? 'dark' : 'light'
-    toggleDarkMode()
+    setTheme(theme)
     await updateSettings({ theme })
   }
 

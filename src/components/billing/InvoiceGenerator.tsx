@@ -34,6 +34,7 @@ import { TariffSearchCombobox } from './TariffSearchCombobox'
 import { DoctorSelector } from '@/components/shared/DoctorSelector'
 import type { Patient } from '@/types/patient'
 import type { Tariff, PaymentMethod } from '@/types/billing'
+import { formatMoney } from '@/lib/format'
 
 interface InvoiceItem {
   tariffId: string
@@ -385,8 +386,8 @@ export function InvoiceGenerator({ trigger }: { trigger: React.ReactNode }) {
                         className="w-20"
                       />
                     </TableCell>
-                    <TableCell>RWF {item.unitPrice.toLocaleString()}</TableCell>
-                    <TableCell>RWF {item.total.toLocaleString()}</TableCell>
+                    <TableCell>{formatMoney(item.unitPrice)}</TableCell>
+                    <TableCell>{formatMoney(item.total)}</TableCell>
                     <TableCell>
                       <Button variant="ghost" size="sm" onClick={() => removeItem(index)}>
                         <Trash2 className="h-4 w-4" />
@@ -405,7 +406,7 @@ export function InvoiceGenerator({ trigger }: { trigger: React.ReactNode }) {
               <CardContent className="space-y-3">
                 <div className="flex justify-between">
                   <span>Subtotal:</span>
-                  <span>RWF {subtotal.toLocaleString()}</span>
+                  <span>{formatMoney(subtotal)}</span>
                 </div>
                 <div className="flex justify-between">
                   <Label>Discount:</Label>
@@ -418,11 +419,11 @@ export function InvoiceGenerator({ trigger }: { trigger: React.ReactNode }) {
                 </div>
                 <div className="flex justify-between text-blue-600">
                   <span>Insurance Share:</span>
-                  <span>{loadingPreview ? 'Calculating...' : `RWF ${insuranceDue.toLocaleString()}`}</span>
+                  <span>{loadingPreview ? 'Calculating...' : `${formatMoney(insuranceDue)}`}</span>
                 </div>
                 <div className="flex justify-between border-t pt-3 font-bold text-lg text-primary">
                   <span>Patient Due:</span>
-                  <span>{loadingPreview ? 'Calculating...' : `RWF ${patientDue.toLocaleString()}`}</span>
+                  <span>{loadingPreview ? 'Calculating...' : `${formatMoney(patientDue)}`}</span>
                 </div>
               </CardContent>
             </Card>

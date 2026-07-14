@@ -46,6 +46,7 @@ import {
 import { Textarea } from '@/components/ui/textarea'
 import toast from 'react-hot-toast'
 import { useRouter } from 'next/navigation'
+import { formatMoney } from '@/lib/format'
 
 const TARIFF_CATEGORIES = [
   { value: 'CONSULTATION', label: 'Consultation' },
@@ -422,7 +423,7 @@ export default function TariffManagementPage() {
 
   const formatPrice = (price?: number) => {
     if (!price) return '-'
-    return `RWF ${price.toLocaleString()}`
+    return `${formatMoney(price)}`
   }
 
   if (!hasPermissionFlag) {

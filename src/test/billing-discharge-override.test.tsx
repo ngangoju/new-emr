@@ -134,7 +134,7 @@ describe('billing discharge override flow', () => {
     const dischargeButton = await screen.findByRole('button', { name: 'Discharge Patient' })
     expect(dischargeButton).toBeDisabled()
 
-    expect(dischargeButton).toHaveAttribute('title', 'Outstanding balance: 5000 RWF — contact billing')
+    expect(dischargeButton).toHaveAttribute('title', 'Outstanding balance: RF 5,000 — contact billing')
   })
 
   it('givenOutstandingBalance_whenAdminSubmitsWithReason_thenDischargeSucceeds', async () => {

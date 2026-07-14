@@ -15,7 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Badge } from '@/components/ui/badge'
+import { StatusBadge } from '@/components/shared'
 import {
   Dialog,
   DialogDescription,
@@ -184,20 +184,16 @@ export function DrugRequestQueue() {
     return requests.filter((req) => req.status === activeTab)
   }, [requests, activeTab])
 
-  // Get status badge variant
+  // Get status badge — uses the shared StatusBadge (canonical tone → token map,
+  // never hardcoded colors). Explicit tones preserve the original semantics.
   const getStatusBadge = (status: DrugRequestStatus) => {
-    switch (status) {
-      case 'pending':
-        return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">Pending</Badge>
-      case 'approved':
-        return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">Approved</Badge>
-      case 'fulfilled':
-        return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">Fulfilled</Badge>
-      case 'denied':
-        return <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">Denied</Badge>
-      default:
-        return <Badge variant="outline">{status}</Badge>
-    }
+    const tone =
+      status === 'pending' ? 'pending' :
+      status === 'approved' ? 'info' :
+      status === 'fulfilled' ? 'success' :
+      status === 'denied' ? 'critical' : 'neutral'
+    const label = status.charAt(0).toUpperCase() + status.slice(1)
+    return <StatusBadge status={status} tone={tone} label={label} />
   }
 
   // Format date - handles both ISO string and formatted date from backend

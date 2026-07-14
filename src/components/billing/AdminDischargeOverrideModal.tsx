@@ -13,6 +13,7 @@ import {
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { useDischargePatient } from '@/hooks/useAdmissions'
+import { formatMoney } from '@/lib/format'
 
 const MIN_OVERRIDE_REASON_LENGTH = 20
 
@@ -44,7 +45,7 @@ export function AdminDischargeOverrideModal({
   const canSubmit = characterCount >= MIN_OVERRIDE_REASON_LENGTH && !dischargePatientMutation.isPending
 
   const humanReadableOutstandingAmount = useMemo(
-    () => `${outstandingAmount.toLocaleString()} RWF`,
+    () => `${formatMoney(outstandingAmount)}`,
     [outstandingAmount],
   )
 

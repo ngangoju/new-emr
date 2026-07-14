@@ -109,7 +109,7 @@ function ReportsDashboardContent() {
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {reports.map((report) => (
           <Link key={report.href} href={report.href}>
-            <Card className="h-full hover:shadow-md transition-shadow cursor-pointer border-l-4" style={{ borderLeftColor: report.color.includes('blue') ? '#3b82f6' : report.color.includes('green') ? '#22c55e' : '#f97316' }}>
+            <Card className="h-full hover:shadow-md transition-shadow cursor-pointer border-l-4" style={{ borderLeftColor: report.color.includes('blue') ? 'var(--info)' : report.color.includes('green') ? 'var(--success)' : 'var(--warning)' }}>
               <CardHeader className="pb-2">
                 <div className="flex items-start justify-between">
                   <div className={`p-2 rounded-lg ${report.color} mb-3`}>
