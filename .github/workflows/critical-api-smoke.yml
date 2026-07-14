@@ -3,7 +3,7 @@ name: Critical API Smoke
 on:
   workflow_dispatch:
   pull_request:
-    branches: [main]
+    branches: [main, qa-hardening]
     paths:
       - '.github/workflows/critical-api-smoke.yml'
       - 'package.json'

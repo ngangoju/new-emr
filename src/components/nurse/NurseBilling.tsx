@@ -26,6 +26,7 @@ import { maskIdentifier, maskPhoneNumber } from '@/lib/utils/masking'
 
 import type { Patient } from '@/types/patient'
 import type { Tariff } from '@/types/billing'
+import { formatMoney } from '@/lib/format'
 
 interface BillingItem {
   id: string
@@ -349,7 +350,7 @@ export function NurseBilling() {
                         {item.tariff.category}
                       </Badge>
                     </TableCell>
-                    <TableCell>RWF {item.unitPrice.toLocaleString()}</TableCell>
+                    <TableCell>{formatMoney(item.unitPrice)}</TableCell>
                     <TableCell>
                       <Input
                         type="number"
@@ -360,7 +361,7 @@ export function NurseBilling() {
                       />
                     </TableCell>
                     <TableCell className="font-medium">
-                      RWF {item.total.toLocaleString()}
+                      {formatMoney(item.total)}
                     </TableCell>
                     <TableCell>
                       <Button
@@ -383,7 +384,7 @@ export function NurseBilling() {
             <div className="flex justify-end pt-4 border-t">
               <div className="text-right">
                 <p className="text-sm text-muted-foreground">Subtotal</p>
-                <p className="text-2xl font-bold">RWF {subtotal.toLocaleString()}</p>
+                <p className="text-2xl font-bold">{formatMoney(subtotal)}</p>
               </div>
             </div>
           )}

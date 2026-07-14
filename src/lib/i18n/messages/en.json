@@ -1,0 +1,21 @@
+{
+  "app": {
+    "name": "Modern EMR",
+    "loading": "Loading",
+    "save": "Save",
+    "cancel": "Cancel",
+    "search": "Search",
+    "commandPalette": "Search navigation, patients, actions…"
+  },
+  "auth": {
+    "login": "Sign in",
+    "logout": "Sign out",
+    "forbidden": "You do not have access to this page"
+  },
+  "errors": {
+    "generic": "Something went wrong",
+    "permission": "Permission denied",
+    "notFound": "Not found",
+    "rateLimited": "You are going a little fast — please retry in a moment."
+  }
+}

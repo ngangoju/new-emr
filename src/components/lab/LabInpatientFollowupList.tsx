@@ -15,11 +15,11 @@ interface LabInpatientFollowupListProps {
 function priorityClass(priority: string) {
   switch (priority) {
     case 'STAT':
-      return 'bg-red-100 text-red-700 border-red-200'
+      return 'bg-critical-muted text-critical border-critical/30'
     case 'URGENT':
-      return 'bg-amber-100 text-amber-700 border-amber-200'
+      return 'bg-warning-muted text-warning-foreground border-warning/40'
     default:
-      return 'bg-slate-100 text-slate-700 border-slate-200'
+      return 'bg-muted text-foreground border-border'
   }
 }
 
@@ -46,7 +46,7 @@ export function LabInpatientFollowupList({ onViewOrder }: LabInpatientFollowupLi
 
   return (
     <div className="space-y-4">
-      <div className="rounded-xl border bg-white p-4">
+      <div className="rounded-xl border bg-card p-4">
         <Table>
           <TableHeader>
             <TableRow>
@@ -104,7 +104,7 @@ export function LabInpatientFollowupList({ onViewOrder }: LabInpatientFollowupLi
                   return (
                     <TableRow
                       key={order.id}
-                      className={isOverdue ? 'bg-red-50' : isToday ? 'bg-amber-50' : undefined}
+                      className={isOverdue ? 'bg-critical-muted' : isToday ? 'bg-warning-muted' : undefined}
                     >
                       <TableCell className="font-medium">{order.patientName}</TableCell>
                       <TableCell>{order.wardUnit}</TableCell>
@@ -113,7 +113,7 @@ export function LabInpatientFollowupList({ onViewOrder }: LabInpatientFollowupLi
                         <div className="flex flex-wrap items-center gap-2">
                           <span>{new Date(order.scheduledExamDate).toLocaleDateString()}</span>
                           {isOverdue ? (
-                            <Badge variant="outline" className="border-red-200 bg-red-100 text-red-700">
+                            <Badge variant="outline" className="border-critical/30 bg-critical-muted text-critical">
                               OVERDUE
                             </Badge>
                           ) : null}

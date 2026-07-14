@@ -283,15 +283,15 @@ export function ReceptionIntakeWorkspace() {
           </div>
 
           {activeAdmissionId ? (
-            <div className="space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-4">
+            <div className="space-y-3 rounded-lg border border-border bg-muted p-4">
               <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                 <div className="space-y-1">
-                  <p className="text-sm font-semibold text-slate-900">Clinical Discharge Packet</p>
-                  <p className="text-sm text-slate-600">
+                  <p className="text-sm font-semibold text-foreground">Clinical Discharge Packet</p>
+                  <p className="text-sm text-muted-foreground">
                     Pull the doctor and nursing discharge content into checkout so the printed AVS matches the structured chart.
                   </p>
                   {packetGeneratedAt ? (
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-muted-foreground">
                       Current AVS source updated {new Date(packetGeneratedAt).toLocaleString()}
                     </p>
                   ) : null}
@@ -309,32 +309,32 @@ export function ReceptionIntakeWorkspace() {
 
               {receptionPacketDocument ? (
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Packet Status</span>
+                  <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Packet Status</span>
                   {receptionPacketDocument.lastExportedVersion ? (
                     receptionPacketDocument.reissueRequired ? (
-                      <span className="inline-flex items-center rounded-full bg-amber-100 text-amber-800 px-2.5 py-0.5 text-[11px] font-semibold">
+                      <span className="inline-flex items-center rounded-full bg-warning-muted text-warning-foreground px-2.5 py-0.5 text-[11px] font-semibold">
                         Reissue pending — changed since v{receptionPacketDocument.lastExportedVersion}
                       </span>
                     ) : (
-                      <span className="inline-flex items-center rounded-full bg-emerald-100 text-emerald-800 px-2.5 py-0.5 text-[11px] font-semibold">
+                      <span className="inline-flex items-center rounded-full bg-success-muted text-success-foreground px-2.5 py-0.5 text-[11px] font-semibold">
                         Export v{receptionPacketDocument.lastExportedVersion} is current
                       </span>
                     )
                   ) : receptionPacketDocument.documentVersion ? (
-                    <span className="inline-flex items-center rounded-full bg-blue-100 text-blue-800 px-2.5 py-0.5 text-[11px] font-semibold">
+                    <span className="inline-flex items-center rounded-full bg-info-muted text-info-foreground px-2.5 py-0.5 text-[11px] font-semibold">
                       Draft ready — no export yet
                     </span>
                   ) : (
-                    <span className="inline-flex items-center rounded-full bg-slate-100 text-slate-700 px-2.5 py-0.5 text-[11px] font-semibold">
+                    <span className="inline-flex items-center rounded-full bg-muted text-foreground px-2.5 py-0.5 text-[11px] font-semibold">
                       No packet generated
                     </span>
                   )}
                   {intake?.intakeStatus === 'CHECKED_OUT' ? (
-                    <span className="inline-flex items-center rounded-full bg-emerald-100 text-emerald-800 px-2.5 py-0.5 text-[11px] font-semibold">
+                    <span className="inline-flex items-center rounded-full bg-success-muted text-success-foreground px-2.5 py-0.5 text-[11px] font-semibold">
                       Checkout complete
                     </span>
                   ) : intake?.checkedInAt ? (
-                    <span className="inline-flex items-center rounded-full bg-slate-100 text-slate-700 px-2.5 py-0.5 text-[11px] font-semibold">
+                    <span className="inline-flex items-center rounded-full bg-muted text-foreground px-2.5 py-0.5 text-[11px] font-semibold">
                       Checkout pending
                     </span>
                   ) : null}
@@ -344,25 +344,25 @@ export function ReceptionIntakeWorkspace() {
               {generatedPacket ? (
                 <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
                   <div className="space-y-3">
-                    <div className="rounded-md border bg-white p-3">
-                      <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Generated Summary</p>
-                      <p className="mt-2 text-sm text-slate-700">{generatedPacket.summary}</p>
+                    <div className="rounded-md border bg-card p-3">
+                      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Generated Summary</p>
+                      <p className="mt-2 text-sm text-foreground">{generatedPacket.summary}</p>
                     </div>
-                    <div className="rounded-md border bg-white p-3">
-                      <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Clinical Instructions</p>
-                      <p className="mt-2 whitespace-pre-wrap text-sm text-slate-700">{generatedPacket.instructions}</p>
+                    <div className="rounded-md border bg-card p-3">
+                      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Clinical Instructions</p>
+                      <p className="mt-2 whitespace-pre-wrap text-sm text-foreground">{generatedPacket.instructions}</p>
                     </div>
                     {generatedPacket.handoffSummary ? (
-                      <div className="rounded-md border bg-white p-3">
-                        <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Medication Handoff</p>
-                        <p className="mt-2 whitespace-pre-wrap text-sm text-slate-700">{generatedPacket.handoffSummary}</p>
+                      <div className="rounded-md border bg-card p-3">
+                        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Medication Handoff</p>
+                        <p className="mt-2 whitespace-pre-wrap text-sm text-foreground">{generatedPacket.handoffSummary}</p>
                       </div>
                     ) : null}
                   </div>
 
                   <div className="space-y-3">
-                    <div className="rounded-md border bg-white p-3">
-                      <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Continue At Home</p>
+                    <div className="rounded-md border bg-card p-3">
+                      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Continue At Home</p>
                       <div className="mt-2 space-y-2">
                         {generatedPacket.medicationsToContinue.length ? generatedPacket.medicationsToContinue.map((item) => (
                           <div key={`${item.drugRequestId}-${item.drugRequestItemIndex}`} className="rounded border border-emerald-100 bg-emerald-50 p-2">
@@ -371,12 +371,12 @@ export function ReceptionIntakeWorkspace() {
                               {[item.dose, item.route, item.frequency].filter(Boolean).join(' • ') || 'No dose details recorded'}
                             </p>
                           </div>
-                        )) : <p className="text-sm text-slate-500">No home medications listed.</p>}
+                        )) : <p className="text-sm text-muted-foreground">No home medications listed.</p>}
                       </div>
                     </div>
 
-                    <div className="rounded-md border bg-white p-3">
-                      <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Stop After Discharge</p>
+                    <div className="rounded-md border bg-card p-3">
+                      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Stop After Discharge</p>
                       <div className="mt-2 space-y-2">
                         {generatedPacket.medicationsToStop.length ? generatedPacket.medicationsToStop.map((item) => (
                           <div key={`${item.drugRequestId}-${item.drugRequestItemIndex}`} className="rounded border border-rose-100 bg-rose-50 p-2">
@@ -385,13 +385,13 @@ export function ReceptionIntakeWorkspace() {
                               {[item.dose, item.route, item.frequency].filter(Boolean).join(' • ') || 'No dose details recorded'}
                             </p>
                           </div>
-                        )) : <p className="text-sm text-slate-500">No stop medications listed.</p>}
+                        )) : <p className="text-sm text-muted-foreground">No stop medications listed.</p>}
                       </div>
                     </div>
                   </div>
                 </div>
               ) : (
-                <p className="text-sm text-slate-500">
+                <p className="text-sm text-muted-foreground">
                   The discharge packet will appear here once the admission has structured reconciliation and discharge instructions.
                 </p>
               )}

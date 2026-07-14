@@ -5,52 +5,10 @@ import { PageHeader } from '@/components/layout/PageHeader'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
-import { Badge } from '@/components/ui/badge'
-import { 
-  ChevronLeft, 
-  ChevronRight, 
-  Check, 
-  User, 
-  Activity, 
-  Stethoscope,
-  Pill,
-  FileText,
-  Save,
-  Eye
-} from 'lucide-react'
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form'
+import { ChevronLeft, ChevronRight, Check, Save } from 'lucide-react'
+import { Form } from '@/components/ui/form'
 
-const STEPS = [
-  { id: 1, name: 'Patient Selection', icon: User, fields: ['patientId'], role: 'DOCTOR' },
-  { id: 2, name: 'Chief Complaint', icon: FileText, fields: ['chiefComplaint', 'history'], role: 'DOCTOR' },
-  { id: 3, name: 'Vitals & Examination', icon: Activity, fields: ['examination'], role: 'DOCTOR' },
-  { id: 4, name: 'Diagnosis', icon: Stethoscope, fields: ['diagnosis'], role: 'DOCTOR' },
-  { id: 5, name: 'Treatment Plan', icon: Pill, fields: ['medications', 'labTests', 'followUp'], role: 'DOCTOR' },
-  { id: 6, name: 'Review & Submit', icon: Eye, fields: [], role: 'DOCTOR' },
-]
-
-const LAB_TEST_OPTIONS = [
-  'Complete Blood Count (CBC)',
-  'Blood Glucose',
-  'Urinalysis',
-  'Lipid Profile',
-  'Liver Function Test',
-  'Kidney Function Test',
-  'Malaria Test',
-  'HIV Rapid Test',
-]
-
-import { usePatients, usePatient, usePatientVitals, type Patient } from '@/hooks/api/usePatients'
+import { usePatients, usePatient, usePatientVitals } from '@/hooks/api/usePatients'
 import { useCreateConsultation, useSignConsultation } from '@/hooks/api/useConsultations'
 import { useCreateLabOrder } from '@/hooks/useLabOrders'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -62,11 +20,17 @@ import { consultationSchema, type ConsultationInput } from '@/lib/validations/co
 import { useRole } from '@/hooks/useRole'
 import { WorkflowIndicator } from '@/components/clinical/WorkflowIndicator'
 import { useEncounter, useHandoffEncounter, useUpdateEncounterStep, type Encounter } from '@/hooks/api/useEncounters'
-import { StructuredMedicationEntry } from '@/components/clinical/StructuredMedicationEntry'
-import { PrescriptionList } from '@/components/clinical/PrescriptionList'
 import { AllergyInteractionOverrideModal } from '@/components/clinical/AllergyInteractionOverrideModal'
 import { AddMedicationPayload, useAddMedication, useDryRunSafetyCheck } from '@/hooks/api/useConsultations'
-import type { PrescriptionListMedication } from '@/components/clinical/PrescriptionList'
+
+import { STEPS } from './steps/constants'
+import type { StructuredMed } from './steps/types'
+import { PatientSelectionStep } from './steps/PatientSelectionStep'
+import { ChiefComplaintStep } from './steps/ChiefComplaintStep'
+import { VitalsExaminationStep } from './steps/VitalsExaminationStep'
+import { DiagnosisStep } from './steps/DiagnosisStep'
+import { TreatmentPlanStep } from './steps/TreatmentPlanStep'
+import { ReviewStep } from './steps/ReviewStep'
 
 export default function NewConsultationPage() {
   return (
@@ -84,19 +48,19 @@ function ConsultationWizard() {
   const { isRole } = useRole()
   const isNurseRole = isRole(['NURSE', 'CHIEF_NURSE'])
   const canActAsDoctorWorkflow = isRole(['DOCTOR', 'CLINICAL_DIRECTOR'])
-  
+
   const [currentStep, setCurrentStep] = useState(1)
   const [patientSearch, setPatientSearch] = useState('')
   const [selectedLabTests, setSelectedLabTests] = useState<string[]>([])
   const [createdConsultation, setCreatedConsultation] = useState<{ id: string; status: string } | null>(null)
-  
+
   // Item 1 & 2: Structured Medication State
-  const [structuredMeds, setStructuredMeds] = useState<(AddMedicationPayload & { drugName: string, id: string, safetyChecked?: boolean })[]>([])
+  const [structuredMeds, setStructuredMeds] = useState<StructuredMed[]>([])
   const [safetyError, setSafetyError] = useState<string | null>(null)
   const [pendingMed, setPendingMed] = useState<(AddMedicationPayload & { drugName: string }) | null>(null)
-  
+
   const debouncedSearch = useDebounce(patientSearch, 500)
-  
+
   // Fetch encounter data if it exists
   const { data: encounterData } = useEncounter(encounterId || '')
   const encounter: Encounter | null = encounterData ?? null
@@ -131,15 +95,15 @@ function ConsultationWizard() {
   const selectedPatientId = useWatch({ control: form.control, name: 'patientId' })
 
   // Fetch patients for search
-  const { data: patientsData, isLoading: isSearching } = usePatients({ 
+  const { data: patientsData, isLoading: isSearching } = usePatients({
     query: debouncedSearch,
-    limit: 5 
+    limit: 5
   })
-  
+
   // Reliably fetch selected patient data
   const { data: selectedPatient, isLoading: isLoadingPatient } = usePatient(selectedPatientId)
   const { data: patientVitalsData, isLoading: latestVitalsLoading } = usePatientVitals(selectedPatientId)
-  
+
   const patients = patientsData?.data || []
   const latestVitals = Array.isArray(patientVitalsData) ? patientVitalsData[0] : undefined
 
@@ -187,7 +151,7 @@ function ConsultationWizard() {
   const handleNext = async () => {
     const currentStepFields =
       (STEPS[currentStep - 1].fields as Parameters<typeof form.trigger>[0]) ?? []
-    
+
     if (currentStepFields.length > 0) {
       const isValid = await form.trigger(currentStepFields)
       if (!isValid) return
@@ -212,10 +176,10 @@ function ConsultationWizard() {
 
     const isNurse = isNurseRole;
     const nextStage = isNurse ? 'CONSULTATION' : 'SIGN_OFF';
-    
+
     // In a real app, we'd have a dropdown to select the specific doctor/user
     // For this redesign, we'll use a placeholder or the first available
-    const placeholderDoctorId = '00000000-0000-0000-0000-000000000000'; 
+    const placeholderDoctorId = '00000000-0000-0000-0000-000000000000';
 
     handoffMutation.mutate({
       id: encounterId,
@@ -239,11 +203,11 @@ function ConsultationWizard() {
   // Determine if current step is editable by current role
   const isStepEditable = () => {
     if (encounter?.workflowMode === 'SINGLE_ACTOR') return true;
-    
+
     const stepRole = STEPS[currentStep - 1].role;
     if (stepRole === 'NURSE' && isNurseRole) return true;
     if (stepRole === 'DOCTOR' && canActAsDoctorWorkflow) return true;
-    
+
     // Doctors can override nurse fields with audit
     if (stepRole === 'NURSE' && canActAsDoctorWorkflow) return true;
 
@@ -286,7 +250,7 @@ Follow Up: ${data.followUp || 'N/A'}
     try {
       const created = await createConsultationMutation.mutateAsync(payload)
       setCreatedConsultation({ id: created.id, status: created.status })
-      
+
       // Item 1 & 2: Save structured medications
       if (structuredMeds.length > 0) {
         toast.loading('Saving structured prescriptions...')
@@ -311,7 +275,7 @@ Follow Up: ${data.followUp || 'N/A'}
           }
         }
       }
-      
+
       toast.dismiss()
       toast.success('Consultation created. Finalize and sign to complete.')
     } catch (error: unknown) {
@@ -426,6 +390,15 @@ Follow Up: ${data.followUp || 'N/A'}
 
   const CurrentStepIcon = STEPS[currentStep - 1].icon
 
+  const bmi =
+    formValues.vitals?.weight && formValues.vitals?.height
+      ? (Number(formValues.vitals.weight) / Math.pow(Number(formValues.vitals.height) / 100, 2)).toFixed(1)
+      : ''
+
+  const reviewTemperature = (latestVitals?.temperature ?? formValues.vitals?.temperature) || '-'
+  const reviewBloodPressure = latestVitals?.bloodPressure || formValues.vitals?.bloodPressure || '-'
+  const reviewHeartRate = (latestVitals?.heartRate ?? formValues.vitals?.heartRate) || '-'
+
   return (
     <div className="space-y-6 animate-fade-in max-w-5xl mx-auto">
       <PageHeader
@@ -435,7 +408,7 @@ Follow Up: ${data.followUp || 'N/A'}
 
       {/* Workflow Indicator */}
       {encounter && (
-        <WorkflowIndicator 
+        <WorkflowIndicator
           stage={encounter.stage}
           workflowMode={encounter.workflowMode}
           currentOwnerName={encounter.currentOwnerName}
@@ -458,13 +431,13 @@ Follow Up: ${data.followUp || 'N/A'}
               </span>
             </div>
             <Progress value={progress} className="h-2" />
-            
+
             <div className="flex justify-between mt-6 overflow-x-auto pb-2 md:pb-0">
               {STEPS.map((step) => {
                 const StepIcon = step.icon
                 const isActive = currentStep === step.id
                 const isCompleted = currentStep > step.id
-                
+
                 return (
                   <div key={step.id} className="flex flex-col items-center space-y-2 flex-1 min-w-[60px]">
                     <div
@@ -500,503 +473,57 @@ Follow Up: ${data.followUp || 'N/A'}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-              
-              {/* Step 1: Patient Selection */}
+
               {currentStep === 1 && (
-                <div className="space-y-4">
-                  <FormField
-                    control={form.control}
-                    name="patientId"
-                    render={({ field }) => (
-                      <FormItem className="space-y-4" id="patient-search-item">
-                        <FormLabel>Search Patient *</FormLabel>
-                        <div className="relative">
-                          <Input 
-                            placeholder="Search by name, ID or phone..." 
-                            value={patientSearch}
-                            onChange={(e) => setPatientSearch(e.target.value)}
-                            disabled={!isStepEditable() || !!patientIdFromUrl}
-                          />
-                          {patientSearch && !field.value && (
-                            <div className="absolute z-10 w-full mt-1 bg-card border rounded-md shadow-lg max-h-60 overflow-auto">
-                              {isSearching ? (
-                                <div className="p-2 text-sm text-muted-foreground">Searching...</div>
-                              ) : patients.length === 0 ? (
-                                <div className="p-2 text-sm text-muted-foreground">No patients found</div>
-                              ) : (
-                                patients.map((patient: Patient) => (
-                                  <div 
-                                    key={patient.id}
-                                    className="p-2 hover:bg-accent cursor-pointer text-sm"
-                                    onClick={() => {
-                                      field.onChange(patient.id)
-                                      setPatientSearch(`${patient.firstName} ${patient.lastName}`)
-                                    }}
-                                  >
-                                    <div className="font-medium">{patient.firstName} {patient.lastName}</div>
-                                    <div className="text-xs text-muted-foreground">
-                                      {patient.gender} • {patient.phone}
-                                    </div>
-                                  </div>
-                                ))
-                              )}
-                            </div>
-                          )}
-                        </div>
-                        <FormMessage />
-
-                        {field.value && (
-                          <Card className="bg-primary/5 border-primary/20">
-                            <CardContent className="pt-6">
-                              {isLoadingPatient ? (
-                                <div className="p-4 text-center text-sm text-muted-foreground animate-pulse">
-                                  Loading patient details...
-                                </div>
-                              ) : selectedPatient ? (
-                                <>
-                                  <div className="grid grid-cols-2 gap-4 text-sm">
-                                    <div>
-                                      <span className="text-muted-foreground">Name:</span>
-                                      <p className="font-medium">{selectedPatient.firstName} {selectedPatient.lastName}</p>
-                                    </div>
-                                    <div>
-                                      <span className="text-muted-foreground">Phone:</span>
-                                      <p className="font-medium">{selectedPatient.phone || 'N/A'}</p>
-                                    </div>
-                                    <div>
-                                      <span className="text-muted-foreground">Gender:</span>
-                                      <p className="font-medium capitalize">{selectedPatient.gender?.toLowerCase() || 'N/A'}</p>
-                                    </div>
-                                    <div>
-                                      <span className="text-muted-foreground">ID:</span>
-                                      <p className="font-medium text-xs font-mono">{selectedPatient.id}</p>
-                                    </div>
-                                  </div>
-                                  {!patientIdFromUrl && (
-                                    <Button 
-                                      variant="ghost" 
-                                      size="sm" 
-                                      className="mt-4 text-destructive hover:text-destructive"
-                                      onClick={() => {
-                                        field.onChange('')
-                                        setPatientSearch('')
-                                      }}
-                                      type="button"
-                                    >
-                                      Change Patient
-                                    </Button>
-                                  )}
-                                </>
-                              ) : (
-                                <div className="p-4 text-center text-sm text-destructive">
-                                  Failed to load patient information. Please try re-selecting.
-                                </div>
-                              )}
-                            </CardContent>
-                          </Card>
-                        )}
-                      </FormItem>
-                    )}
-                  />
-                </div>
+                <PatientSelectionStep
+                  form={form}
+                  patientSearch={patientSearch}
+                  onPatientSearchChange={setPatientSearch}
+                  editable={isStepEditable()}
+                  lockedFromUrl={!!patientIdFromUrl}
+                  isSearching={isSearching}
+                  patients={patients}
+                  isLoadingPatient={isLoadingPatient}
+                  selectedPatient={selectedPatient}
+                />
               )}
 
-              {/* Step 2: Chief Complaint */}
-              {currentStep === 2 && (
-                <div className="space-y-4">
-                  <FormField
-                    control={form.control}
-                    name="chiefComplaint"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Chief Complaint *</FormLabel>
-                        <FormControl>
-                          <Textarea
-                            placeholder="What brings the patient in today?"
-                            rows={3}
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+              {currentStep === 2 && <ChiefComplaintStep form={form} />}
 
-                  <FormField
-                    control={form.control}
-                    name="history"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>History of Present Illness</FormLabel>
-                        <FormControl>
-                          <Textarea
-                            placeholder="Detailed history, onset, duration, severity..."
-                            rows={6}
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-              )}
-
-              {/* Step 3: Vitals */}
               {currentStep === 3 && (
-                <div className="space-y-4">
-                  {latestVitalsLoading ? (
-                    <div className="rounded-lg border p-4 text-sm text-muted-foreground">
-                      Loading latest vitals...
-                    </div>
-                  ) : latestVitals ? (
-                    <div className="rounded-lg border bg-muted/40 p-4 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <h3 className="font-medium">Latest nurse-recorded vitals</h3>
-                        <Badge variant="secondary">Read only</Badge>
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        Vitals recorded at {new Date(latestVitals.recordedAt).toLocaleString()}
-                      </p>
-                      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-                        <div>
-                          <Label className="text-muted-foreground">Temperature</Label>
-                          <p className="font-medium">{latestVitals.temperature ?? '-'} °C</p>
-                        </div>
-                        <div>
-                          <Label className="text-muted-foreground">Blood Pressure</Label>
-                          <p className="font-medium">{latestVitals.bloodPressure || '-'}</p>
-                        </div>
-                        <div>
-                          <Label className="text-muted-foreground">Heart Rate</Label>
-                          <p className="font-medium">{latestVitals.heartRate ?? '-'} bpm</p>
-                        </div>
-                        <div>
-                          <Label className="text-muted-foreground">Respiratory Rate</Label>
-                          <p className="font-medium">{latestVitals.respiratoryRate ?? '-'} /min</p>
-                        </div>
-                        <div>
-                          <Label className="text-muted-foreground">SpO2</Label>
-                          <p className="font-medium">{latestVitals.oxygenSaturation ?? '-'} %</p>
-                        </div>
-                        <div>
-                          <Label className="text-muted-foreground">Pain Score</Label>
-                          <p className="font-medium">{latestVitals.painScore ?? '-'}</p>
-                        </div>
-                        <div>
-                          <Label className="text-muted-foreground">Weight</Label>
-                          <p className="font-medium">{latestVitals.weight ?? '-'} kg</p>
-                        </div>
-                        <div>
-                          <Label className="text-muted-foreground">Height</Label>
-                          <p className="font-medium">{latestVitals.height ?? '-'} cm</p>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-                      No vitals recorded yet
-                    </div>
-                  )}
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="vitals.temperature"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Temperature (°C)</FormLabel>
-                          <FormControl>
-                            <Input type="number" step="0.1" placeholder="36.5" {...field} disabled />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="vitals.bloodPressure"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Blood Pressure (mmHg)</FormLabel>
-                          <FormControl>
-                            <Input placeholder="120/80" {...field} disabled />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="vitals.heartRate"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Heart Rate (bpm)</FormLabel>
-                          <FormControl>
-                            <Input type="number" placeholder="72" {...field} disabled />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="vitals.weight"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Weight (kg)</FormLabel>
-                          <FormControl>
-                            <Input type="number" step="0.1" placeholder="70.5" {...field} disabled />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="vitals.height"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Height (cm)</FormLabel>
-                          <FormControl>
-                            <Input type="number" placeholder="175" {...field} disabled />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <div className="space-y-2">
-                      <Label>BMI</Label>
-                      <Input
-                        disabled
-                        value={
-                          formValues.vitals?.weight && formValues.vitals?.height
-                            ? (Number(formValues.vitals.weight) / Math.pow(Number(formValues.vitals.height) / 100, 2)).toFixed(1)
-                            : ''
-                        }
-                      />
-                    </div>
-                  </div>
-
-                  <FormField
-                    control={form.control}
-                    name="examination"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Physical Examination Findings</FormLabel>
-                        <FormControl>
-                          <Textarea
-                            placeholder="General appearance, systems review..."
-                            rows={5}
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
+                <VitalsExaminationStep
+                  form={form}
+                  latestVitalsLoading={latestVitalsLoading}
+                  latestVitals={latestVitals}
+                  bmi={bmi}
+                />
               )}
 
-              {/* Step 4: Diagnosis */}
-              {currentStep === 4 && (
-                <div className="space-y-4">
-                  <FormField
-                    control={form.control}
-                    name="diagnosis"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Diagnosis (ICD-10) *</FormLabel>
-                        <FormControl>
-                          <Textarea
-                            placeholder="Enter diagnosis codes and descriptions..."
-                            rows={4}
-                            {...field}
-                          />
-                        </FormControl>
-                        <p className="text-sm text-muted-foreground">
-                          Pro tip: Use ICD-10 codes for accurate diagnosis recording
-                        </p>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-              )}
+              {currentStep === 4 && <DiagnosisStep form={form} />}
 
-              {/* Step 5: Treatment Plan */}
               {currentStep === 5 && (
-                <div className="space-y-4">
-                  <div className="space-y-4">
-                    <Label className="text-base font-bold flex items-center gap-2">
-                       <Pill className="h-5 w-5 text-primary" />
-                       Structured Prescriptions (Item 1 & 2)
-                    </Label>
-                    
-                    <StructuredMedicationEntry 
-                      onAdd={handleAddStructuredMed} 
-                      isLoading={addMedicationMutation.isPending}
-                    />
-
-                    <div className="space-y-2 mt-4">
-                      <Label className="text-sm font-medium">Added Medications</Label>
-                      <PrescriptionList 
-                        medications={structuredMeds as PrescriptionListMedication[]} 
-                        onRemove={handleRemoveStructuredMed}
-                      />
-                    </div>
-
-                    <FormField
-                      control={form.control}
-                      name="medications"
-                      render={({ field }) => (
-                        <FormItem className="mt-6 opacity-60">
-                          <FormLabel>Legacy Prescription Notes (Optional)</FormLabel>
-                          <FormControl>
-                            <Textarea
-                              placeholder="Any non-drug treatment notes or general advice..."
-                              rows={2}
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  <FormField
-                    control={form.control}
-                    name="labTests"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Lab Tests Ordered</FormLabel>
-                        <FormControl>
-                          <Textarea
-                            placeholder="List any lab tests or imaging required..."
-                            rows={3}
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <div className="space-y-3">
-                    <Label>Doctor Lab Request Selection</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Selected tests will be submitted as a lab order when you finalize the consultation.
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {LAB_TEST_OPTIONS.map((testName) => {
-                        const isSelected = selectedLabTests.includes(testName)
-                        return (
-                          <Button
-                            key={testName}
-                            type="button"
-                            variant={isSelected ? 'default' : 'outline'}
-                            size="sm"
-                            onClick={() => toggleLabTest(testName)}
-                          >
-                            {isSelected ? '✓ ' : ''}
-                            {testName}
-                          </Button>
-                        )
-                      })}
-                    </div>
-                  </div>
-
-                  <FormField
-                    control={form.control}
-                    name="followUp"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Follow-up Instructions</FormLabel>
-                        <FormControl>
-                          <Textarea
-                            placeholder="When to return, what to watch for..."
-                            rows={3}
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
+                <TreatmentPlanStep
+                  form={form}
+                  onAddMedication={handleAddStructuredMed}
+                  isAddingMedication={addMedicationMutation.isPending}
+                  structuredMeds={structuredMeds}
+                  onRemoveMedication={handleRemoveStructuredMed}
+                  selectedLabTests={selectedLabTests}
+                  onToggleLabTest={toggleLabTest}
+                />
               )}
 
-              {/* Step 6: Review */}
               {currentStep === 6 && (
-                <div className="space-y-6">
-                  <div className="rounded-lg border bg-muted/50 p-4 space-y-4">
-                    <h3 className="font-semibold text-lg">Consultation Summary</h3>
-                    
-                    <div className="grid gap-4">
-                      <div>
-                        <Label className="text-muted-foreground">Patient:</Label>
-                        <p className="font-medium">
-                          {selectedPatient ? `${selectedPatient.firstName} ${selectedPatient.lastName}` : 'Not selected'}
-                        </p>
-                      </div>
-
-                      <div>
-                        <Label className="text-muted-foreground">Chief Complaint:</Label>
-                        <p>{formValues.chiefComplaint || 'Not recorded'}</p>
-                      </div>
-
-                      <div>
-                        <Label className="text-muted-foreground">Vitals:</Label>
-                        <p>
-                          Temp: {(latestVitals?.temperature ?? formValues.vitals?.temperature) || '-'}°C,
-                          BP: {latestVitals?.bloodPressure || formValues.vitals?.bloodPressure || '-'},
-                          HR: {(latestVitals?.heartRate ?? formValues.vitals?.heartRate) || '-'} bpm
-                        </p>
-                      </div>
-
-                      <div>
-                        <Label className="text-muted-foreground">Diagnosis:</Label>
-                        <p>{formValues.diagnosis || 'Not recorded'}</p>
-                      </div>
-
-                      <div>
-                        <Label className="text-muted-foreground">Treatment:</Label>
-                        <p>{formValues.medications || 'No medications prescribed'}</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="rounded-lg border-2 border-warning/50 bg-warning/5 p-4">
-                    <p className="text-sm text-foreground">
-                      ⚠️ Please review all information carefully before submitting. This consultation will be permanently recorded in the patient&apos;s medical history.
-                    </p>
-                  </div>
-
-                  {createdConsultation && (
-                    <div className="rounded-lg border bg-primary/5 border-primary/20 p-4 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm font-medium">Consultation Status</p>
-                        <Badge variant={createdConsultation.status === 'SIGNED' ? 'default' : 'secondary'}>
-                          {createdConsultation.status}
-                        </Badge>
-                      </div>
-                      <p className="text-xs text-muted-foreground font-mono">ID: {createdConsultation.id}</p>
-                      {createdConsultation.status === 'SIGNED' ? (
-                        <p className="text-sm text-success">Consultation is finalized and signed.</p>
-                      ) : (
-                        <p className="text-sm text-muted-foreground">
-                          Consultation created in pending state. Finalize and sign to complete workflow.
-                        </p>
-                      )}
-                    </div>
-                  )}
-                </div>
+                <ReviewStep
+                  selectedPatient={selectedPatient}
+                  chiefComplaint={formValues.chiefComplaint}
+                  diagnosis={formValues.diagnosis}
+                  medications={formValues.medications}
+                  temperature={reviewTemperature}
+                  bloodPressure={reviewBloodPressure}
+                  heartRate={reviewHeartRate}
+                  createdConsultation={createdConsultation}
+                />
               )}
             </CardContent>
           </Card>
@@ -1020,9 +547,9 @@ Follow Up: ${data.followUp || 'N/A'}
               </Button>
 
               {currentStep === 3 && isNurseRole && encounter?.workflowMode === 'MULTI_ACTOR' ? (
-                <Button 
-                  onClick={handleHandoff} 
-                  type="button" 
+                <Button
+                  onClick={handleHandoff}
+                  type="button"
                   className="bg-warning hover:bg-warning/90"
                   disabled={handoffMutation.isPending}
                 >
@@ -1066,7 +593,7 @@ Follow Up: ${data.followUp || 'N/A'}
                       )}
                     </>
                   )}
-                  
+
                   {/* Show Next button if not on final step */}
                   {currentStep < STEPS.length && (
                     <Button onClick={handleNext} type="button">

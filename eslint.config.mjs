@@ -18,6 +18,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Generated test artifacts (already covered by .gitignore); their minified
+    // bundles are not source and must not be linted.
+    "playwright-report/**",
+    "test-results/**",
   ]),
 ]);
 

@@ -66,7 +66,7 @@ export function ReasonForAmendmentModal({
         <div className="px-6 py-4 border-b">
           <DialogHeader className="pr-8">
             <DialogTitle className="flex items-center space-x-2">
-              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              <AlertTriangle className="h-5 w-5 text-warning-foreground" />
               <span>Reason for Amendment</span>
             </DialogTitle>
             <DialogDescription>
@@ -77,12 +77,12 @@ export function ReasonForAmendmentModal({
         </div>
 
         <div className="flex-1 overflow-y-auto p-6 space-y-4">
-          <div className="bg-amber-50 border border-amber-200 rounded-md p-4">
+          <div className="bg-warning-muted border-warning/40 rounded-md p-4">
             <div className="flex items-start gap-3">
-              <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5" />
+              <AlertTriangle className="h-5 w-5 text-warning-foreground mt-0.5" />
               <div>
-                <p className="font-medium text-amber-800">Clinical Amendment</p>
-                <p className="text-sm text-amber-700 mt-1">
+                <p className="font-medium text-warning-foreground">Clinical Amendment</p>
+                <p className="text-sm text-warning mt-1">
                   All changes are logged in the audit trail with your name, timestamp, and reason.
                 </p>
               </div>
@@ -134,7 +134,7 @@ export function ReasonForAmendmentModal({
           </div>
         </div>
 
-        <DialogFooter className="px-6 py-4 bg-slate-50 border-t shrink-0">
+        <DialogFooter className="px-6 py-4 bg-muted border-t shrink-0">
           <Button 
             variant="outline" 
             onClick={handleCancel}

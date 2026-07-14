@@ -149,7 +149,7 @@ export default function UsageReportPage() {
                       <CartesianGrid strokeDasharray="3 3" vertical={false} />
                       <XAxis
                         dataKey="label"
-                        stroke="#888888"
+                        stroke="var(--muted-foreground)"
                         fontSize={12}
                         tickLine={false}
                         axisLine={false}
@@ -157,7 +157,7 @@ export default function UsageReportPage() {
                       />
                       <YAxis
                         allowDecimals={false}
-                        stroke="#888888"
+                        stroke="var(--muted-foreground)"
                         fontSize={12}
                         tickLine={false}
                         axisLine={false}
@@ -168,7 +168,7 @@ export default function UsageReportPage() {
                       />
                       <Bar dataKey="value" radius={[4, 4, 0, 0]}>
                         {report.data.map((entry, index) => (
-                          <Cell key={`${entry.label}-${index}`} fill={entry.color || '#3b82f6'} />
+                          <Cell key={`${entry.label}-${index}`} fill={entry.color || 'var(--chart-3)'} />
                         ))}
                       </Bar>
                     </BarChart>
@@ -190,7 +190,7 @@ export default function UsageReportPage() {
                       <div className="flex items-center gap-3">
                         <span
                           className="h-3 w-3 rounded-full"
-                          style={{ backgroundColor: entry.color || '#3b82f6' }}
+                          style={{ backgroundColor: entry.color || 'var(--chart-3)' }}
                         />
                         <span className="font-medium">{String(entry.label).replaceAll('_', ' ')}</span>
                       </div>

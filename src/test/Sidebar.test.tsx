@@ -64,9 +64,12 @@ const setupCommonMocks = (role: UserRole, unreadCount = 0) => {
   vi.mocked(useUIStore).mockImplementation((selector) =>
     selector({
       sidebarCollapsed: false,
-      isDarkMode: false,
+      mobileNavOpen: false,
+      tableDensity: 'comfortable',
       toggleSidebar: vi.fn(),
-      toggleDarkMode: vi.fn(),
+      setMobileNavOpen: vi.fn(),
+      toggleMobileNav: vi.fn(),
+      setTableDensity: vi.fn(),
     } as never),
   )
 }

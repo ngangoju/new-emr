@@ -44,6 +44,7 @@ import {
 } from 'lucide-react'
 import { type FormEvent, useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
+import { formatMoney } from '@/lib/format'
 
 export function PharmacyDashboard() {
   const { hasPermission, isLoading: roleLoading } = useRole()
@@ -138,18 +139,18 @@ export function PharmacyDashboard() {
       value: stats?.totalMedicationsInStock ?? 0,
       sub: 'Unique medications in stock',
       icon: Boxes,
-      color: 'from-violet-500/20 to-violet-500/5',
-      iconColor: 'text-violet-500',
-      ringColor: 'ring-violet-200',
+      color: 'from-info/20 to-info/5',
+      iconColor: 'text-info',
+      ringColor: 'ring-info/30',
     },
     {
       label: 'Total Value',
-      value: `RWF ${(stats?.totalInventoryValue ?? 0).toLocaleString()}`,
+      value: `${formatMoney((stats?.totalInventoryValue ?? 0))}`,
       sub: 'Current inventory value',
       icon: DollarSign,
-      color: 'from-emerald-500/20 to-emerald-500/5',
-      iconColor: 'text-emerald-500',
-      ringColor: 'ring-emerald-200',
+      color: 'from-success/20 to-success/5',
+      iconColor: 'text-success',
+      ringColor: 'ring-success/30',
     },
     {
       label: 'Low Stock',
@@ -158,10 +159,10 @@ export function PharmacyDashboard() {
       icon: AlertTriangle,
       color:
         (stats?.lowStockCount ?? 0) > 0
-          ? 'from-amber-500/20 to-amber-500/5'
-          : 'from-slate-100 to-slate-50',
-      iconColor: (stats?.lowStockCount ?? 0) > 0 ? 'text-amber-500' : 'text-slate-400',
-      ringColor: (stats?.lowStockCount ?? 0) > 0 ? 'ring-amber-200' : 'ring-slate-200',
+          ? 'from-warning/20 to-warning/5'
+          : 'from-muted to-muted/50',
+      iconColor: (stats?.lowStockCount ?? 0) > 0 ? 'text-warning' : 'text-muted-foreground',
+      ringColor: (stats?.lowStockCount ?? 0) > 0 ? 'ring-warning/30' : 'ring-border',
     },
     {
       label: 'Expiring Soon',
@@ -170,10 +171,10 @@ export function PharmacyDashboard() {
       icon: Clock,
       color:
         (stats?.expiringCount ?? 0) > 0
-          ? 'from-rose-500/20 to-rose-500/5'
-          : 'from-slate-100 to-slate-50',
-      iconColor: (stats?.expiringCount ?? 0) > 0 ? 'text-rose-500' : 'text-slate-400',
-      ringColor: (stats?.expiringCount ?? 0) > 0 ? 'ring-rose-200' : 'ring-slate-200',
+          ? 'from-critical/20 to-critical/5'
+          : 'from-muted to-muted/50',
+      iconColor: (stats?.expiringCount ?? 0) > 0 ? 'text-critical' : 'text-muted-foreground',
+      ringColor: (stats?.expiringCount ?? 0) > 0 ? 'ring-critical/30' : 'ring-border',
     },
   ]
 
@@ -211,7 +212,7 @@ export function PharmacyDashboard() {
                       <p className="text-3xl font-bold tracking-tight">{card.value}</p>
                       <p className="text-xs text-muted-foreground mt-1">{card.sub}</p>
                     </div>
-                    <div className={`p-2.5 rounded-xl bg-white/60 shadow-sm ring-1 ring-black/5 ${card.iconColor}`}>
+                    <div className={`p-2.5 rounded-xl bg-card shadow-sm ring-1 ring-black/5 ${card.iconColor}`}>
                       <Icon className="h-5 w-5" />
                     </div>
                   </div>
@@ -359,19 +360,19 @@ export function PharmacyDashboard() {
                       <TableCell className="text-center py-3 pr-6">
                         <div className="flex justify-center gap-1.5 flex-wrap">
                           {isOk && (
-                            <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-100 gap-1 font-normal">
+                            <Badge className="bg-success-muted text-success-foreground border-success/30 hover:bg-success-muted gap-1 font-normal">
                               <ShieldCheck className="h-3 w-3" />
                               OK
                             </Badge>
                           )}
                           {isLow && (
-                            <Badge className="bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-100 gap-1 font-normal">
+                            <Badge className="bg-warning-muted text-warning-foreground border-warning/30 hover:bg-warning-muted gap-1 font-normal">
                               <AlertTriangle className="h-3 w-3" />
                               Low
                             </Badge>
                           )}
                           {isExpiring && (
-                            <Badge className="bg-rose-100 text-rose-700 border-rose-200 hover:bg-rose-100 gap-1 font-normal">
+                            <Badge className="bg-critical-muted text-critical-foreground border-critical/30 hover:bg-critical-muted gap-1 font-normal">
                               <Clock className="h-3 w-3" />
                               Expiring
                             </Badge>
@@ -472,8 +473,8 @@ export function PharmacyDashboard() {
           </CardHeader>
           <CardContent className="p-6">
             {!canManageStock && (
-              <div className="mb-5 flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3.5 text-sm text-amber-800">
-                <AlertTriangle className="h-4 w-4 flex-shrink-0 text-amber-600" />
+              <div className="mb-5 flex items-center gap-3 rounded-lg border border-warning/40 bg-warning-muted p-3.5 text-sm text-warning-foreground">
+                <AlertTriangle className="h-4 w-4 flex-shrink-0 text-warning" />
                 Only pharmacist and admin users can receive stock.
               </div>
             )}

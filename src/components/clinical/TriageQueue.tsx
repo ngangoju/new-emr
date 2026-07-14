@@ -58,7 +58,7 @@ export function TriageQueue() {
       case 2:
         return { label: 'PRIORITY', color: 'bg-yellow-500 text-black', border: 'border-l-yellow-500', icon: Timer }
       default:
-        return { label: 'ROUTINE', color: 'bg-slate-200 text-slate-700', border: 'border-l-emerald-500', icon: Clock }
+        return { label: 'ROUTINE', color: 'bg-muted text-foreground', border: 'border-l-emerald-500', icon: Clock }
     }
   }
 
@@ -110,12 +110,12 @@ export function TriageQueue() {
   if (!canReadQueue) {
     return (
       <Card className="border-none shadow-xl overflow-hidden bg-white/50 backdrop-blur-md">
-        <CardHeader className="bg-gradient-to-r from-slate-900 to-slate-800 text-white">
+        <CardHeader className="bg-gradient-to-r from-foreground to-foreground text-white">
           <CardTitle className="text-2xl font-bold flex items-center gap-2">
             <Activity className="h-6 w-6 text-red-400" />
             Live Triage Worklist
           </CardTitle>
-          <CardDescription className="text-slate-400 font-medium tracking-wide">
+          <CardDescription className="text-muted-foreground font-medium tracking-wide">
             Real-time patient flow and triage priority
           </CardDescription>
         </CardHeader>
@@ -128,20 +128,20 @@ export function TriageQueue() {
 
   return (
     <Card className="border-none shadow-xl overflow-hidden bg-white/50 backdrop-blur-md">
-      <CardHeader className="bg-gradient-to-r from-slate-900 to-slate-800 text-white">
+      <CardHeader className="bg-gradient-to-r from-foreground to-foreground text-white">
         <div className="flex justify-between items-center">
           <div>
             <CardTitle className="text-2xl font-bold flex items-center gap-2">
               <Activity className="h-6 w-6 text-red-400" />
               Live Triage Worklist
             </CardTitle>
-            <CardDescription className="text-slate-400 font-medium tracking-wide">
+            <CardDescription className="text-muted-foreground font-medium tracking-wide">
               Real-time patient flow and triage priority
             </CardDescription>
           </div>
           <div className="flex gap-4">
             <div className="text-center px-4 py-2 bg-white/10 rounded-lg backdrop-blur-sm border border-white/10">
-              <p className="text-[10px] uppercase font-bold text-slate-400">Total Waiting</p>
+              <p className="text-[10px] uppercase font-bold text-muted-foreground">Total Waiting</p>
               <p className="text-xl font-bold">{queue?.filter(q => q.status === 'WAITING').length || 0}</p>
             </div>
           </div>
@@ -150,7 +150,7 @@ export function TriageQueue() {
       <CardContent className="p-0">
         <div className="overflow-x-auto">
           <Table>
-          <TableHeader className="bg-slate-50">
+          <TableHeader className="bg-muted">
             <TableRow>
               <TableHead className="w-[80px] text-center">#</TableHead>
               <TableHead>Patient Details</TableHead>
@@ -166,17 +166,17 @@ export function TriageQueue() {
               const acuity = getAcuityConfig(entry)
               const isUrgent = entry.priority >= 3 || entry.acuityColor === 'RED' || entry.acuityColor === 'ORANGE'
               return (
-                <TableRow key={entry.id} className={`group border-l-4 hover:bg-slate-50 transition-colors ${acuity.border} ${isUrgent ? 'bg-red-50/30' : ''}`}>
-                  <TableCell className="text-center font-mono font-bold text-slate-500">
+                <TableRow key={entry.id} className={`group border-l-4 hover:bg-muted transition-colors ${acuity.border} ${isUrgent ? 'bg-red-50/30' : ''}`}>
+                  <TableCell className="text-center font-mono font-bold text-muted-foreground">
                     {entry.queueNumber}
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-3">
-                      <div className={`h-10 w-10 rounded-full flex items-center justify-center font-bold text-sm ${entry.priority >= 3 ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-600'}`}>
+                      <div className={`h-10 w-10 rounded-full flex items-center justify-center font-bold text-sm ${entry.priority >= 3 ? 'bg-red-100 text-red-700' : 'bg-muted text-muted-foreground'}`}>
                         {entry.patientName.slice(0, 2).toUpperCase()}
                       </div>
                       <div>
-                        <p className="font-bold text-slate-900 group-hover:text-primary transition-colors">{entry.patientName}</p>
+                        <p className="font-bold text-foreground group-hover:text-primary transition-colors">{entry.patientName}</p>
                         {entry.notes && (
                           <p className="mt-1 max-w-xl whitespace-pre-line text-xs text-muted-foreground">
                             {entry.notes}
@@ -191,15 +191,15 @@ export function TriageQueue() {
                       {acuity.label}
                     </div>
                   </TableCell>
-                  <TableCell className="font-medium text-slate-700">
+                  <TableCell className="font-medium text-foreground">
                     <div className="flex items-center gap-2">
-                      <User className="h-4 w-4 text-slate-400" />
+                      <User className="h-4 w-4 text-muted-foreground" />
                       {entry.doctorName || 'Not Assigned'}
                     </div>
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-1.5 text-sm font-semibold text-slate-600">
-                      <Clock className={`h-4 w-4 ${entry.waitTimeMinutes > 30 ? 'text-red-500 animate-pulse' : 'text-slate-400'}`} />
+                    <div className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground">
+                      <Clock className={`h-4 w-4 ${entry.waitTimeMinutes > 30 ? 'text-red-500 animate-pulse' : 'text-muted-foreground'}`} />
                       {formatWaitTime(entry.waitTimeMinutes, entry.checkedInAt)}
                     </div>
                   </TableCell>
@@ -214,7 +214,7 @@ export function TriageQueue() {
                         </Badge>
                       </Link>
                     ) : (
-                      <Badge variant="outline" className="border-slate-200 text-slate-600">
+                      <Badge variant="outline" className="border-border text-muted-foreground">
                         Await Nurse
                       </Badge>
                     )}

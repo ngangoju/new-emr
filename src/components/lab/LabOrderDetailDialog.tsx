@@ -28,11 +28,11 @@ interface LabOrderDetailDialogProps {
 function priorityClass(priority: string) {
   switch (priority) {
     case 'STAT':
-      return 'bg-red-100 text-red-700 border-red-200'
+      return 'bg-critical-muted text-critical border-critical/30'
     case 'URGENT':
-      return 'bg-amber-100 text-amber-700 border-amber-200'
+      return 'bg-warning-muted text-warning-foreground border-warning/40'
     default:
-      return 'bg-slate-100 text-slate-700 border-slate-200'
+      return 'bg-muted text-foreground border-border'
   }
 }
 
@@ -91,7 +91,7 @@ export function LabOrderDetailDialog({ orderId, open, onOpenChange }: LabOrderDe
 
           {order ? (
             <div className="space-y-6">
-              <div className="grid gap-4 rounded-xl border bg-slate-50 p-4 md:grid-cols-2">
+              <div className="grid gap-4 rounded-xl border bg-muted p-4 md:grid-cols-2">
                 <div>
                   <p className="text-sm text-muted-foreground">Patient</p>
                   <p className="font-semibold">{order.patientName}</p>
@@ -123,9 +123,9 @@ export function LabOrderDetailDialog({ orderId, open, onOpenChange }: LabOrderDe
               </div>
 
               {order.rejectionReason ? (
-                <div className="rounded-xl border border-red-200 bg-red-50 p-4">
-                  <p className="text-sm font-semibold text-red-700">Rejection reason</p>
-                  <p className="mt-1 text-sm text-red-700">{order.rejectionReason}</p>
+                <div className="rounded-xl border bg-critical-muted border-critical/30 p-4">
+                  <p className="text-sm font-semibold text-critical-foreground">Rejection reason</p>
+                  <p className="mt-1 text-sm text-critical-foreground">{order.rejectionReason}</p>
                 </div>
               ) : null}
 
@@ -140,7 +140,7 @@ export function LabOrderDetailDialog({ orderId, open, onOpenChange }: LabOrderDe
               {canEnterResults && order.status === 'IN_PROGRESS' ? (
                 <LabResultForm order={order} onSubmitted={() => onOpenChange(false)} />
               ) : (
-                <div className="rounded-xl border bg-white p-5 text-sm text-muted-foreground">
+                <div className="rounded-xl border bg-card p-5 text-sm text-muted-foreground">
                   {order.status === 'PENDING'
                     ? 'Accept this order from the worklist before entering results.'
                     : 'Results are already finalized for this order.'}

@@ -328,7 +328,7 @@ export function DischargeMedicationReconciliationModal({
           ) : previewMode ? (
             <div className="flex-1 flex flex-col space-y-4">
               {!printableDocumentLoading && printableDocument ? (
-                <div className="rounded-xl border bg-slate-50 p-4">
+                <div className="rounded-xl border bg-muted p-4">
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge className="border-none bg-slate-900 text-white">
                       Packet {printableDocument.documentVersion ? `v${printableDocument.documentVersion}` : 'draft'}
@@ -341,10 +341,10 @@ export function DischargeMedicationReconciliationModal({
                     {serverPreview ? (
                       <Badge className={`border-none ${
                         serverPreview.packetStatus === 'REISSUE_REQUIRED'
-                          ? 'bg-amber-100 text-amber-800'
+                          ? 'bg-warning-muted text-warning-foreground'
                           : serverPreview.packetStatus === 'MATCHES_LAST_EXPORT'
                             ? 'bg-emerald-100 text-emerald-800'
-                            : 'bg-slate-100 text-slate-700'
+                            : 'bg-slate-100 text-muted-foreground'
                       }`}>
                         {serverPreview.packetStatus === 'REISSUE_REQUIRED'
                           ? 'Reception reissue pending'
@@ -353,13 +353,13 @@ export function DischargeMedicationReconciliationModal({
                             : 'No packet exported yet'}
                       </Badge>
                     ) : printableDocument.reissueRequired ? (
-                      <Badge className="border-none bg-amber-100 text-amber-800">Reception reissue pending</Badge>
+                      <Badge className="border-none bg-warning-muted text-warning-foreground">Reception reissue pending</Badge>
                     ) : null}
                     {serverPreview ? (
                       <Badge variant="outline">Owner: {serverPreview.responsibleRole.replaceAll('_', ' ')}</Badge>
                     ) : null}
                   </div>
-                  <p className="mt-3 text-sm text-slate-600">
+                  <p className="mt-3 text-sm text-muted-foreground">
                     This preview is tied to the discharge packet used at checkout, so medication decisions here flow directly into the front-desk handoff.
                   </p>
                 </div>
@@ -377,7 +377,7 @@ export function DischargeMedicationReconciliationModal({
                   </div>
                   <div className="mt-3 flex flex-wrap gap-2 text-xs">
                     {serverPreview.requiredActions.map((action) => (
-                      <span key={action} className="rounded-full bg-white px-3 py-1 font-medium text-blue-900">
+                      <span key={action} className="rounded-full bg-card px-3 py-1 font-medium text-blue-900">
                         {action}
                       </span>
                     ))}
@@ -408,7 +408,7 @@ export function DischargeMedicationReconciliationModal({
             <div className="flex-1 overflow-auto pr-4 space-y-6 p-6">
               {!printableDocumentLoading && printableDocument ? (
                 <div className="space-y-4">
-                  <div className="rounded-xl border bg-slate-50 p-4">
+                  <div className="rounded-xl border bg-muted p-4">
                     <div className="flex flex-wrap items-center gap-2">
                       <Badge className="border-none bg-slate-900 text-white">
                         Packet {printableDocument.documentVersion ? `v${printableDocument.documentVersion}` : 'draft'}
@@ -422,7 +422,7 @@ export function DischargeMedicationReconciliationModal({
                         <Badge variant="outline">No packet exported yet</Badge>
                       )}
                     </div>
-                    <p className="mt-3 text-sm text-slate-600">
+                    <p className="mt-3 text-sm text-muted-foreground">
                       Medication reconciliation is now part of the formal discharge packet. What you save here shapes what reception prints and hands off to the patient.
                     </p>
                   </div>
@@ -446,7 +446,7 @@ export function DischargeMedicationReconciliationModal({
                       </p>
                       <div className="mt-3 flex flex-wrap gap-2 text-xs">
                         {serverPreview.requiredActions.map((action) => (
-                          <span key={action} className="rounded-full bg-white px-3 py-1 font-medium text-blue-900">
+                          <span key={action} className="rounded-full bg-card px-3 py-1 font-medium text-blue-900">
                             {action}
                           </span>
                         ))}
@@ -471,28 +471,28 @@ export function DischargeMedicationReconciliationModal({
                       {packetChangePreview.length ? (
                         <div className="mt-3 space-y-2">
                           {packetChangePreview.map((change) => (
-                            <div key={`${change.label}-${change.previousValue}-${change.currentValue}`} className="rounded-lg border border-amber-200 bg-white p-3">
+                            <div key={`${change.label}-${change.previousValue}-${change.currentValue}`} className="rounded-lg border border-amber-200 bg-card p-3">
                               <div className="flex flex-wrap items-center gap-2">
-                                <p className="text-sm font-semibold text-slate-900">{change.label}</p>
+                                <p className="text-sm font-semibold text-foreground">{change.label}</p>
                                 <span
                                   className={`rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${
                                     change.kind === 'added'
                                       ? 'bg-emerald-100 text-emerald-800'
                                       : change.kind === 'removed'
                                         ? 'bg-rose-100 text-rose-800'
-                                        : 'bg-amber-100 text-amber-800'
+                                        : 'bg-warning-muted text-warning-foreground'
                                   }`}
                                 >
                                   {change.kind}
                                 </span>
                                 {change.medicationRelated ? (
-                                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-slate-700">
+                                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                                     Medication
                                   </span>
                                 ) : null}
                               </div>
                               <div className="mt-2 grid gap-2 md:grid-cols-2">
-                                <pre className="whitespace-pre-wrap rounded-md bg-slate-50 p-2 text-xs text-slate-700">{change.previousValue}</pre>
+                                <pre className="whitespace-pre-wrap rounded-md bg-muted p-2 text-xs text-muted-foreground">{change.previousValue}</pre>
                                 <pre className="whitespace-pre-wrap rounded-md bg-amber-100/60 p-2 text-xs text-amber-950">{change.currentValue}</pre>
                               </div>
                             </div>
@@ -587,7 +587,7 @@ export function DischargeMedicationReconciliationModal({
           )}
         </div>
 
-        <DialogFooter className="px-6 py-4 border-t bg-slate-50 shrink-0 sm:justify-between items-center">
+        <DialogFooter className="px-6 py-4 border-t bg-muted shrink-0 sm:justify-between items-center">
           {!previewMode ? (
              <div className="text-sm flex items-center gap-3">
                 {pendingDecisions > 0 ? (
@@ -596,7 +596,7 @@ export function DischargeMedicationReconciliationModal({
                   <span className="text-emerald-600 font-medium">All medications reviewed ✓</span>
                 )}
                 {previewStale && localPacketImpact.hasChanges ? (
-                  <span className="text-xs text-slate-500">Preview updating…</span>
+                  <span className="text-xs text-muted-foreground">Preview updating…</span>
                 ) : null}
              </div>
           ) : (
@@ -604,7 +604,7 @@ export function DischargeMedicationReconciliationModal({
               {previewStale ? (
                 <span className="text-amber-600 font-medium">⚠ Preview may be stale — edits were made since last server check</span>
               ) : serverPreview ? (
-                <span className="text-slate-600">
+                <span className="text-muted-foreground">
                   Server preview: {serverPreview.packetStatus.replaceAll('_', ' ').toLowerCase()}
                   {' · '}{serverPreview.handoffStatus.replaceAll('_', ' ').toLowerCase()}
                 </span>

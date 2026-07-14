@@ -1,75 +1,99 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Toaster, ToastBar, toast } from 'react-hot-toast'
 import { X, AlertTriangle } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
+import type { EmrError } from '@/lib/errors'
 
-const QUIET_PERMISSION_WINDOW_MS = 1000
-
-export function isPermissionFeedback(message: unknown) {
-  if (typeof message !== 'string') return false
-  const normalized = message.toLowerCase()
-
-  return [
-    'denied',
-    'forbidden',
-    'permission',
-    'not authorized',
-    'not permitted',
-    'not allowed',
-    'not available',
-    'current role',
-    'available for your role',
-    'only admin user',
-  ].some((phrase) => normalized.includes(phrase))
+export type EmrToastDetail = {
+  message: string
+  severity?: 'toast' | 'modal'
+  code?: string
 }
 
+/**
+ * Permission suppression uses typed error codes / custom events only —
+ * not free-text message matching (see isPermissionFeedback removal).
+ */
 export function ToasterProvider() {
-  const [errorModal, setErrorModal] = useState<{ open: boolean; message: React.ReactNode }>({ open: false, message: '' })
-  const lastPermissionDeniedAt = useRef(0)
+  const [errorModal, setErrorModal] = useState<{ open: boolean; message: React.ReactNode }>({
+    open: false,
+    message: '',
+  })
 
   useEffect(() => {
-    // Intercept toast.error to show our modal instead
-    const originalError = toast.error;
+    const onEmrError = (event: Event) => {
+      const detail = (event as CustomEvent<EmrError | EmrToastDetail>).detail
+      if (!detail) return
 
-    const markPermissionDenied = () => {
-      lastPermissionDeniedAt.current = Date.now()
-    }
+      const code = 'code' in detail ? detail.code : undefined
+      const severity =
+        'severity' in detail && detail.severity
+          ? detail.severity
+          : code === 'PERMISSION_DENIED' || code === 'UNAUTHORIZED'
+            ? 'silent'
+            : 'toast'
 
-    window.addEventListener('emr:permission-denied', markPermissionDenied)
-    
-    toast.error = ((message) => {
-      const permissionDeniedRecently = Date.now() - lastPermissionDeniedAt.current < QUIET_PERMISSION_WINDOW_MS
-      if (permissionDeniedRecently || isPermissionFeedback(message)) {
-        return 'permission-suppressed'
+      if (severity === 'silent' || code === 'PERMISSION_DENIED' || code === 'UNAUTHORIZED') {
+        return
       }
 
-      setErrorModal({
-        open: true,
-        message: typeof message === 'function' ? 'Action failed.' : message,
-      });
-      return 'error-modal-id';
-    }) as typeof toast.error;
+      if (severity === 'modal' || ('blocking' in detail && detail.blocking)) {
+        setErrorModal({ open: true, message: detail.message })
+        return
+      }
+
+      // Recoverable: non-blocking toast (use toast() not toast.error monkeypatch)
+      toast(detail.message, { icon: '⚠️' })
+    }
+
+    const onPermission = () => {
+      // Typed permission path — silent by design (caller may show ForbiddenAccess UI)
+    }
+
+    window.addEventListener('emr:error', onEmrError)
+    window.addEventListener('emr:permission-denied', onPermission)
+
+    // Keep toast.error as non-blocking toast by default; only modal via emr:error blocking
+    //
+    // NOTE: This runtime reassignment of toast.error is a deliberate provider-
+    // level compatibility shim (see Phase 2 P2). It makes every direct
+    // `toast.error(...)` call recoverably non-blocking; callers that need a
+    // blocking modal must explicitly dispatch `new EmrError(..., 'modal')` (see
+    // listenForEmrErrors / dispatchEmrError in @/lib/errors). The shim is set up
+    // here and torn down on cleanup so it never leaks beyond this provider.
+    //
+    // REMOVAL PATH: once every `toast.error(...)` call site and the
+    // qa-popup-sweep e2e are migrated to the typed-error dispatch, this block
+    // (and the matching restoration in the cleanup return) can be deleted.
+    const originalError = toast.error
+    toast.error = ((message, opts) => {
+      const text = typeof message === 'function' ? 'Action failed.' : String(message ?? 'Action failed.')
+      // Destructive/blocking callers should dispatch emr:error with severity modal.
+      // Default toast.error remains recoverable (non-blocking) for compatibility.
+      return originalError(text, opts)
+    }) as typeof toast.error
 
     return () => {
-      toast.error = originalError;
-      window.removeEventListener('emr:permission-denied', markPermissionDenied)
-    };
-  }, []);
+      toast.error = originalError
+      window.removeEventListener('emr:error', onEmrError)
+      window.removeEventListener('emr:permission-denied', onPermission)
+    }
+  }, [])
 
   return (
     <>
-      <Toaster 
+      <Toaster
         position="top-right"
         toastOptions={{
           duration: 5000,
           className: 'shadow-lg',
           style: {
-            background: 'hsl(var(--card))',
-            color: 'hsl(var(--card-foreground))',
-            border: '1px solid hsl(var(--border))',
+            background: 'var(--card)',
+            color: 'var(--card-foreground)',
+            border: '1px solid var(--border)',
             padding: '16px',
             maxWidth: '500px',
             fontSize: '15px',
@@ -77,7 +101,12 @@ export function ToasterProvider() {
           },
           success: {
             style: {
-              borderLeft: '4px solid #10b981',
+              borderLeft: '4px solid var(--success)',
+            },
+          },
+          error: {
+            style: {
+              borderLeft: '4px solid var(--critical)',
             },
           },
         }}
@@ -85,8 +114,12 @@ export function ToasterProvider() {
         {(t) => (
           <ToastBar toast={t} style={{ padding: 0, background: 'transparent', boxShadow: 'none' }}>
             {({ icon, message }) => (
-              <div className="flex items-center w-full gap-3 py-1 bg-card rounded-md border shadow-lg overflow-hidden pr-2">
-                <div className={`w-1 h-full absolute left-0 top-0 bottom-0 ${t.type === 'success' ? 'bg-emerald-500' : 'bg-blue-500'}`} />
+              <div className="flex items-center w-full gap-3 py-1 bg-card rounded-md border shadow-lg overflow-hidden pr-2 relative">
+                <div
+                  className={`w-1 absolute left-0 top-0 bottom-0 ${
+                    t.type === 'success' ? 'bg-success' : t.type === 'error' ? 'bg-critical' : 'bg-info'
+                  }`}
+                />
                 {icon && <div className="flex-shrink-0 pl-4 py-3">{icon}</div>}
                 <div className={`flex-1 min-w-0 pr-4 py-3 break-words ${!icon ? 'pl-4' : 'pl-2'}`}>
                   {message}
@@ -106,11 +139,11 @@ export function ToasterProvider() {
         )}
       </Toaster>
 
-      <Dialog open={errorModal.open} onOpenChange={(open) => setErrorModal(prev => ({ ...prev, open }))}>
+      <Dialog open={errorModal.open} onOpenChange={(open) => setErrorModal((prev) => ({ ...prev, open }))}>
         <DialogContent className="sm:max-w-md gap-0 p-0 overflow-hidden">
           <div className="flex gap-4 p-6">
-            <div className="flex-shrink-0 h-10 w-10 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center">
-              <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-500" />
+            <div className="flex-shrink-0 h-10 w-10 bg-critical-muted rounded-full flex items-center justify-center">
+              <AlertTriangle className="h-5 w-5 text-critical" />
             </div>
             <div className="pt-1.5 w-full">
               <DialogHeader>
@@ -122,10 +155,10 @@ export function ToasterProvider() {
             </div>
           </div>
           <div className="bg-muted/40 px-6 py-4 flex justify-end border-t">
-            <Button 
-              type="button" 
-              className="bg-red-600 hover:bg-red-700 text-white"
-              onClick={() => setErrorModal(prev => ({ ...prev, open: false }))}
+            <Button
+              type="button"
+              className="bg-critical hover:bg-critical/90 text-critical-foreground"
+              onClick={() => setErrorModal((prev) => ({ ...prev, open: false }))}
             >
               Dismiss
             </Button>

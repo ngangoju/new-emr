@@ -4,9 +4,10 @@ import { useSystemStats } from '@/hooks/useSystemStats'
 import { Users, CalendarDays, DollarSign, Users2, TrendingUp, TrendingDown } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
+import { formatMoney } from '@/lib/format'
 
 // Mock format if no utils
-const formatCurrency = (amount: number) => `RWF ${amount.toLocaleString()}`
+const formatCurrency = (amount: number) => `${formatMoney(amount)}`
 
 export function SystemStats() {
   const { stats, loading } = useSystemStats()

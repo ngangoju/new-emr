@@ -46,6 +46,7 @@ import { useAcknowledgeLabOrder } from '@/hooks/useLabOrders'
 import { useAcknowledgeImagingOrder, usePatientImagingOrders } from '@/hooks/useImaging'
 import { useApproveClinicalDischarge, useAfterVisitDocumentPreview, useDischargeReadiness, useWorkflowStatus } from '@/hooks/useWorkflow'
 import { formatDateTime } from '@/lib/utils/date'
+import { formatMoney } from '@/lib/format'
 
 type DoctorTreatmentWorkspaceProps = {
   patientId: string
@@ -444,7 +445,7 @@ export function DoctorTreatmentWorkspace({
               />
               <MetricCard
                 title="Financial Clearance"
-                value={`RWF ${outstandingBalance.toLocaleString()}`}
+                value={`${formatMoney(outstandingBalance)}`}
                 subtitle={`${outstandingInvoices.length} invoice${outstandingInvoices.length === 1 ? '' : 's'} still open`}
                 icon={Receipt}
               />

@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/card'
 import { useReports } from '@/hooks/useReports'
 import { useRole } from '@/hooks/useRole'
+import { formatMoney } from '@/lib/format'
 
 export function ReportCharts() {
   // Only roles holding report:financial:read may load /reports/*; otherwise the fetch
@@ -53,7 +54,7 @@ export function ReportCharts() {
             <XAxis dataKey="label" tickLine={false} axisLine={false} />
             <YAxis tickLine={false} axisLine={false} />
             <Tooltip 
-              formatter={(value: unknown) => [`RWF ${(Number(value) || 0).toLocaleString()}`, 'Revenue']}
+              formatter={(value: unknown) => [`${formatMoney((Number(value) || 0))}`, 'Revenue']}
               cursor={{ fill: 'transparent' }}
             />
             <Bar dataKey="value" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
