@@ -25,7 +25,7 @@ describe('dashboard proxy', () => {
     expect(response.headers.get('location')).toBeNull()
   })
 
-  it('matches every dashboard route', () => {
-    expect(config.matcher).toEqual(['/dashboard/:path*'])
+  it('matches every dashboard and design-system route', () => {
+    expect(config.matcher).toEqual(['/dashboard/:path*', '/design-system/:path*'])
   })
 })

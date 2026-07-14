@@ -11,32 +11,37 @@ import { ScheduleSurgeryDialog } from "@/components/theatre/ScheduleSurgeryDialo
 import { CaseDetailDialog } from "@/components/theatre/CaseDetailDialog";
 import {
   useTheatres,
-  useSurgerySchedule,
-  type SurgeryScheduleEntry,
-} from "@/hooks/api/useTheatre";
-import { useRole } from "@/hooks/useRole";
+  useTheatreCasesByStatus,
+  type Theatre,
+  type TheatreCase,
+} from "@/hooks/api/useTheatre"
+import { useRole } from "@/hooks/useRole"
 
 export default function TheatrePage() {
-  const { data: theatres, isLoading } = useTheatres();
-  const { hasPermission } = useRole();
-  const [scheduleOpen, setScheduleOpen] = useState(false);
-  const [selectedCase, setSelectedCase] = useState<SurgeryScheduleEntry | null>(null);
+  const { data: theatres, isLoading } = useTheatres()
+  const { hasPermission } = useRole()
+  const [scheduleOpen, setScheduleOpen] = useState(false)
+  const [selectedCase, setSelectedCase] = useState<TheatreCase | null>(null)
   const canSchedule =
-    hasPermission("theatre:schedule:create") || hasPermission("theatre:schedule:manage");
+    hasPermission("theatre:case:create") || hasPermission("theatre:case:manage")
 
-  const now = useMemo(() => new Date(), []);
-  const from = useMemo(
-    () => new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString(),
-    [now],
-  );
-  const to = useMemo(
-    () => new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).toISOString(),
-    [now],
-  );
+  // Pull cases-in-flight (any active status) for the schedule board.
+  const { data: activeCases } = useTheatreCasesByStatus("IN_THEATRE")
+  const { data: scheduledCases } = useTheatreCasesByStatus("SCHEDULED")
+  const { data: recoveryCases } = useTheatreCasesByStatus("RECOVERY")
 
-  const { data: schedule, isLoading: scheduleLoading } = useSurgerySchedule(from, to);
+  const schedule = useMemo<TheatreCase[]>(
+    () => [
+      ...(scheduledCases ?? []),
+      ...(activeCases ?? []),
+      ...(recoveryCases ?? []),
+    ],
+    [scheduledCases, activeCases, recoveryCases]
+  )
+  const scheduleLoading = !activeCases || !scheduledCases || !recoveryCases
 
-  const availableCount = theatres?.filter((t) => t.status === "AVAILABLE").length ?? 0;
+  const availableCount =
+    theatres?.filter((t: Theatre) => t.status === "AVAILABLE").length ?? 0
 
   return (
     <div className="p-6 space-y-6">
@@ -111,7 +116,10 @@ export default function TheatrePage() {
           {
             id: "surgeon",
             header: "Surgeon",
-            cell: (row) => row.surgeonName ?? "—",
+            cell: (row) =>
+              row.surgeonId
+                ? `${row.surgeonId.slice(0, 8)}…`
+                : "—",
           },
           {
             id: "status",

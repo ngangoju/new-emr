@@ -136,14 +136,14 @@ export default function MaternityPage() {
                 header: "Delivered",
                 cell: (row) => (
                   <span className="tabular-nums">
-                    {new Date(row.deliveredAt).toLocaleString()}
+                    {row.deliveredAt ? new Date(row.deliveredAt).toLocaleString() : "—"}
                   </span>
                 ),
               },
               {
                 id: "mode",
                 header: "Mode",
-                cell: (row) => row.deliveryMode.replaceAll("_", " "),
+                cell: (row) => (row.mode ?? "—").replaceAll("_", " "),
               },
               {
                 id: "outcome",

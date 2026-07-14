@@ -8,6 +8,8 @@ function apiErrorMessage(error: unknown, fallback: string) {
   return (error as ApiErrorPayload).response?.data?.message || fallback
 }
 
+// === Antenatal visits ===
+
 export interface AntenatalVisit {
   id: string
   patientId: string
@@ -20,6 +22,15 @@ export interface AntenatalVisit {
   status: string
 }
 
+export interface CreateAntenatalVisitRequest {
+  patientId: string
+  visitNumber?: number
+  gestationalAgeWeeks?: number
+  bloodPressure?: string
+  weightKg?: number
+  foetalHeartRate?: number
+}
+
 export function useActiveAntenatalVisits() {
   return useQuery({
     queryKey: ['antenatal', 'active'],
@@ -30,13 +41,17 @@ export function useActiveAntenatalVisits() {
   })
 }
 
-export interface CreateAntenatalVisitRequest {
-  patientId: string
-  visitNumber?: number
-  gestationalAgeWeeks?: number
-  bloodPressure?: string
-  weightKg?: number
-  foetalHeartRate?: number
+export function useAntenatalVisitsByPatient(patientId?: string) {
+  return useQuery({
+    queryKey: ['antenatal', 'patient', patientId],
+    queryFn: async () => {
+      const { data } = await api.get<AntenatalVisit[]>(
+        `/api/maternity/antenatal/patient/${patientId}`
+      )
+      return data
+    },
+    enabled: Boolean(patientId),
+  })
 }
 
 export function useCreateAntenatalVisit() {
@@ -46,9 +61,10 @@ export function useCreateAntenatalVisit() {
       const { data } = await api.post<AntenatalVisit>('/api/maternity/antenatal', request)
       return data
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       toast.success('Antenatal visit recorded')
       queryClient.invalidateQueries({ queryKey: ['antenatal'] })
+      queryClient.invalidateQueries({ queryKey: ['antenatal', 'patient', variables.patientId] })
     },
     onError: (error: unknown) => {
       toast.error(apiErrorMessage(error, 'Failed to record antenatal visit'))
@@ -56,33 +72,54 @@ export function useCreateAntenatalVisit() {
   })
 }
 
+// === Partograph observations ===
+
 export interface PartographObservation {
   id: string
-  patientId: string
+  admissionId?: string | null
+  patientId?: string | null
   observedAt: string
   cervicalDilationCm?: number | null
-  descentStation?: number | null
-  foetalHeartRate?: number | null
-  contractionsPer10min?: number | null
-  systolicBp?: number | null
-  diastolicBp?: number | null
+  cervicalDilationEffacementPercent?: number | null
+  fetalHeartRateBpm?: number | null
+  maternalContractionsPer10min?: number | null
+  maternalBloodPressureSystolic?: number | null
+  maternalBloodPressureDiastolic?: number | null
+  fetalPosition?: string | null
   notes?: string | null
 }
 
 export interface RecordPartographRequest {
-  patientId: string
+  admissionId?: string
+  patientId?: string
+  observedAt: string
   cervicalDilationCm?: number
-  descentStation?: number
-  foetalHeartRate?: number
-  contractionsPer10min?: number
-  systolicBp?: number
-  diastolicBp?: number
+  cervicalDilationEffacementPercent?: number
+  fetalHeartRateBpm?: number
+  maternalContractionsPer10min?: number
+  maternalBloodPressureSystolic?: number
+  maternalBloodPressureDiastolic?: number
+  fetalPosition?: string
   notes?: string
+}
+
+export function usePartographByAdmission(admissionId?: string) {
+  return useQuery({
+    queryKey: ['partograph', 'admission', admissionId],
+    queryFn: async () => {
+      const { data } = await api.get<PartographObservation[]>(
+        `/api/maternity/partograph/admission/${admissionId}`
+      )
+      return data
+    },
+    enabled: Boolean(admissionId),
+    refetchInterval: 30_000,
+  })
 }
 
 export function usePartograph(patientId?: string) {
   return useQuery({
-    queryKey: ['partograph', patientId],
+    queryKey: ['partograph', 'patient', patientId],
     queryFn: async () => {
       const { data } = await api.get<PartographObservation[]>(
         `/api/maternity/partograph/${patientId}`
@@ -106,7 +143,16 @@ export function useRecordPartographObservation() {
     },
     onSuccess: (_data, variables) => {
       toast.success('Partograph observation recorded')
-      queryClient.invalidateQueries({ queryKey: ['partograph', variables.patientId] })
+      if (variables.admissionId) {
+        queryClient.invalidateQueries({
+          queryKey: ['partograph', 'admission', variables.admissionId],
+        })
+      }
+      if (variables.patientId) {
+        queryClient.invalidateQueries({
+          queryKey: ['partograph', 'patient', variables.patientId],
+        })
+      }
     },
     onError: (error: unknown) => {
       toast.error(apiErrorMessage(error, 'Failed to record observation'))
@@ -114,29 +160,35 @@ export function useRecordPartographObservation() {
   })
 }
 
+// === Deliveries ===
+
 export interface Delivery {
   id: string
+  admissionId?: string | null
   patientId: string
-  deliveryMode: string
+  mode: string
   outcome: string
-  deliveredAt: string
+  deliveredAt?: string | null
   apgar1min?: number | null
   apgar5min?: number | null
   birthWeightGrams?: number | null
+  estimatedBloodLossMl?: number | null
+  placentaDelivery?: string | null
   newbornPatientId?: string | null
 }
 
 export interface RecordDeliveryRequest {
+  admissionId: string
   patientId: string
-  deliveryMode: string
+  mode: string
   outcome: string
-  deliveredAt: string
+  deliveredAt?: string
   apgar1min?: number
   apgar5min?: number
   birthWeightGrams?: number
   estimatedBloodLossMl?: number
-  complications?: string
-  placentaComplete?: boolean
+  complications?: string[]
+  placentaDelivery?: string
   notes?: string
   registerNewborn: boolean
   newbornFirstName?: string
@@ -154,6 +206,19 @@ export function useDeliveries() {
   })
 }
 
+export function useDeliveriesByAdmission(admissionId?: string) {
+  return useQuery({
+    queryKey: ['deliveries', 'admission', admissionId],
+    queryFn: async () => {
+      const { data } = await api.get<Delivery[]>(
+        `/api/maternity/deliveries/admission/${admissionId}`
+      )
+      return data
+    },
+    enabled: Boolean(admissionId),
+  })
+}
+
 export function useRecordDelivery() {
   const queryClient = useQueryClient()
   return useMutation({
@@ -161,12 +226,57 @@ export function useRecordDelivery() {
       const { data } = await api.post<Delivery>('/api/maternity/deliveries', request)
       return data
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       toast.success('Delivery recorded')
       queryClient.invalidateQueries({ queryKey: ['deliveries'] })
+      if (variables.admissionId) {
+        queryClient.invalidateQueries({
+          queryKey: ['deliveries', 'admission', variables.admissionId],
+        })
+      }
     },
     onError: (error: unknown) => {
       toast.error(apiErrorMessage(error, 'Failed to record delivery'))
     },
   })
+}
+
+// === Newborns ===
+
+export interface Newborn {
+  id: string
+  deliveryId?: string | null
+  motherId?: string | null
+  admissionId?: string | null
+  birthName?: string | null
+  gender?: string | null
+  birthWeightGm?: number | null
+  birthLengthCm?: number | null
+  headCircumferenceCm?: number | null
+  apgarScore1min?: number | null
+  apgarScore5min?: number | null
+  status?: string | null
+}
+
+export function useNewbornsByMother(motherId?: string) {
+  return useQuery({
+    queryKey: ['newborns', 'mother', motherId],
+    queryFn: async () => {
+      const { data } = await api.get<Newborn[]>(
+        `/api/maternity/newborns/mother/${motherId}`
+      )
+      return data
+    },
+    enabled: Boolean(motherId),
+  })
+}
+
+// === Backwards-compatible alias (deprecated) ===
+
+/** @deprecated use {@link useRecordPartographObservation}. */
+export type PartographObservationLegacy = PartographObservation
+
+/** @deprecated use {@link usePartographByAdmission}. */
+export function usePartographLegacy(patientId?: string) {
+  return usePartograph(patientId)
 }

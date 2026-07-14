@@ -83,6 +83,22 @@ export const DASHBOARD_ROUTE_POLICIES: readonly DashboardRoutePolicy[] = [
         routePrefix: '/dashboard/approvals',
         allowedRoles: ['ADMIN', 'CLINICAL_DIRECTOR'],
     },
+    {
+        routePrefix: '/dashboard/theatre',
+        allowedRoles: ['ADMIN', 'DOCTOR', 'NURSE', 'CHIEF_NURSE', 'CLINICAL_DIRECTOR'],
+    },
+    {
+        routePrefix: '/dashboard/maternity',
+        allowedRoles: ['ADMIN', 'DOCTOR', 'MIDWIFE', 'NURSE', 'CHIEF_NURSE', 'CLINICAL_DIRECTOR'],
+    },
+    {
+        routePrefix: '/dashboard/blood-bank',
+        allowedRoles: ['ADMIN', 'DOCTOR', 'NURSE', 'CHIEF_NURSE', 'CLINICAL_DIRECTOR', 'LAB_TECH', 'LABORANTIN'],
+    },
+    {
+        routePrefix: '/dashboard/back-office',
+        allowedRoles: ['ADMIN', 'NURSE', 'CHIEF_NURSE', 'RECEPTIONIST', 'MANAGER', 'COO', 'DAF'],
+    },
 ] as const
 
 const ORDERED_DASHBOARD_ROUTE_POLICIES = [...DASHBOARD_ROUTE_POLICIES].sort(
@@ -109,6 +125,10 @@ export const DASHBOARD_NAV_ITEMS: readonly DashboardNavItem[] = [
     { title: 'Billing', href: '/dashboard/billing' },
     { title: 'Cash Close', href: '/dashboard/cashier/close' },
     { title: 'Medical Records', href: '/dashboard/doctor/records' },
+    { title: 'Theatre', href: '/dashboard/theatre' },
+    { title: 'Maternity', href: '/dashboard/maternity' },
+    { title: 'Blood Bank', href: '/dashboard/blood-bank' },
+    { title: 'Back Office', href: '/dashboard/back-office' },
     { title: 'Reports', href: '/dashboard/reports' },
     { title: 'Approvals', href: '/dashboard/approvals' },
     { title: 'Admin', href: '/dashboard/admin' },
