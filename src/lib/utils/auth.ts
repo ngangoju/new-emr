@@ -2,6 +2,7 @@ export type UserRole =
     | 'ADMIN'
     | 'DOCTOR'
     | 'NURSE'
+    | 'MIDWIFE'
     | 'RECEPTIONIST'
     | 'CUSTOMER_CARE'
     | 'LABORANTIN'
