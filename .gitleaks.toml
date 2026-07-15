@@ -1,0 +1,17 @@
+# Gitleaks configuration for new-emr frontend.
+# Extends the default gitleaks rules. We allowlist the test fixtures directory
+# because it contains only fake, non-functional credentials used in unit tests
+# (e.g. password: 'StrongPass123', a truncated accessToken placeholder). These are
+# not real secrets. Real secret scanning remains active everywhere else.
+#
+# To scan with this config locally:
+#   gitleaks detect --config .gitleaks.toml --source . --redact
+
+[extend]
+# Use the built-in default rules.
+useDefault = true
+
+[[allowlist.path]]
+# Fake credentials in unit-test fixtures only.
+description = "Test fixture directory — contains non-functional fake credentials"
+path = '''src/test/.*'''

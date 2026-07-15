@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo } from "react"
-import { useForm, Controller } from "react-hook-form"
+import { useForm, Controller, useWatch } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { CalendarPlus } from "lucide-react"
 import {
@@ -46,7 +46,6 @@ export function ScheduleSurgeryDialog({ open, onOpenChange }: ScheduleSurgeryDia
     control,
     register,
     handleSubmit,
-    watch,
     reset,
     setValue,
     formState: { errors },
@@ -65,7 +64,7 @@ export function ScheduleSurgeryDialog({ open, onOpenChange }: ScheduleSurgeryDia
     },
   })
 
-  const patientId = watch("patientId")
+  const patientId = useWatch({ control, name: "patientId" }) as string
   // Look up the patient's active admission to satisfy admissionId (FK required by backend).
   const { data: admissions } = useAdmissions(
     patientId ? { patientId, status: "admitted" } : undefined,

@@ -69,7 +69,6 @@ export function RecordDeliveryDialog({ open, onOpenChange }: RecordDeliveryDialo
     handleSubmit,
     reset,
     setValue,
-    watch,
     formState: { errors },
   } = useForm<DeliveryFormValues>({
     resolver: zodResolver(deliverySchema),
@@ -83,7 +82,7 @@ export function RecordDeliveryDialog({ open, onOpenChange }: RecordDeliveryDialo
     },
   })
 
-  const patientId = watch("patientId")
+  const patientId = useWatch({ control, name: "patientId" }) as string
   const { data: admissions } = useAdmissions(
     patientId ? { patientId, status: "admitted" } : undefined,
     { enabled: Boolean(patientId) }
