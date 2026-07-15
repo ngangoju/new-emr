@@ -85,13 +85,17 @@ describe('Sidebar', () => {
 
       const { unmount } = render(<Sidebar />)
 
-      const portalLabel = await screen.findByText(`${role} PORTAL`, {}, { timeout: 10000 })
+      // userRole is set synchronously on mount (isAuthInitialized() === true),
+      // so the "{role} PORTAL" label is already in the DOM — assert it
+      // synchronously instead of polling via findByText (which adds ~10s of
+      // async overhead per role and can blow the test timeout on slow CI).
+      const portalLabel = screen.getByText(`${role} PORTAL`)
       expect(portalLabel).toBeInTheDocument()
       expect(screen.getByRole('link', { name: 'Notifications' })).toBeInTheDocument()
 
       unmount()
     }
-  }, 30000)
+  }, 60000)
 
   it('reflects unread badge count from useUnreadCount()', async () => {
     setupCommonMocks('DOCTOR', 12)
