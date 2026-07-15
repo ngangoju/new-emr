@@ -29,7 +29,7 @@ async function main() {
       data: body ? JSON.stringify(body) : undefined,
     });
     const status = res.status();
-    let data = null; try { data = await res.json(); } catch {}
+    let data = null; try { data = await res.json(); } catch { /* non-JSON or empty body */ }
     if (status >= 400) console.log(`    [${method} ${path}] -> ${status}`, JSON.stringify(data)?.slice(0, 220));
     return { status, data };
   }
