@@ -51,7 +51,6 @@ jobs:
 
       - name: Secret scan
         uses: gitleaks/gitleaks-action@v3
-        args: detect --no-git --source . --redact --verbose
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
