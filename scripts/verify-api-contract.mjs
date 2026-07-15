@@ -42,28 +42,27 @@ function normalizeFrontendTemplate(rawValue) {
   return normalizePath(withoutEscapes.replace(/\$\{[^}]+\}/g, '{param}').replace(/([^/])\{param\}$/g, '$1'))
 }
 
-function splitTopLevelArray(body) {
-  const matches = [...body.matchAll(/"([^"]*)"|'([^']*)'/g)]
-  return matches.map((match) => match[1] ?? match[2])
-}
-
 function mappingValues(annotationBody) {
   if (!annotationBody || !annotationBody.trim()) return ['']
   const body = annotationBody
     .replace(/\s+/g, ' ')
     .replace(/"\s*\+\s*[A-Z0-9_]+\s*\+\s*"/g, '')
 
-  const arrayMatch = body.match(/(?:^|(?:value|path)\s*=\s*)\{([\s\S]*?)\}/)
-  if (arrayMatch) {
-    const values = splitTopLevelArray(arrayMatch[1])
-    return values.length ? values : ['']
-  }
+  // Collect every quoted path literal. Annotation bodies arrive either as a
+  // single string ("/foo") or as an array wrapped in (...) or {...}:
+  //   ("/count", "/unread-count")   or   { "/cases/{id}", "/{id}" }
+  // Path variables like {id} contain braces, so naive brace-matching breaks.
+  // We simply take ALL quoted strings; if there is more than one, it's an array.
+  const quoted = [...body.matchAll(/"([^"]*)"|'([^']*)'/g)].map(
+    (m) => m[1] ?? m[2],
+  )
+  if (quoted.length > 1) return quoted
+  if (quoted.length === 1) return quoted
 
   const valueMatch = body.match(/(?:value|path)\s*=\s*(?:"([^"]*)"|'([^']*)')/)
   if (valueMatch) return [valueMatch[1] ?? valueMatch[2] ?? '']
 
-  const firstString = body.match(/"([^"]*)"|'([^']*)'/)
-  return firstString ? [firstString[1] ?? firstString[2] ?? ''] : ['']
+  return ['']
 }
 
 function cleanBackendPath(value) {
@@ -141,9 +140,18 @@ function extractFrontendCalls() {
         skipped.push({ file, line: lineNumber(source, match.index), reason: `dynamic api.${match[1]} path` })
         continue
       }
+      const normalized = normalizeFrontendTemplate(rawPath)
+      // Skip paths that still contain an unresolved template expression
+      // (e.g. nested template literals like `?days=${days}` break the regex
+      // and leave a dangling "${"). These are dynamic query-string artifacts,
+      // not static route mismatches.
+      if (normalized.includes('${')) {
+        skipped.push({ file, line: lineNumber(source, match.index), reason: `dynamic api.${match[1]} path (unresolved template)` })
+        continue
+      }
       calls.push({
         method: match[1].toUpperCase(),
-        path: normalizeFrontendTemplate(rawPath),
+        path: normalized,
         file,
         line: lineNumber(source, match.index),
       })
