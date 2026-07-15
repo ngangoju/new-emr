@@ -6,7 +6,7 @@ export const metadata = { title: 'Privacy Policy | New EMR' }
 export default function PrivacyPage() {
   return (
     <main className="mx-auto max-w-3xl px-6 py-12">
-      <PageHeader title="Privacy Policy" subtitle="How we handle your data" />
+      <PageHeader title="Privacy Policy" description="How we handle your data" />
       <div className="mt-6 space-y-4 text-sm text-muted-foreground">
         <p>
           This is a placeholder privacy policy for the New EMR demonstration deployment.

@@ -6,7 +6,7 @@ export const metadata = { title: 'Terms of Service | New EMR' }
 export default function TermsPage() {
   return (
     <main className="mx-auto max-w-3xl px-6 py-12">
-      <PageHeader title="Terms of Service" subtitle="Usage terms for New EMR" />
+      <PageHeader title="Terms of Service" description="Usage terms for New EMR" />
       <div className="mt-6 space-y-4 text-sm text-muted-foreground">
         <p>
           This is a placeholder terms-of-service page for the New EMR demonstration
