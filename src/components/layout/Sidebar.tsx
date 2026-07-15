@@ -237,14 +237,6 @@ export function Sidebar({ className }: { className?: string }) {
         </Button>
       </div>
     </div>
-    {/* Desktop spacer so fixed mobile drawer doesn't collapse layout on md+ */}
-    <div
-      className={cn(
-        "hidden md:block shrink-0 transition-all duration-300",
-        sidebarCollapsed ? "w-20" : "w-64",
-      )}
-      aria-hidden
-    />
     </>
   )
 }

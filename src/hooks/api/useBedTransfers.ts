@@ -24,7 +24,7 @@ export function useBedTransfers(admissionId: string | null) {
     queryKey: ['bed-transfers', admissionId],
     queryFn: async () => {
       if (!admissionId) return []
-      const { data } = await api.get<BedTransfer[]>(`/beds/admissions/${admissionId}/transfers`)
+      const { data } = await api.get<BedTransfer[]>(`/api/beds/admissions/${admissionId}/transfers`)
       return data
     },
     enabled: !!admissionId,
@@ -36,7 +36,7 @@ export function useTransferBed() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (request: BedTransferRequest) => {
-      const { data } = await api.post<BedTransfer>('/beds/transfers', request)
+      const { data } = await api.post<BedTransfer>('/api/beds/transfers', request)
       return data
     },
     onSuccess: () => {
