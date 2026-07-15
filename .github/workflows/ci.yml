@@ -43,7 +43,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - name: Install dependencies
@@ -51,8 +51,7 @@ jobs:
 
       - name: Secret scan
         uses: gitleaks/gitleaks-action@v3
-        with:
-          args: detect --no-git --source . --redact --verbose
+        args: detect --no-git --source . --redact --verbose
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
