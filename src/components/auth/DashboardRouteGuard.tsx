@@ -4,7 +4,7 @@ import React from 'react'
 import { usePathname } from 'next/navigation'
 import { canAccessDashboardRoute } from '@/lib/authz/policy'
 import { useRole } from '@/hooks/useRole'
-import { getSessionUser } from '@/lib/utils/auth'
+import { useSessionUser } from '@/hooks/useSessionUser'
 import { Spinner } from '@/components/ui/spinner'
 import { ForbiddenAccess } from '@/components/auth/ForbiddenAccess'
 
@@ -15,7 +15,7 @@ type DashboardRouteGuardProps = {
 export function DashboardRouteGuard({ children }: DashboardRouteGuardProps) {
     const pathname = usePathname()
     const { role, roles, permissions, isLoading } = useRole()
-    const hasSessionUser = Boolean(getSessionUser())
+    const hasSessionUser = Boolean(useSessionUser())
 
     if (isLoading || !hasSessionUser) {
         return (

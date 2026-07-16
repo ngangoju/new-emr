@@ -4,8 +4,9 @@ import { useEffect, Suspense, useState } from "react"
 import { motion } from "framer-motion"
 import { Spinner } from "@/components/ui/spinner"
 import { usePathname, useRouter } from "next/navigation"
-import { AUTH_EVENTS, getSessionUser, getUserRole, isAuthInitialized, onAuthInitialized } from "@/lib/utils/auth"
+import { AUTH_EVENTS, getUserRole, isAuthInitialized, onAuthInitialized } from "@/lib/utils/auth"
 import { canAccessDashboardRoute, getRoleDefaultDashboardRoute } from "@/lib/authz/policy"
+import { useSessionUser } from "@/hooks/useSessionUser"
 
 import { Header } from "@/components/layout/Header"
 import { Sidebar } from "@/components/layout/Sidebar"
@@ -20,10 +21,13 @@ export default function DashboardLayout({
   const router = useRouter()
   const pathname = usePathname()
   const [isLoading, setIsLoading] = useState(true)
+  const sessionUser = useSessionUser()
 
   useEffect(() => {
     const ensureAuthenticated = () => {
-      const sessionUser = getSessionUser()
+      // sessionUser is derived from React Query ['me'] (seeded by useLogin)
+      // with localStorage as fallback — never blocks a fresh login on a
+      // stale/cleared localStorage read.
       if (!sessionUser) {
         router.replace('/login')
         return
@@ -61,7 +65,7 @@ export default function DashboardLayout({
     return () => {
       window.removeEventListener(AUTH_EVENTS.SESSION_CLEARED, handleSessionCleared)
     }
-  }, [pathname, router])
+  }, [pathname, router, sessionUser])
 
   if (isLoading) {
     return (
