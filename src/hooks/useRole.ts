@@ -1,14 +1,14 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
+import { useState, useEffect, useContext } from 'react'
+import { QueryClientContext } from '@tanstack/react-query'
 import { UserRole, getSessionUser, getUserRole, isAuthInitialized, onAuthInitialized, AUTH_EVENTS, normalizeRole } from '@/lib/utils/auth'
 import { FRONTEND_FEATURE_POLICY } from '@/lib/authz/policy'
 import { canAccessFeature, getEffectiveRoles, hasAnyDynamicPermissions, hasDynamicPermission, normalizeRoles } from '@/lib/authz/capability'
 import type { SessionUser } from '@/lib/utils/auth'
 
 export function useRole() {
-    const queryClient = useQueryClient()
+    const queryClient = useContext(QueryClientContext)
     const [role, setRole] = useState<UserRole | null>(null)
     const [roles, setRoles] = useState<UserRole[]>([])
     const [permissions, setPermissions] = useState<string[]>([])
@@ -19,7 +19,10 @@ export function useRole() {
             // Prefer the React Query ['me'] cache (seeded synchronously by
             // useLogin) so role resolves immediately after login without
             // depending on a localStorage read that may be stale/cleared.
-            const cachedMe = queryClient.getQueryData<SessionUser | null>(['me'])
+            // Read the cache directly from context (not useQueryClient()) so
+            // this hook still works where no QueryClientProvider is mounted
+            // (e.g. unit tests) — useContext returns null instead of throwing.
+            const cachedMe = queryClient?.getQueryData<SessionUser | null>(['me'])
             const user = (cachedMe && typeof cachedMe === 'object' ? cachedMe : getSessionUser()) ?? undefined
 
             const normalizedPrimaryRole = normalizeRole(user?.role) ?? getUserRole()
