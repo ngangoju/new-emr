@@ -1,11 +1,14 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { UserRole, getSessionUser, getUserRole, isAuthInitialized, onAuthInitialized, AUTH_EVENTS, normalizeRole } from '@/lib/utils/auth'
 import { FRONTEND_FEATURE_POLICY } from '@/lib/authz/policy'
 import { canAccessFeature, getEffectiveRoles, hasAnyDynamicPermissions, hasDynamicPermission, normalizeRoles } from '@/lib/authz/capability'
+import type { SessionUser } from '@/lib/utils/auth'
 
 export function useRole() {
+    const queryClient = useQueryClient()
     const [role, setRole] = useState<UserRole | null>(null)
     const [roles, setRoles] = useState<UserRole[]>([])
     const [permissions, setPermissions] = useState<string[]>([])
@@ -13,7 +16,11 @@ export function useRole() {
 
     useEffect(() => {
         const checkRole = () => {
-            const user = getSessionUser()
+            // Prefer the React Query ['me'] cache (seeded synchronously by
+            // useLogin) so role resolves immediately after login without
+            // depending on a localStorage read that may be stale/cleared.
+            const cachedMe = queryClient.getQueryData<SessionUser | null>(['me'])
+            const user = (cachedMe && typeof cachedMe === 'object' ? cachedMe : getSessionUser()) ?? undefined
 
             const normalizedPrimaryRole = normalizeRole(user?.role) ?? getUserRole()
             setRole(normalizedPrimaryRole)
@@ -52,7 +59,7 @@ export function useRole() {
             window.removeEventListener('storage', checkRole)
             window.removeEventListener(AUTH_EVENTS.SESSION_CLEARED, handleSessionCleared)
         }
-    }, [])
+    }, [queryClient])
 
     const hasPermission = (permission: string | keyof typeof FRONTEND_FEATURE_POLICY) => {
         const effectiveRoles = getEffectiveRoles({ role, roles })

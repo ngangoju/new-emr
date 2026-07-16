@@ -78,9 +78,24 @@ export interface ClearSessionOptions {
 
 export function setSessionUser(user: SessionUser) {
     if (typeof window === 'undefined') return;
-    localStorage.setItem(SESSION_STORAGE_KEYS.USER, JSON.stringify(user));
-    if (user.role) {
-        localStorage.setItem(SESSION_STORAGE_KEYS.USER_ROLE, user.role);
+    // Guard against storing an unparseable value. `JSON.stringify(undefined)`
+    // returns the JS value `undefined` (not a string), and `setItem` would then
+    // persist the literal "undefined", which `getSessionUser()` later fails to
+    // parse — removing the key and making the session read as null. A null/empty
+    // user must NOT wipe an existing good session either.
+    if (!user || typeof user !== 'object') return;
+    const existing = getSessionUser();
+    if (existing && (!user.id && !user.username) && (user.role == null)) {
+        // Only keep the existing record if the new one carries no identity.
+        return;
+    }
+    try {
+        localStorage.setItem(SESSION_STORAGE_KEYS.USER, JSON.stringify(user));
+        if (user.role) {
+            localStorage.setItem(SESSION_STORAGE_KEYS.USER_ROLE, user.role);
+        }
+    } catch {
+        // Never let a serialization failure corrupt the session key.
     }
 }
 
