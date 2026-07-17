@@ -16,7 +16,8 @@ import { Badge } from "@/components/ui/badge"
 import { Bell, Search, Menu, User, Settings, LogOut, Sun, Moon, Loader2, CheckCheck } from "lucide-react"
 import { useTheme } from "next-themes"
 import { useUIStore } from "@/lib/stores/uiStore"
-import { AUTH_EVENTS, clearSession, getSessionUser, type SessionUser } from '@/lib/utils/auth'
+import { AUTH_EVENTS, getSessionUser, type SessionUser } from '@/lib/utils/auth'
+import { useLogout } from '@/hooks/api/useAuth'
 import { useUnreadCount, useNotificationsModule } from '@/hooks/useNotifications'
 import { formatRelativeTime } from '@/lib/utils/date'
 import { getNotificationColor } from '@/types/notification'
@@ -27,6 +28,7 @@ type HeaderUser = SessionUser & {
 
 export function Header() {
   const router = useRouter()
+  const logoutMutation = useLogout()
   const [user, setUser] = useState<HeaderUser>({ 
     username: 'User', 
     name: 'User',
@@ -68,8 +70,7 @@ export function Header() {
   const toggleDarkMode = () => setTheme(isDarkMode ? 'light' : 'dark')
  
   const handleLogout = () => {
-    clearSession({ redirectToLogin: false, reason: 'manual-logout' })
-    router.replace('/login')
+    logoutMutation.mutate()
   }
 
   // Handle notification dropdown open
