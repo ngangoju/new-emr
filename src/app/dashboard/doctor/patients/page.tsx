@@ -324,7 +324,7 @@ export default function PatientsPage() {
                       <TableCell>
                         <div className="flex items-center space-x-3">
                           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-primary/20 to-accent/20 text-primary font-semibold">
-                            {patient.firstName[0]}{patient.lastName[0]}
+                            {patient.firstName?.[0] ?? '?'}{patient.lastName?.[0] ?? ''}
                           </div>
                           <span className="font-medium">{patient.firstName} {patient.lastName}</span>
                         </div>
