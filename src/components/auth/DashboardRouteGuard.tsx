@@ -4,7 +4,8 @@ import React from 'react'
 import { usePathname } from 'next/navigation'
 import { canAccessDashboardRoute } from '@/lib/authz/policy'
 import { useRole } from '@/hooks/useRole'
-import { useSessionUser } from '@/hooks/useSessionUser'
+import { getSessionUser } from '@/lib/utils/auth'
+import { useMe } from '@/hooks/api/useAuth'
 import { Spinner } from '@/components/ui/spinner'
 import { ForbiddenAccess } from '@/components/auth/ForbiddenAccess'
 
@@ -15,7 +16,11 @@ type DashboardRouteGuardProps = {
 export function DashboardRouteGuard({ children }: DashboardRouteGuardProps) {
     const pathname = usePathname()
     const { role, roles, permissions, isLoading } = useRole()
-    const hasSessionUser = Boolean(useSessionUser())
+    // Trust BOTH the persisted session and the in-memory React-Query ['me'] that
+    // useLogin seeds on success. A transient localStorage read (e.g. before the write
+    // flushes, or in a restricted-storage context) must not bounce a valid login.
+    const { data: meData } = useMe()
+    const hasSessionUser = Boolean(getSessionUser()) || Boolean(meData)
 
     if (isLoading || !hasSessionUser) {
         return (

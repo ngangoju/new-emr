@@ -33,7 +33,14 @@ import {
   TableHead,
   TableCell,
 } from '@/components/ui/table'
-import { ReportCharts } from './ReportCharts'
+import dynamic from 'next/dynamic'
+import { Skeleton } from '@/components/ui/skeleton'
+
+// Recharts-heavy; load lazily so the billing worklists paint first.
+const ReportCharts = dynamic(
+  () => import('./ReportCharts').then((m) => m.ReportCharts),
+  { ssr: false, loading: () => <Skeleton className="h-64 w-full" /> }
+)
 import { InvoiceGenerator } from './InvoiceGenerator'
 import { PaymentMethodsSelect } from './PaymentMethodsSelect'
 import { AdminDischargeOverrideModal } from './AdminDischargeOverrideModal'

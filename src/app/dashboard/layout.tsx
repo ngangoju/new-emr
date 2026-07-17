@@ -4,9 +4,9 @@ import { useEffect, Suspense, useState } from "react"
 import { motion } from "framer-motion"
 import { Spinner } from "@/components/ui/spinner"
 import { usePathname, useRouter } from "next/navigation"
-import { AUTH_EVENTS, getUserRole, isAuthInitialized, onAuthInitialized } from "@/lib/utils/auth"
+import { useQueryClient } from "@tanstack/react-query"
+import { AUTH_EVENTS, getSessionUser, getUserRole, isAuthInitialized, onAuthInitialized } from "@/lib/utils/auth"
 import { canAccessDashboardRoute, getRoleDefaultDashboardRoute } from "@/lib/authz/policy"
-import { useSessionUser } from "@/hooks/useSessionUser"
 
 import { Header } from "@/components/layout/Header"
 import { Sidebar } from "@/components/layout/Sidebar"
@@ -20,20 +20,37 @@ export default function DashboardLayout({
 }) {
   const router = useRouter()
   const pathname = usePathname()
+  const queryClient = useQueryClient()
   const [isLoading, setIsLoading] = useState(true)
-  const sessionUser = useSessionUser()
 
   useEffect(() => {
-    const ensureAuthenticated = () => {
-      // sessionUser is derived from React Query ['me'] (seeded by useLogin)
-      // with localStorage as fallback — never blocks a fresh login on a
-      // stale/cleared localStorage read.
+    const ensureAuthenticated = async () => {
+      // Trust EITHER the persisted session OR the in-memory React-Query ['me']
+      // that useLogin seeds on success. A transient localStorage read must not
+      // bounce a valid login back to /login (redirect loop bug).
+      let meData = queryClient.getQueryData(['me']) as { id?: string; role?: string } | null | undefined
+      let sessionUser = getSessionUser() ?? meData ?? null
+
+      // Grace path for F-003: on a hard reload the in-memory cache is empty but
+      // the HttpOnly cookie may still be valid. Probe /auth/me once before deciding.
+      if (!sessionUser) {
+        try {
+          const res = await fetch('/backend/auth/me', { credentials: 'include' })
+          if (res.ok) {
+            meData = await res.json() as { id?: string; role?: string }
+            sessionUser = meData ?? null
+          }
+        } catch {
+          // Network error — fall through to redirect
+        }
+      }
+
       if (!sessionUser) {
         router.replace('/login')
         return
       }
 
-      const role = getUserRole()
+      const role = getUserRole() ?? (meData?.role as never) ?? null
       const currentPath = pathname || '/dashboard'
       const hasRouteAccess = canAccessDashboardRoute(role, currentPath)
 
@@ -47,11 +64,11 @@ export default function DashboardLayout({
 
     // If auth is already initialized, check immediately
     if (isAuthInitialized()) {
-      ensureAuthenticated()
+      void ensureAuthenticated()
     } else {
       // Wait for auth to be initialized
       const unsubscribe = onAuthInitialized(() => {
-        ensureAuthenticated()
+        void ensureAuthenticated()
       })
       return unsubscribe
     }
@@ -65,7 +82,8 @@ export default function DashboardLayout({
     return () => {
       window.removeEventListener(AUTH_EVENTS.SESSION_CLEARED, handleSessionCleared)
     }
-  }, [pathname, router, sessionUser])
+  }, [pathname, router, queryClient])
+
 
   if (isLoading) {
     return (

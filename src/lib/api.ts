@@ -3,23 +3,11 @@ import toast from 'react-hot-toast';
 import { handleUnauthorized } from '@/lib/utils/auth';
 import { toEmrError, type EmrError } from '@/lib/errors';
 
-// The frontend proxies all backend traffic through the same origin via the
-// /backend rewrite defined in next.config.ts. This keeps the auth cookie
-// (HttpOnly accessToken) first-party to the Vercel domain so the server-side
-// proxy gate (src/proxy.ts) can read it, and removes the cross-site cookie /
-// CORS / SameSite=None dependency.
-//
-// In the browser we use the relative '/backend' path (same-origin). For
-// server-side / test contexts (no window) or when an explicit backend URL is
-// provided, fall back to NEXT_PUBLIC_API_URL (or localhost in dev).
-const isBrowser = typeof window !== 'undefined';
-const explicitApiUrl = process.env.NEXT_PUBLIC_API_URL;
-const resolvedBaseURL = isBrowser
-    ? '/backend'
-    : (explicitApiUrl || 'http://localhost:8888');
-
 export const api = axios.create({
-    baseURL: resolvedBaseURL,
+    // Route through Next.js rewrite proxy (/backend/* → API_ORIGIN/*) so that
+    // session cookies are first-party on the Next.js origin. This fixes the
+    // auth loss on hard reload (F-003). See next.config.ts rewrites.
+    baseURL: '/backend',
     withCredentials: true,
     // Align with Spring WebFlux CookieServerCsrfTokenRepository defaults.
     // Backend writes `XSRF-TOKEN` cookie and expects `X-XSRF-TOKEN` header.
@@ -148,8 +136,11 @@ api.interceptors.response.use(
                 // POST to /auth/refresh with no body.
                 // The refreshToken HttpOnly cookie is sent automatically via withCredentials.
                 // The backend sets a new accessToken cookie in the response.
+                // Use the same proxy path as the main axios instance so the
+                // refresh request is first-party and the Set-Cookie header
+                // is accepted by the browser on hard reloads.
                 await axios.post(
-                    resolvedBaseURL + '/auth/refresh',
+                    '/backend/auth/refresh',
                     {},
                     { withCredentials: true }
                 );
