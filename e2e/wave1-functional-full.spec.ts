@@ -7,73 +7,8 @@ import { test, expect, type Page } from '@playwright/test'
  * Uses deterministic seeded users with password: password123
  */
 
-// All seeded roles from V123/V124
-const ROLES = [
-    'ADMIN',
-    'AUDITOR',
-    'BILLING',
-    'BILLING_OFFICER',
-    'CASHIER',
-    'CLINICAL_DIRECTOR',
-    'COO',
-    'CUSTOMER_CARE',
-    'DAF',
-    'DOCTOR',
-    'HUMAN_RESOURCE',
-    'LABORANTIN',
-    'LAB_TECH',
-    'MANAGER',
-    'NURSE',
-    'PHARMACIST',
-    'RADIOLOGIST',
-    'RECEPTIONIST',
-    'SECURITY',
-    'USER',
-    'ACCOUNTANT',
-    'CHIEF_NURSE',
-    'STORE',
-    'MIDWIFE'
-] as const
-
-type UserRole = typeof ROLES[number]
-
-const BASE_URL = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000'
-const API_URL = process.env.E2E_AUTH_API_BASE || 'http://localhost:8888'
 const PASSWORD = 'password123'
 
-// NOTE: Local DB uses UNDERSCORE-separated multi-word role usernames
-// (e.g. billing_officer_emr), NOT the concatenated forms documented in
-// V123/V124 README (billingofficer_emr). The DB-correct mapping is used here.
-// See qa-audit finding: SEED-IDENTITY-MISMATCH.
-function getUsername(role: UserRole): string {
-    const dbCorrectUsernames: Record<string, string> = {
-        'ADMIN': 'admin_emr',
-        'AUDITOR': 'auditor_emr',
-        'BILLING': 'billing_emr',
-        'BILLING_OFFICER': 'billing_officer_emr',
-        'CASHIER': 'cashier_emr',
-        'CLINICAL_DIRECTOR': 'clinical_director_emr',
-        'COO': 'coo_emr',
-        'CUSTOMER_CARE': 'customer_care_emr',
-        'DAF': 'daf_emr',
-        'DOCTOR': 'doctor_emr',
-        'HUMAN_RESOURCE': 'human_resource_emr',
-        'LABORANTIN': 'laborantin_emr',
-        'LAB_TECH': 'lab_tech_emr',
-        'MANAGER': 'manager_emr',
-        'NURSE': 'nurse_emr',
-        'PHARMACIST': 'pharmacist_emr',
-        'RADIOLOGIST': 'radiologist_emr',
-        'RECEPTIONIST': 'receptionist_emr',
-        'SECURITY': 'security_emr',
-        'USER': 'user_emr',
-        'ACCOUNTANT': 'accountant_emr',
-        'CHIEF_NURSE': 'chief_nurse_emr',
-        'STORE': 'store_emr',
-        'MIDWIFE': 'midwife_emr',
-    }
-    return dbCorrectUsernames[role] || `${role.toLowerCase()}_emr`
-}
 
 async function loginAs(page: Page, username: string) {
     await page.goto('/login')
