@@ -6,8 +6,19 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { QueueBoard } from '@/components/doctor/QueueBoard'
-import { ConsultationsChart } from '@/components/charts/ConsultationsChart'
-import { PatientStatsChart } from '@/components/charts/PatientStatsChart'
+import dynamic from 'next/dynamic'
+import { Skeleton } from '@/components/ui/skeleton'
+
+// Charts pull Recharts into the bundle; load them lazily so the dashboard
+// shell paints first.
+const ConsultationsChart = dynamic(
+  () => import('@/components/charts/ConsultationsChart').then((m) => m.ConsultationsChart),
+  { ssr: false, loading: () => <Skeleton className="h-64 w-full" /> }
+)
+const PatientStatsChart = dynamic(
+  () => import('@/components/charts/PatientStatsChart').then((m) => m.PatientStatsChart),
+  { ssr: false, loading: () => <Skeleton className="h-64 w-full" /> }
+)
 import { 
   Users, 
   Clock, 
