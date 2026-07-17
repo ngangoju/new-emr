@@ -24,12 +24,27 @@ export default function DashboardLayout({
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    const ensureAuthenticated = () => {
+    const ensureAuthenticated = async () => {
       // Trust EITHER the persisted session OR the in-memory React-Query ['me']
       // that useLogin seeds on success. A transient localStorage read must not
       // bounce a valid login back to /login (redirect loop bug).
-      const meData = queryClient.getQueryData(['me']) as { id?: string; role?: string } | null | undefined
-      const sessionUser = getSessionUser() ?? meData ?? null
+      let meData = queryClient.getQueryData(['me']) as { id?: string; role?: string } | null | undefined
+      let sessionUser = getSessionUser() ?? meData ?? null
+
+      // Grace path for F-003: on a hard reload the in-memory cache is empty but
+      // the HttpOnly cookie may still be valid. Probe /auth/me once before deciding.
+      if (!sessionUser) {
+        try {
+          const res = await fetch('/backend/auth/me', { credentials: 'include' })
+          if (res.ok) {
+            meData = await res.json() as { id?: string; role?: string }
+            sessionUser = meData ?? null
+          }
+        } catch {
+          // Network error — fall through to redirect
+        }
+      }
+
       if (!sessionUser) {
         router.replace('/login')
         return
@@ -49,11 +64,11 @@ export default function DashboardLayout({
 
     // If auth is already initialized, check immediately
     if (isAuthInitialized()) {
-      ensureAuthenticated()
+      void ensureAuthenticated()
     } else {
       // Wait for auth to be initialized
       const unsubscribe = onAuthInitialized(() => {
-        ensureAuthenticated()
+        void ensureAuthenticated()
       })
       return unsubscribe
     }
@@ -68,6 +83,7 @@ export default function DashboardLayout({
       window.removeEventListener(AUTH_EVENTS.SESSION_CLEARED, handleSessionCleared)
     }
   }, [pathname, router, queryClient])
+
 
   if (isLoading) {
     return (

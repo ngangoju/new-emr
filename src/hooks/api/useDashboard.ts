@@ -32,16 +32,28 @@ type DashboardQueryOptions = {
     enabled?: boolean;
 };
 
+export async function fetchDashboardStats() {
+    const { data } = await api.get<DashboardStats>('/api/dashboard/stats');
+    return data;
+}
+
+export async function fetchTodayAppointments() {
+    const { data } = await api.get<{ appointments: Appointment[] }>('/api/dashboard/appointments');
+    return data.appointments || [];
+}
+
+export async function fetchRecentPatients() {
+    const { data } = await api.get<RecentPatient[]>('/api/dashboard/recent-patients');
+    return data;
+}
+
 export function useDashboardStats(options: DashboardQueryOptions = {}) {
     const { enabled = true } = options;
 
     return useQuery({
         queryKey: ['dashboard', 'stats'],
         enabled,
-        queryFn: async () => {
-            const { data } = await api.get<DashboardStats>('/api/dashboard/stats');
-            return data;
-        },
+        queryFn: fetchDashboardStats,
     });
 }
 
@@ -51,10 +63,7 @@ export function useTodayAppointments(options: DashboardQueryOptions = {}) {
     return useQuery({
         queryKey: ['dashboard', 'appointments'],
         enabled,
-        queryFn: async () => {
-            const { data } = await api.get<{ appointments: Appointment[] }>('/api/dashboard/appointments');
-            return data.appointments || [];
-        },
+        queryFn: fetchTodayAppointments,
     });
 }
 
@@ -64,9 +73,7 @@ export function useRecentPatients(options: DashboardQueryOptions = {}) {
     return useQuery({
         queryKey: ['dashboard', 'recent-patients'],
         enabled,
-        queryFn: async () => {
-            const { data } = await api.get<RecentPatient[]>('/api/dashboard/recent-patients');
-            return data;
-        },
+        queryFn: fetchRecentPatients,
     });
 }
+

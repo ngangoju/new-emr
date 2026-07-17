@@ -1,5 +1,5 @@
 import type { QueryClient } from '@tanstack/react-query'
-import { api } from '@/lib/api'
+import { fetchDashboardStats, fetchTodayAppointments, fetchRecentPatients } from '@/hooks/api/useDashboard'
 
 /**
  * Warm the dashboard queries while the post-login redirect is in flight so the
@@ -10,14 +10,15 @@ import { api } from '@/lib/api'
 export function prefetchDashboard(queryClient: QueryClient) {
   void queryClient.prefetchQuery({
     queryKey: ['dashboard', 'stats'],
-    queryFn: async () => (await api.get('/api/dashboard/stats')).data,
+    queryFn: fetchDashboardStats,
   })
   void queryClient.prefetchQuery({
     queryKey: ['dashboard', 'appointments'],
-    queryFn: async () => (await api.get('/api/dashboard/appointments')).data,
+    queryFn: fetchTodayAppointments,
   })
   void queryClient.prefetchQuery({
     queryKey: ['dashboard', 'recent-patients'],
-    queryFn: async () => (await api.get('/api/dashboard/recent-patients')).data,
+    queryFn: fetchRecentPatients,
   })
 }
+

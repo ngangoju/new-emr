@@ -12,7 +12,7 @@ const getBaseUrl = () => {
     return apiUrl.replace(/^http/, 'ws').replace(/\/$/, '') + '/ws';
 };
 
-const getApiBase = () => process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8888';
+const getApiBase = () => '/backend';
 
 const SOCKET_URL = getBaseUrl();
 const SOCKET_PATH = '/queue';

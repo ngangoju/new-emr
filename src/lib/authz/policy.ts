@@ -234,9 +234,16 @@ export function canAccessDashboardRoute(
     const routePermissionPaths = getPermissionPathsByPrefix(resolvedPermissions, 'route:')
 
     if (routePermissionPaths.length > 0) {
-        return routePermissionPaths.some((routePermissionPath) =>
-            matchesRoutePrefix(normalizedPath, routePermissionPath),
-        )
+        return routePermissionPaths.some((routePermissionPath) => {
+            // '/dashboard' is a special token — it grants access to the root
+            // dashboard only (exact match), NOT to every sub-path under it.
+            // Without this guard a user with route:/dashboard could reach
+            // /dashboard/admin, /dashboard/reports, etc. (F-009).
+            if (routePermissionPath === '/dashboard') {
+                return normalizedPath === '/dashboard'
+            }
+            return matchesRoutePrefix(normalizedPath, routePermissionPath)
+        })
     }
 
     const effectiveRoles = getEffectiveRoles({

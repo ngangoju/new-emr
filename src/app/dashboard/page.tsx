@@ -203,7 +203,7 @@ export default function DoctorDashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {upcomingAppointments.length === 0 ? (
+              {!Array.isArray(upcomingAppointments) || upcomingAppointments.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
                   <div className="flex h-20 w-20 items-center justify-center rounded-full bg-muted">
                     <Calendar className="h-10 w-10 text-muted-foreground" />
