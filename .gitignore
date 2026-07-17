@@ -47,3 +47,15 @@ EMR_Strategic_Roadmap.docx
 epic_emr_hospital_workflow.html
 e2e/qa-round1-*.spec.ts
 e2e/qa-round2-*.spec.ts
+
+# QA audit artifacts (evidence, not product code)
+docs/qa-*.md
+docs/security/csrf-decision.md
+qa/
+qa-*.json
+qa/shots/
+qa/err-*.log
+qa/out-*.json
+qa/results-*.json
+qa/analyze.mjs
+qa/seed-ids.env
