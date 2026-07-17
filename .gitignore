@@ -48,6 +48,11 @@ epic_emr_hospital_workflow.html
 e2e/qa-round1-*.spec.ts
 e2e/qa-round2-*.spec.ts
 
+# QA audit spec files (audit evidence, not product tests)
+e2e/qa-wave1-*.spec.ts
+e2e/qa-wave2-*.spec.ts
+e2e/zz-r1-r3.spec.ts
+
 # QA audit artifacts (evidence, not product code)
 docs/qa-*.md
 docs/security/csrf-decision.md
