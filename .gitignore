@@ -52,6 +52,8 @@ e2e/qa-round2-*.spec.ts
 e2e/qa-wave1-*.spec.ts
 e2e/qa-wave2-*.spec.ts
 e2e/zz-r1-r3.spec.ts
+e2e/qa-ui-redirect-verify.spec.ts
+e2e/qa-helpers.ts
 
 # QA audit artifacts (evidence, not product code)
 docs/qa-*.md
