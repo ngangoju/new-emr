@@ -186,7 +186,7 @@ export default function PatientDetailPage() {
           <Avatar className="h-20 w-20 border-2 border-primary/10">
             <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${id}`} />
             <AvatarFallback className="text-2xl bg-primary/5 text-primary">
-              {patient.firstName[0]}{patient.lastName[0]}
+              {patient.firstName?.[0] ?? '?'}{patient.lastName?.[0] ?? ''}
             </AvatarFallback>
           </Avatar>
           <div>
