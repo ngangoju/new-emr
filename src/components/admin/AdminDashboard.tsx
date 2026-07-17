@@ -1,9 +1,16 @@
 'use client'
 
+import dynamic from 'next/dynamic'
 import { SystemStats } from './SystemStats'
 import { UserManagementTable } from './UserManagementTable'
-import { ReportsSection } from './ReportsSection'
 import { EventHealthMonitor } from './EventHealthMonitor'
+import { Skeleton } from '@/components/ui/skeleton'
+
+// Recharts-heavy; load lazily so the admin shell paints first.
+const ReportsSection = dynamic(
+  () => import('./ReportsSection').then((m) => m.ReportsSection),
+  { ssr: false, loading: () => <Skeleton className="h-64 w-full" /> }
+)
 
 export default function AdminDashboard() {
   return (

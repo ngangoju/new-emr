@@ -4,6 +4,7 @@ import { useEffect, Suspense, useState } from "react"
 import { motion } from "framer-motion"
 import { Spinner } from "@/components/ui/spinner"
 import { usePathname, useRouter } from "next/navigation"
+import { useQueryClient } from "@tanstack/react-query"
 import { AUTH_EVENTS, getSessionUser, getUserRole, isAuthInitialized, onAuthInitialized } from "@/lib/utils/auth"
 import { canAccessDashboardRoute, getRoleDefaultDashboardRoute } from "@/lib/authz/policy"
 
@@ -19,17 +20,22 @@ export default function DashboardLayout({
 }) {
   const router = useRouter()
   const pathname = usePathname()
+  const queryClient = useQueryClient()
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     const ensureAuthenticated = () => {
-      const sessionUser = getSessionUser()
+      // Trust EITHER the persisted session OR the in-memory React-Query ['me']
+      // that useLogin seeds on success. A transient localStorage read must not
+      // bounce a valid login back to /login (redirect loop bug).
+      const meData = queryClient.getQueryData(['me']) as { id?: string; role?: string } | null | undefined
+      const sessionUser = getSessionUser() ?? meData ?? null
       if (!sessionUser) {
         router.replace('/login')
         return
       }
 
-      const role = getUserRole()
+      const role = getUserRole() ?? (meData?.role as never) ?? null
       const currentPath = pathname || '/dashboard'
       const hasRouteAccess = canAccessDashboardRoute(role, currentPath)
 
@@ -61,7 +67,7 @@ export default function DashboardLayout({
     return () => {
       window.removeEventListener(AUTH_EVENTS.SESSION_CLEARED, handleSessionCleared)
     }
-  }, [pathname, router])
+  }, [pathname, router, queryClient])
 
   if (isLoading) {
     return (
