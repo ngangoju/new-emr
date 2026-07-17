@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { formatDate, formatMoney, formatRelative } from '@/lib/format'
 import { mapHttpStatusToCode, severityForCode, toEmrError } from '@/lib/errors'
 import { statusToTone } from '@/components/shared/StatusBadge'
+import { formatPatientAge } from '@/lib/utils/date'
 
 describe('formatMoney', () => {
   it('formats RWF amounts via Intl', () => {
@@ -63,5 +64,27 @@ describe('statusToTone', () => {
     expect(statusToTone('PENDING')).toBe('pending')
     expect(statusToTone('CANCELLED')).toBe('critical')
     expect(statusToTone('ON_HOLD')).toBe('warning')
+  })
+})
+
+// F-004 regression: patient age cell formatter
+describe('formatPatientAge', () => {
+  it('computes correct age for a valid ISO date of birth', () => {
+    // Use a date far enough in the past that the year difference is unambiguous
+    const dob = '1990-01-01'
+    const result = formatPatientAge(dob)
+    const expected = new Date().getFullYear() - 1990
+    // Allow for birthday-not-yet-passed adjustment (could be expected - 1)
+    expect([String(expected), String(expected - 1)]).toContain(result)
+  })
+
+  it('returns "—" for null date of birth', () => {
+    expect(formatPatientAge(null)).toBe('—')
+    expect(formatPatientAge(undefined)).toBe('—')
+  })
+
+  it('returns "—" for a malformed date of birth string', () => {
+    expect(formatPatientAge('not-a-date')).toBe('—')
+    expect(formatPatientAge('32/13/2000')).toBe('—')
   })
 })

@@ -3,6 +3,7 @@
 import React, { useState } from 'react'
 import Link from 'next/link'
 import { format } from 'date-fns'
+import { formatPatientAge } from '@/lib/utils/date'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -330,8 +331,8 @@ export default function PatientsPage() {
                       </TableCell>
                       <TableCell>
                         <div>
-                          <span className="font-medium">{String(patient.age || '')} years</span>
-                          <span className="text-muted-foreground"> • {String(patient.gender || '')}</span>
+                          <span className="font-medium">{formatPatientAge(patient.dateOfBirth)} years</span>
+                          <span className="text-muted-foreground"> • {String(patient.gender || '—')}</span>
                         </div>
                       </TableCell>
                       <TableCell>

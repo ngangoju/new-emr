@@ -30,6 +30,7 @@ import { useCreateEncounter } from '@/hooks/api/useEncounters'
 import Link from 'next/link'
 import { EmptyState } from '@/components/ui/empty-state'
 import { formatDate, formatDateTime } from '@/lib/utils/date'
+import { formatPatientAge } from '@/lib/utils/date'
 import { formatAddress, formatShortAddress } from '@/lib/utils/address'
 import { useState } from 'react'
 import { useRole } from '@/hooks/useRole'
@@ -194,7 +195,7 @@ export default function PatientDetailPage() {
             </h1>
             <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground mt-1">
               <span className="flex items-center gap-1">
-                <User className="h-3 w-3" /> {patient.gender}, {new Date().getFullYear() - new Date(patient.dateOfBirth).getFullYear()}y
+                <User className="h-3 w-3" /> {patient.gender}, {formatPatientAge(patient.dateOfBirth)}y
               </span>
               <span className="flex items-center gap-1">
                 <MapPin className="h-3 w-3" /> {formatShortAddress(patient.address)}

@@ -27,11 +27,6 @@ async function loginAs(page: Page, username: string) {
     await page.waitForFunction(() => !location.pathname.includes('/login'), { timeout: 5000 }).catch(() => {})
 }
 
-async function getAuthToken(page: Page): Promise<string | null> {
-    // Read the HttpOnly cookie is not possible from JS; instead we drive the UI.
-    // For API-level negative tests we use the login endpoint directly.
-    return null
-}
 
 test.describe('Wave 2 - Negative & Boundary Testing', () => {
 
