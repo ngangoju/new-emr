@@ -24,18 +24,38 @@ function isSocketMessage(value: unknown): value is { type?: unknown; event?: unk
 }
 
 async function fetchWsTicket(): Promise<string | null> {
-    try {
-        const res = await fetch(`${getApiBase()}/auth/ws-ticket`, {
-            method: 'POST',
-            credentials: 'include',
-            headers: { 'Content-Type': 'application/json' },
-        });
-        if (!res.ok) return null;
-        const body = (await res.json()) as { ticket?: string };
-        return body.ticket || null;
-    } catch {
-        return null;
+    // The WS ticket requires the HttpOnly accessToken cookie. On a fresh login the
+    // dashboard mounts and fires connect() before the browser has fully persisted the
+    // Set-Cookie from /auth/login, so the first attempt can arrive cookie-less and the
+    // backend returns 401/403. Retry a few times (short backoff) so that transient
+    // pre-cookie window self-heals instead of silently connecting without a ticket.
+    const MAX_ATTEMPTS = 3;
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+        try {
+            const res = await fetch(`${getApiBase()}/auth/ws-ticket`, {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+            });
+            if (res.ok) {
+                const body = (await res.json()) as { ticket?: string };
+                return body.ticket || null;
+            }
+            // 401/403 => not authenticated yet (cookie not settled). Retry unless last attempt.
+            if (attempt < MAX_ATTEMPTS && (res.status === 401 || res.status === 403)) {
+                await new Promise((r) => setTimeout(r, 400 * attempt));
+                continue;
+            }
+            return null;
+        } catch {
+            if (attempt < MAX_ATTEMPTS) {
+                await new Promise((r) => setTimeout(r, 400 * attempt));
+                continue;
+            }
+            return null;
+        }
     }
+    return null;
 }
 
 class SocketClient {
