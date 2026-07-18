@@ -32,7 +32,7 @@ jobs:
       E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -44,29 +44,37 @@ jobs:
         run: npm ci
 
       - name: Validate E2E environment
+        id: validate
         run: |
           missing=0
           for name in PLAYWRIGHT_BASE_URL E2E_AUTH_API_BASE E2E_PASSWORD; do
             if [ -z "${!name}" ]; then
-              echo "::error title=Missing required E2E configuration::Set ${name} via workflow input, repository variable, or secret before running Critical E2E."
+              echo "::warning title=Missing E2E configuration::Set ${name} via workflow input, repository variable, or secret before running Critical E2E."
               missing=1
             fi
           done
 
           if [ "$missing" -ne 0 ]; then
-            exit 1
+            if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+              echo "::error title=Missing required E2E configuration::Running Critical E2E manually requires PLAYWRIGHT_BASE_URL, E2E_AUTH_API_BASE, and E2E_PASSWORD to be set."
+              exit 1
+            fi
+            echo "E2E configuration not set — skipping scheduled run (set the repo variables/secrets to enable)."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Install Playwright Chromium
+        if: steps.validate.outputs.skip != 'true'
         run: npx playwright install --with-deps chromium
 
       - name: Run critical browser flows
+        if: steps.validate.outputs.skip != 'true'
         env:
           CI: true
         run: npm run test:e2e:critical
 
       - name: Upload Playwright report
-        if: always()
+        if: always() && steps.validate.outputs.skip != 'true'
         uses: actions/upload-artifact@v4
         with:
           name: playwright-critical-report
