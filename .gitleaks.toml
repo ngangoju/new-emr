@@ -14,4 +14,11 @@ useDefault = true
 [[allowlist.path]]
 # Fake credentials in unit-test fixtures only.
 description = "Test fixture directory — contains non-functional fake credentials"
-path = '''src/test/.*'''
+path = '''(^|/)src/test/'''
+
+[[allowlist.files]]
+# Glob form of the above — the reliable way to exclude a whole directory in
+# gitleaks (regex path matching is ambiguous against repo-relative paths that
+# have no leading slash, e.g. src/test/validations.test.ts).
+description = "Test fixtures directory (doublestar glob)"
+glob = '''src/test/**'''
