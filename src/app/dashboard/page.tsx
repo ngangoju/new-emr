@@ -6,8 +6,19 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { QueueBoard } from '@/components/doctor/QueueBoard'
-import { ConsultationsChart } from '@/components/charts/ConsultationsChart'
-import { PatientStatsChart } from '@/components/charts/PatientStatsChart'
+import dynamic from 'next/dynamic'
+import { Skeleton } from '@/components/ui/skeleton'
+
+// Charts pull Recharts into the bundle; load them lazily so the dashboard
+// shell paints first.
+const ConsultationsChart = dynamic(
+  () => import('@/components/charts/ConsultationsChart').then((m) => m.ConsultationsChart),
+  { ssr: false, loading: () => <Skeleton className="h-64 w-full" /> }
+)
+const PatientStatsChart = dynamic(
+  () => import('@/components/charts/PatientStatsChart').then((m) => m.PatientStatsChart),
+  { ssr: false, loading: () => <Skeleton className="h-64 w-full" /> }
+)
 import { 
   Users, 
   Clock, 
@@ -192,7 +203,7 @@ export default function DoctorDashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {upcomingAppointments.length === 0 ? (
+              {!Array.isArray(upcomingAppointments) || upcomingAppointments.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
                   <div className="flex h-20 w-20 items-center justify-center rounded-full bg-muted">
                     <Calendar className="h-10 w-10 text-muted-foreground" />

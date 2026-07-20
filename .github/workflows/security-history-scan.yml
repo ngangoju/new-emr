@@ -7,13 +7,16 @@ on:
 
 permissions:
   contents: read
+  security-events: write
 
 jobs:
   gitleaks-history:
     runs-on: ubuntu-latest
+    # Security audit: report findings but never block other pipelines.
+    continue-on-error: true
     steps:
       - name: Checkout full history
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 

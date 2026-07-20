@@ -2,6 +2,7 @@ import React from 'react'
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import ForgotPasswordPage from '@/app/forgot-password/page'
 import ResetPasswordPage from '@/app/reset-password/page'
 import ContactAdministratorPage from '@/app/contact-administrator/page'
@@ -100,7 +101,11 @@ describe('Auth recovery public pages', () => {
   })
 
   it('uses login links for forgot password and contact administrator targets', () => {
-    render(<LoginPage />)
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <LoginPage />
+      </QueryClientProvider>,
+    )
 
     expect(screen.getByRole('link', { name: 'Forgot password?' })).toHaveAttribute('href', '/forgot-password')
     expect(screen.getByRole('link', { name: 'Contact Administrator' })).toHaveAttribute(

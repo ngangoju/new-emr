@@ -186,7 +186,7 @@ export function AdmissionForm({ onSuccess }: AdmissionFormProps) {
                           className="flex items-center gap-3 py-3"
                         >
                           <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center font-bold text-xs text-primary">
-                            {patient.firstName[0]}{patient.lastName[0]}
+                            {patient.firstName?.[0] ?? '?'}{patient.lastName?.[0] ?? ''}
                           </div>
                           <div className="flex flex-col">
                             <span className="font-medium">{patient.firstName} {patient.lastName}</span>

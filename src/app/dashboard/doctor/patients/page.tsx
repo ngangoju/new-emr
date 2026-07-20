@@ -3,6 +3,7 @@
 import React, { useState } from 'react'
 import Link from 'next/link'
 import { format } from 'date-fns'
+import { formatPatientAge } from '@/lib/utils/date'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -323,15 +324,15 @@ export default function PatientsPage() {
                       <TableCell>
                         <div className="flex items-center space-x-3">
                           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-primary/20 to-accent/20 text-primary font-semibold">
-                            {patient.firstName[0]}{patient.lastName[0]}
+                            {patient.firstName?.[0] ?? '?'}{patient.lastName?.[0] ?? ''}
                           </div>
                           <span className="font-medium">{patient.firstName} {patient.lastName}</span>
                         </div>
                       </TableCell>
                       <TableCell>
                         <div>
-                          <span className="font-medium">{String(patient.age || '')} years</span>
-                          <span className="text-muted-foreground"> • {String(patient.gender || '')}</span>
+                          <span className="font-medium">{formatPatientAge(patient.dateOfBirth)} years</span>
+                          <span className="text-muted-foreground"> • {String(patient.gender || '—')}</span>
                         </div>
                       </TableCell>
                       <TableCell>
