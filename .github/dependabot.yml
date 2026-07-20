@@ -13,6 +13,21 @@ updates:
         dependency-type: production
       development-dependencies:
         dependency-type: development
+    ignore:
+      # React 19 needs its own deliberate, tested migration (testing-library,
+      # react-day-picker, and other peers aren't ready yet) — not a grouped bump.
+      - dependency-name: "react"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react-dom"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@types/react"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@types/react-dom"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react-day-picker"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "lucide-react"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: github-actions
     directory: /
