@@ -182,6 +182,21 @@ export function useSignConsultation() {
     });
 }
 
+export function useSaveConsultationScribe() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async ({ id, data }: { id: string; data: { chiefComplaint?: string; historyOfPresentIllness?: string; physicalExamination?: string; assessment?: string; plan?: string } }) => {
+            const response = await api.patch<Consultation>(`/consultations/${id}/scribe`, data);
+            return response.data;
+        },
+        onSuccess: (data) => {
+            queryClient.invalidateQueries({ queryKey: ['consultation', data.id] });
+            queryClient.invalidateQueries({ queryKey: ['consultations'] });
+        },
+    });
+}
+
 export function useDeleteConsultation() {
     const queryClient = useQueryClient();
 

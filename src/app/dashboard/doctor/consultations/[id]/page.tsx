@@ -4,7 +4,7 @@ import React, { use } from 'react'
 import { useRouter } from 'next/navigation'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { useConsultation, useDeleteConsultation, useSignConsultation, useUpdateConsultation } from '@/hooks/api/useConsultations'
+import { useConsultation, useDeleteConsultation, useSignConsultation, useUpdateConsultation, useSaveConsultationScribe } from '@/hooks/api/useConsultations'
 import { formatDate } from '@/lib/utils/date'
 import { Clock, FileText, AlertCircle, Trash2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
@@ -26,12 +26,21 @@ export default function ConsultationDetailsPage({ params }: { params: Promise<{ 
   const signMutation = useSignConsultation()
   const updateMutation = useUpdateConsultation()
   const deleteMutation = useDeleteConsultation()
+  const scribeMutation = useSaveConsultationScribe()
 
   const [isEditing, setIsEditing] = React.useState(false)
   const [formData, setFormData] = React.useState({
     presentingComplaint: '',
     notes: '',
     diagnosis: ''
+  })
+
+  const [scribe, setScribe] = React.useState({
+    chiefComplaint: '',
+    historyOfPresentIllness: '',
+    physicalExamination: '',
+    assessment: '',
+    plan: ''
   })
 
   // Initialize form data when consultation loads
@@ -41,6 +50,13 @@ export default function ConsultationDetailsPage({ params }: { params: Promise<{ 
         presentingComplaint: consultation.presentingComplaint || '',
         notes: consultation.notes || '',
         diagnosis: consultation.diagnosis || ''
+      })
+      setScribe({
+        chiefComplaint: '',
+        historyOfPresentIllness: '',
+        physicalExamination: '',
+        assessment: '',
+        plan: ''
       })
     }
   }, [consultation])
@@ -75,6 +91,15 @@ export default function ConsultationDetailsPage({ params }: { params: Promise<{ 
       router.refresh()
     } catch {
       toast.error('Failed to delete consultation')
+    }
+  }
+
+  const handleSaveScribe = async () => {
+    try {
+      await scribeMutation.mutateAsync({ id, data: scribe })
+      toast.success('Scribe note saved')
+    } catch {
+      toast.error('Failed to save scribe note')
     }
   }
 
