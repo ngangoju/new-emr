@@ -79,18 +79,10 @@ export default function ReceptionPage() {
       />
 
       {canRegisterPatient && (
-        <>
-          <div className="flex justify-end">
-            <Button size="lg" className="gap-2" onClick={() => setIsRegisterPatientOpen(true)}>
-              <UserPlus className="h-4 w-4" />
-              New Patient
-            </Button>
-          </div>
-          <PatientRegistrationModal
-            open={isRegisterPatientOpen}
-            onOpenChange={setIsRegisterPatientOpen}
-          />
-        </>
+        <PatientRegistrationModal
+          open={isRegisterPatientOpen}
+          onOpenChange={setIsRegisterPatientOpen}
+        />
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

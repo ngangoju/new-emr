@@ -69,6 +69,7 @@ export function PatientRegistrationModal({
       nationalId: '',
       insurance: '',
       insuranceCard: '',
+      copayPercentage: '',
       allergies: '',
       emergencyContact: '',
     },
@@ -80,6 +81,7 @@ export function PatientRegistrationModal({
       allergies: data.allergies
         ? data.allergies.split(',').map((allergy) => allergy.trim()).filter(Boolean)
         : [],
+      copayPercentage: data.copayPercentage ? Number(data.copayPercentage) : undefined,
     }
 
     createPatientMutation.mutate(payload, {
@@ -258,6 +260,27 @@ export function PatientRegistrationModal({
                     <FormLabel>Insurance Card Number</FormLabel>
                     <FormControl>
                       <Input placeholder="123456789" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="copayPercentage"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Copayment (%)</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="0.01"
+                        placeholder="15"
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

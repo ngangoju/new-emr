@@ -18,6 +18,10 @@ export const patientRegistrationSchema = z.object({
     nationalId: z.string().optional(),
     insurance: z.string().optional(),
     insuranceCard: z.string().optional(),
+    copayPercentage: z.string()
+        .optional()
+        .refine((val) => !val || (parseFloat(val) >= 0 && parseFloat(val) <= 100),
+            'Copayment must be between 0 and 100%'),
     allergies: z.string().optional(),
     emergencyContact: z.string().optional(),
 })

@@ -25,6 +25,9 @@ export interface Patient {
     };
     allergies?: string[] | string;
     conditions?: string[] | string;
+    // Percentage of each visit's bill the patient pays out of pocket, set at
+    // registration. Overrides the insurance-provider default copay rule.
+    copayPercentage?: number;
     [key: string]: unknown;
 }
 
