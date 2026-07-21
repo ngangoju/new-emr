@@ -27,6 +27,7 @@ import {
 import { usePatient, usePatientVitals, useUpdatePatient, usePatientLabResults, usePatientHistory, type Patient, type PatientLabResult } from '@/hooks/api/usePatients'
 import { useConsultations, type Consultation } from '@/hooks/api/useConsultations'
 import { useCreateEncounter } from '@/hooks/api/useEncounters'
+import { PatientSnapshotCard } from '@/components/patient/PatientSnapshotCard'
 import Link from 'next/link'
 import { EmptyState } from '@/components/ui/empty-state'
 import { formatDate, formatDateTime } from '@/lib/utils/date'
@@ -345,6 +346,8 @@ export default function PatientDetailPage() {
 
         {/* Overview Tab */}
         <TabsContent value="overview" className="space-y-6">
+          <PatientSnapshotCard patientId={patient.id} patientName={`${patient.firstName} ${patient.lastName}`} />
+
           <DoctorTreatmentWorkspace
             patientId={patient.id}
             patientName={`${patient.firstName} ${patient.lastName}`}
