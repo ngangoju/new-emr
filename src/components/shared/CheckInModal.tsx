@@ -37,7 +37,7 @@ export function CheckInModal({ open, onOpenChange }: CheckInModalProps) {
   const [selectedTariffId, setSelectedTariffId] = useState<string>('')
   const [priority, setPriority] = useState<string>('1')
   const [notes, setNotes] = useState('')
-  const [issuedTicket, setIssuedTicket] = useState<{ token: string; url: string } | null>(null)
+  const [issuedTicket, setIssuedTicket] = useState<{ token: string; url: string; qrUrl: string } | null>(null)
 
   const registerVisitMutation = useRegisterReceptionVisit()
   const issueTicketMutation = useIssueJourneyTicket()
@@ -83,7 +83,8 @@ export function CheckInModal({ open, onOpenChange }: CheckInModalProps) {
         try {
           const ticket = await issueTicketMutation.mutateAsync(result.queueEntry.id)
           const ticketUrl = `${window.location.origin}/j/${ticket.ticketToken}`
-          setIssuedTicket({ token: ticket.ticketToken, url: ticketUrl })
+          const qrUrl = `/api/public/journey/qr/${ticket.ticketToken}`
+          setIssuedTicket({ token: ticket.ticketToken, url: ticketUrl, qrUrl })
         } catch {
           // Ticket issuance failed, but check-in succeeded
           toast.error('Check-in succeeded, but ticket generation failed. You can generate it later.')
@@ -252,6 +253,18 @@ export function CheckInModal({ open, onOpenChange }: CheckInModalProps) {
                 >
                   Done
                 </Button>
+              </div>
+
+              <div className="rounded-md border bg-white p-2">
+                <p className="text-[10px] text-gray-500 mb-1">Patient QR</p>
+                <img
+                  src={issuedTicket.qrUrl}
+                  alt="Journey ticket QR"
+                  className="mx-auto h-40 w-40"
+                />
+                <p className="text-[10px] text-gray-400 mt-1 text-center">
+                  Scan to open visit tracker
+                </p>
               </div>
             </div>
           )}
