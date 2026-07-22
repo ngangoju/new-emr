@@ -159,4 +159,41 @@ describe('frontend authz policy', () => {
         expect(canRoleAccessFeature('STORE', 'CAN_DISPENSE')).toBe(false)
         expect(canRoleAccessFeature('DOCTOR', 'CAN_DISPENSE')).toBe(false)
     })
+
+    // F-009 regression: audit probe cases — unauthorized roles must NOT see restricted page shells
+    describe('F-009 — unauthorized roles cannot access restricted dashboard segments', () => {
+        it('blocks cashier from accessing /dashboard/admin', () => {
+            expect(canAccessDashboardRoute('CASHIER', '/dashboard/admin')).toBe(false)
+        })
+
+        it('blocks pharmacist from accessing /dashboard/doctor/consultations', () => {
+            expect(canAccessDashboardRoute('PHARMACIST', '/dashboard/doctor/consultations')).toBe(false)
+        })
+
+        it('blocks receptionist from accessing /dashboard/reports', () => {
+            expect(canAccessDashboardRoute('RECEPTIONIST', '/dashboard/reports')).toBe(false)
+        })
+
+        it('default-denies unknown route segments (no matching policy)', () => {
+            // A route that has no entry in DASHBOARD_ROUTE_POLICIES should be denied
+            expect(canAccessDashboardRoute('DOCTOR', '/dashboard/unknown-segment')).toBe(false)
+            expect(canAccessDashboardRoute('ADMIN', '/dashboard/unknown-segment')).toBe(false)
+        })
+
+        it('route:/dashboard permission does NOT grant access to sub-paths (e.g. /dashboard/admin)', () => {
+            // This is the core F-009 vector: a user with only route:/dashboard should not
+            // be able to reach privileged segments by exploiting the prefix match.
+            expect(
+                canAccessDashboardRoute('CASHIER', '/dashboard/admin', {
+                    permissions: ['route:/dashboard'],
+                }),
+            ).toBe(false)
+
+            expect(
+                canAccessDashboardRoute('CASHIER', '/dashboard', {
+                    permissions: ['route:/dashboard'],
+                }),
+            ).toBe(true) // root /dashboard itself IS allowed
+        })
+    })
 })

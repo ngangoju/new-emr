@@ -22,6 +22,8 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { loginSchema, type LoginInput } from '@/lib/validations/auth'
 import { getSessionUser, setSessionUser } from '@/lib/utils/auth'
+import { useQueryClient } from '@tanstack/react-query'
+import { prefetchDashboard } from '@/lib/prefetch-dashboard'
 
 type LoginErrorPayload = {
   response?: {
@@ -35,6 +37,7 @@ type LoginErrorPayload = {
 
 export default function LoginPage() {
   const router = useRouter()
+  const queryClient = useQueryClient()
   const [showPassword, setShowPassword] = useState(false)
   
   const form = useForm<LoginInput>({
@@ -61,6 +64,7 @@ export default function LoginPage() {
         onSuccess: (user) => {
           toast.success(`Welcome back, ${user.username || user.email}!`)
           setSessionUser(user)
+          prefetchDashboard(queryClient)
           router.replace('/dashboard')
         },
         onError: (error: unknown) => {

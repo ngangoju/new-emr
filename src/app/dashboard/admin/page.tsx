@@ -120,6 +120,18 @@ export default function AdminPage() {
       countLabel: 'tariffs',
     },
     {
+      title: 'Tenants',
+      description: 'Multi-tenant clinics',
+      href: '/dashboard/admin/tenants',
+      icon: Building2,
+      accentClass: 'border-l-primary',
+      iconBgClass: 'bg-primary/10',
+      iconColorClass: 'text-primary',
+      badgeBgClass: 'bg-primary',
+      count: null,
+      countLabel: 'multi-tenant',
+    },
+    {
       title: 'Settings',
       description: 'Application settings',
       href: '/dashboard/settings',

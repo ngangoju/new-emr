@@ -64,6 +64,22 @@ export interface PatientLabResult {
     physicianAcknowledgedAt?: string;
 }
 
+export interface PatientSnapshot {
+    patientId: string;
+    fullName: string;
+    gender?: string;
+    age?: string;
+    phone?: string;
+    latestVitals?: string;
+    activeConditions?: string;
+    activeAllergies?: string;
+    latestVisit?: string;
+    nextAppointment?: string;
+    outstandingBalance?: string;
+    activePrescriptions?: string;
+    updatedAt?: string;
+}
+
 export interface PatientHistoryConsultation {
     id: string;
     status?: string;
@@ -267,6 +283,17 @@ export function usePatientLabResults(id: string) {
         queryKey: ['patient', id, 'lab-results'],
         queryFn: async () => {
             const { data } = await api.get<PatientLabResult[]>(`/patients/${id}/lab-results`);
+            return data;
+        },
+        enabled: !!id,
+    });
+}
+
+export function usePatientSnapshot(id: string) {
+    return useQuery({
+        queryKey: ['patient', id, 'snapshot'],
+        queryFn: async () => {
+            const { data } = await api.get<PatientSnapshot>(`/patients/${id}/snapshot`);
             return data;
         },
         enabled: !!id,

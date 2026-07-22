@@ -16,12 +16,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { PatientSelector } from './PatientSelector'
 import { DoctorSelector } from './DoctorSelector'
 import { Patient } from '@/hooks/api/usePatients'
-import { Activity, Clock, User, AlertCircle } from 'lucide-react'
+import { Activity, Clock, User, AlertCircle, Ticket, ExternalLink } from 'lucide-react'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { useTariffs } from '@/hooks/useTariffs'
 import { useRegisterReceptionVisit } from '@/hooks/useReceptionVisits'
+import { useIssueJourneyTicket } from '@/hooks/useJourneyTicket'
+import toast from 'react-hot-toast'
 import type { Tariff } from '@/types/billing'
 import { formatMoney } from '@/lib/format'
+import Link from 'next/link'
 
 interface CheckInModalProps {
   open: boolean
@@ -34,8 +37,10 @@ export function CheckInModal({ open, onOpenChange }: CheckInModalProps) {
   const [selectedTariffId, setSelectedTariffId] = useState<string>('')
   const [priority, setPriority] = useState<string>('1')
   const [notes, setNotes] = useState('')
+  const [issuedTicket, setIssuedTicket] = useState<{ token: string; url: string; qrUrl: string } | null>(null)
 
   const registerVisitMutation = useRegisterReceptionVisit()
+  const issueTicketMutation = useIssueJourneyTicket()
   const { data: consultationTariffs, isLoading: isLoadingTariffs } = useTariffs({ category: 'CONSULTATION' })
   const tariffs = consultationTariffs?.data ?? []
   const selectedTariff = tariffs.find((tariff) => tariff.id === selectedTariffId)
@@ -44,7 +49,7 @@ export function CheckInModal({ open, onOpenChange }: CheckInModalProps) {
     if (!selectedPatient || !selectedDoctorId || !selectedTariff) return
 
     try {
-      await registerVisitMutation.mutateAsync({
+      const result = await registerVisitMutation.mutateAsync({
         invoice: {
           patientId: selectedPatient.id,
           doctorId: selectedDoctorId,
@@ -68,28 +73,60 @@ export function CheckInModal({ open, onOpenChange }: CheckInModalProps) {
         },
       })
 
-      onOpenChange(false)
-      setSelectedPatient(null)
-      setSelectedDoctorId('')
+      // Reset form state but keep patient info for ticket generation
       setSelectedTariffId('')
       setPriority('1')
       setNotes('')
+
+      // Auto-issue a journey ticket for the newly created queue entry
+      if (result?.queueEntry?.id) {
+        try {
+          const ticket = await issueTicketMutation.mutateAsync(result.queueEntry.id)
+          const ticketUrl = `${window.location.origin}/j/${ticket.ticketToken}`
+          const qrUrl = `/api/public/journey/qr/${ticket.ticketToken}`
+          setIssuedTicket({ token: ticket.ticketToken, url: ticketUrl, qrUrl })
+        } catch {
+          // Ticket issuance failed, but check-in succeeded
+          toast.error('Check-in succeeded, but ticket generation failed. You can generate it later.')
+        }
+      }
     } catch {
       // API interceptors and mutation hooks surface the detailed error.
     }
   }
 
-  const isSubmitting = registerVisitMutation.isPending
+  const handleGenerateTicket = async () => {
+    // Find the patient's latest queue entry and issue a ticket
+    // For simplicity, we use the last selected patient's most recent queue entry
+    // In production, you'd query the queue for this patient
+    if (!selectedPatient) return
+
+    try {
+      // This would need a backend endpoint to find the latest queue entry for a patient
+      // For now, we'll show a placeholder
+      toast('Please use the queue board to generate a ticket for an existing visit.')
+    } catch {
+      // Silently handle
+    }
+  }
+
+  const isSubmitting = registerVisitMutation.isPending || issueTicketMutation.isPending
 
   const formatTariffLabel = (tariff: Tariff) => {
     const price = Number(tariff.basePrice || 0).toLocaleString()
     return `${tariff.serviceName} · ${formatMoney(price)}`
   }
 
-  const canSubmit = Boolean(selectedPatient && selectedDoctorId && selectedTariff && !isSubmitting)
+  const canSubmit = Boolean(selectedPatient && selectedDoctorId && selectedTariff && !isSubmitting && !issuedTicket)
 
   const resetAndClose = () => {
     if (isSubmitting) return
+    setIssuedTicket(null)
+    setSelectedPatient(null)
+    setSelectedDoctorId('')
+    setSelectedTariffId('')
+    setPriority('1')
+    setNotes('')
     onOpenChange(false)
   }
 
@@ -176,6 +213,61 @@ export function CheckInModal({ open, onOpenChange }: CheckInModalProps) {
           <div className="rounded-md border bg-muted/30 p-3 text-sm text-muted-foreground">
             On submit, the cashier receives an unpaid invoice notification, the nurse receives a triage queue notification, and the assigned doctor receives a check-in notification.
           </div>
+
+          {/* Journey Ticket success state */}
+          {issuedTicket && (
+            <div className="rounded-md border border-green-200 bg-green-50 p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <Ticket className="h-5 w-5 text-green-700" />
+                <p className="text-sm font-semibold text-green-900">Journey Ticket Generated</p>
+              </div>
+              <p className="text-xs text-green-700">
+                Share this link with the patient. They can track their visit live without logging in.
+              </p>
+              <div className="flex items-center gap-2 rounded-md bg-white border border-green-200 p-2">
+                <code className="flex-1 text-xs text-gray-700 break-all">{issuedTicket.url}</code>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    navigator.clipboard.writeText(issuedTicket.url)
+                    toast.success('Ticket link copied to clipboard')
+                  }}
+                >
+                  Copy
+                </Button>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  className="flex-1"
+                  onClick={() => window.open(issuedTicket.url, '_blank')}
+                >
+                  <ExternalLink className="h-3 w-3 mr-1" />
+                  Open Ticket
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={resetAndClose}
+                >
+                  Done
+                </Button>
+              </div>
+
+              <div className="rounded-md border bg-white p-2">
+                <p className="text-[10px] text-gray-500 mb-1">Patient QR</p>
+                <img
+                  src={issuedTicket.qrUrl}
+                  alt="Journey ticket QR"
+                  className="mx-auto h-40 w-40"
+                />
+                <p className="text-[10px] text-gray-400 mt-1 text-center">
+                  Scan to open visit tracker
+                </p>
+              </div>
+            </div>
+          )}
         </div>
 
         <DialogFooter className="px-6 py-4 border-t shrink-0 gap-2 sm:gap-0">

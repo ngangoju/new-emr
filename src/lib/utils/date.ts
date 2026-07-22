@@ -92,6 +92,19 @@ export function calculateAge(dateOfBirth: string | Date | null | undefined): num
 }
 
 /**
+ * Format age for display in patient tables.
+ * Returns the calculated age as a string like "32", or "—" for null/invalid DOBs.
+ */
+export function formatPatientAge(dateOfBirth: string | Date | null | undefined): string {
+    if (!dateOfBirth) return '—'
+    const parsed = safelyParseDate(dateOfBirth)
+    if (!parsed) return '—'
+    const age = calculateAge(dateOfBirth)
+    return String(age)
+}
+
+
+/**
  * Format a date range
  */
 export function formatDateRange(
