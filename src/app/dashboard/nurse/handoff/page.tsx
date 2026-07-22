@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useWards } from '@/hooks/useWardManagement'
@@ -25,13 +25,15 @@ export default function SbarHandoffPage() {
     const [handoff, setHandoff] = useState<SbarHandoff | null>(null)
     const [loading, setLoading] = useState(false)
 
-    useEffect(() => {
-        if (wards && wards.length > 0 && !selectedWard) {
-            setSelectedWard(wards[0].id)
-        }
-    }, [wards, selectedWard])
+    const firstWardId = wards.length > 0 ? wards[0].id : ''
 
-    const loadHandoff = async () => {
+    useEffect(() => {
+        if (firstWardId && !selectedWard) {
+            setSelectedWard(firstWardId)
+        }
+    }, [firstWardId, selectedWard])
+
+    const loadHandoff = useCallback(async () => {
         if (!selectedWard) return
         setLoading(true)
         try {
@@ -43,13 +45,13 @@ export default function SbarHandoffPage() {
         } finally {
             setLoading(false)
         }
-    }
+    }, [selectedWard, fetchHandoff])
 
     useEffect(() => {
         if (selectedWard) {
             loadHandoff()
         }
-    }, [selectedWard])
+    }, [selectedWard, loadHandoff])
 
     return (
         <div className="space-y-6 animate-fade-in p-6">

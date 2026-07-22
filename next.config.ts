@@ -1,7 +1,5 @@
 import type { NextConfig } from "next";
 
-const API_ORIGIN = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8888";
-
 const nextConfig: NextConfig = {
   /**
    * Proxy all /backend/* requests to the Spring backend.

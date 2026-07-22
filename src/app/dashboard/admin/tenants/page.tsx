@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { useTenants, CreateTenantRequest, UpdateTenantRequest } from '@/hooks/useTenants'
+import { useTenants, CreateTenantRequest } from '@/hooks/useTenants'
 import { ArrowLeft, Plus, Pencil, Trash2, Building2, Loader2 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 

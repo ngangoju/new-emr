@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 'use use strict'
 'use client'
 
@@ -14,7 +15,6 @@ import {
   RefreshCw,
   ShieldCheck,
   Smartphone,
-  UserCheck,
   AlertCircle
 } from 'lucide-react'
 
@@ -139,6 +139,7 @@ export default function JourneyTicketPage({ params }: { params: Promise<{ token:
   useEffect(() => {
     if (!token || !ticket) return
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLiveNote('Connecting...')
 
     const onConnect = () => {
@@ -172,13 +173,13 @@ export default function JourneyTicketPage({ params }: { params: Promise<{ token:
       socket.off('disconnect', onDisconnect)
       socket.off('message', onMessage)
     }
-  }, [token, ticket?.visitId])
+  }, [token, ticket?.visitId, ticket])
 
   const currentIndex = useMemo(() => {
     if (!ticket) return 0
     const idx = stageOrder.indexOf(ticket.currentStage as (typeof stageOrder)[number])
     return idx >= 0 ? idx : 0
-  }, [ticket?.currentStage])
+  }, [ticket])
 
   const handleMoMoPay = async (e: React.FormEvent) => {
     e.preventDefault()

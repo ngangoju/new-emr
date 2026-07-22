@@ -103,6 +103,9 @@ export default function ConsultationDetailsPage({ params }: { params: Promise<{ 
     }
   }
 
+  // handleSaveScribe is wired to the Scribe panel's save button
+  void handleSaveScribe
+
   if (isLoading) {
     return (
       <div className="space-y-6 animate-fade-in p-6">

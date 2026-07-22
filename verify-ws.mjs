@@ -23,7 +23,7 @@ await page.waitForTimeout(6000); // let cookie settle + socket retries fire
 log('AFTER LOGIN URL:', page.url());
 log('ws-ticket failures:', JSON.stringify(wsTicketFails));
 // Confirm socket actually connected (no lingering unauth state)
-const connected = await page.evaluate(() => {
+await page.evaluate(() => {
   // try to read any global socket debug if exposed; otherwise infer from network
   return true;
 });

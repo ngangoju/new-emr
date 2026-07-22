@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { usePatientSnapshot, type PatientSnapshot } from '@/hooks/api/usePatientSnapshot'
+import { usePatientSnapshot } from '@/hooks/api/usePatientSnapshot'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'

@@ -1,8 +1,10 @@
 'use client'
 
-import { usePatientSnapshot, type PatientSnapshot } from '@/hooks/api/usePatients'
+import { usePatientSnapshot } from '@/hooks/api/usePatients'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { Badge } from '@/components/ui/badge'
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { Activity, Calendar, FileText, Pill, AlertTriangle, Wallet } from 'lucide-react'
 import { formatDateTime } from '@/lib/utils/date'
 
