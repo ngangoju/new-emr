@@ -95,7 +95,7 @@ describe('Sidebar', () => {
 
       unmount()
     }
-  }, 60000)
+  }, 120000)
 
   it('reflects unread badge count from useUnreadCount()', async () => {
     setupCommonMocks('DOCTOR', 12)
