@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Building2, Bed, Users, Shield, FileText, Settings, ArrowRight, LayoutDashboard } from 'lucide-react'
+import { Building2, Bed, Users, Shield, FileText, Settings, ArrowRight, LayoutDashboard, BarChart3 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import AdminDashboard from '@/components/admin/AdminDashboard'
 import { useWards, useBeds } from '@/hooks/useWardManagement'
@@ -130,6 +130,18 @@ export default function AdminPage() {
       badgeBgClass: 'bg-primary',
       count: null,
       countLabel: 'multi-tenant',
+    },
+    {
+      title: 'DHIS2 Export',
+      description: 'HMIS data export to DHIS2',
+      href: '/dashboard/admin/dhis2',
+      icon: BarChart3,
+      accentClass: 'border-l-green-600',
+      iconBgClass: 'bg-green-500/10',
+      iconColorClass: 'text-green-600',
+      badgeBgClass: 'bg-green-500',
+      count: null,
+      countLabel: 'export',
     },
     {
       title: 'Settings',

@@ -158,3 +158,6 @@ export function summarizeParsedCommand(cmd: ParsedCommand): string {
 export function parseSmartBarInput(input: string): SmartBarResult | null {
     return parseSmartBarCommand(input)
 }
+
+/** Alias for backward compatibility with CommandPalette import */
+export { parseSmartBarCommand as parseSmartBar }
