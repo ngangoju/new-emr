@@ -52,6 +52,10 @@ vi.mock('@/hooks/api/useConsultations', () => ({
     mutateAsync: vi.fn(),
     isPending: false,
   }),
+  useSaveConsultationScribe: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
 }))
 
 vi.mock('@/components/layout/PageHeader', () => ({
