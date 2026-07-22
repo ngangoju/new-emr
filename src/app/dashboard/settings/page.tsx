@@ -1,6 +1,9 @@
 'use client'
 
 import React, { useEffect } from 'react'
+import Link from 'next/link'
+import { Button } from "@/components/ui/button"
+import { ArrowLeft } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
@@ -76,12 +79,17 @@ export default function SettingsPage() {
 
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center gap-4">
+        <Button variant="ghost" size="icon" asChild className="shrink-0 rounded-full h-8 w-8">
+          <Link href="/dashboard/admin">
+            <ArrowLeft className="h-4 w-4" />
+          </Link>
+        </Button>
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
           <p className="text-muted-foreground">Manage your application preferences and system configuration.</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="ml-auto flex items-center gap-2">
           {isUpdatingSettings && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
           <p className="text-xs text-muted-foreground">
             {isUpdatingSettings ? 'Saving changes...' : 'All changes saved autoamtically'}

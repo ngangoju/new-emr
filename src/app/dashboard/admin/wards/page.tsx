@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { useWards, useCreateWard, useUpdateWard, useDeleteWard, Ward } from "@/hooks/useWardManagement";
 import { Button } from "@/components/ui/button";
@@ -22,7 +23,7 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Pencil, Trash2, Plus, Building2 } from "lucide-react";
+import { Pencil, Trash2, Plus, Building2, ArrowLeft } from "lucide-react";
 import toast from "react-hot-toast";
 
 export default function WardsPage() {
@@ -103,11 +104,17 @@ export default function WardsPage() {
 
     return (
         <div className="p-6 space-y-6">
-            <div className="flex justify-between items-center">
+            <div className="flex items-center gap-4">
+                <Button variant="ghost" size="icon" asChild className="shrink-0 rounded-full h-8 w-8">
+                    <Link href="/dashboard/admin">
+                        <ArrowLeft className="h-4 w-4" />
+                    </Link>
+                </Button>
                 <div>
                     <h1 className="text-2xl font-bold">Ward Management</h1>
                     <p className="text-muted-foreground">Manage hospital wards and bed allocations</p>
                 </div>
+                <div className="ml-auto">
                 <Dialog open={isDialogOpen} onOpenChange={(open) => {
                     setIsDialogOpen(open);
                     if (!open) resetForm();
@@ -173,6 +180,7 @@ export default function WardsPage() {
                         </form>
                     </DialogContent>
                 </Dialog>
+                </div>
             </div>
 
             <Card>

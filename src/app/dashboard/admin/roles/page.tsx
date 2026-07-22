@@ -16,7 +16,8 @@ import {
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import toast from 'react-hot-toast'
-import { Pencil, Trash2, Plus, Shield } from 'lucide-react'
+import Link from 'next/link'
+import { Pencil, Trash2, Plus, Shield, ArrowLeft } from 'lucide-react'
 import { PermissionsManager } from '@/components/admin/PermissionsManager'
 
 export default function RolesPage() {
@@ -97,15 +98,22 @@ export default function RolesPage() {
 
     return (
         <div className="container mx-auto py-6">
-            <div className="flex justify-between items-center mb-6">
+            <div className="flex items-center gap-4 mb-6">
+                <Button variant="ghost" size="icon" asChild className="shrink-0 rounded-full h-8 w-8">
+                    <Link href="/dashboard/admin">
+                        <ArrowLeft className="h-4 w-4" />
+                    </Link>
+                </Button>
                 <div>
                     <h1 className="text-3xl font-bold">Role Management</h1>
                     <p className="text-muted-foreground">Manage system roles and permissions</p>
                 </div>
+                <div className="ml-auto">
                 <Button onClick={() => setIsCreateDialogOpen(true)}>
                     <Plus className="mr-2 h-4 w-4" />
                     Add Role
                 </Button>
+                </div>
             </div>
 
             {error && (

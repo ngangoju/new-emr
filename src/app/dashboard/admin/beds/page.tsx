@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { useBeds, useWards, useCreateBed, useUpdateBed, useDeleteBed, Bed } from "@/hooks/useWardManagement";
 import { Button } from "@/components/ui/button";
@@ -22,7 +23,7 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Pencil, Trash2, Plus, Bed as BedIcon } from "lucide-react";
+import { Pencil, Trash2, Plus, Bed as BedIcon, ArrowLeft } from "lucide-react";
 import toast from "react-hot-toast";
 
 export default function BedsPage() {
@@ -108,11 +109,17 @@ export default function BedsPage() {
 
     return (
         <div className="p-6 space-y-6">
-            <div className="flex justify-between items-center">
+            <div className="flex items-center gap-4">
+                <Button variant="ghost" size="icon" asChild className="shrink-0 rounded-full h-8 w-8">
+                    <Link href="/dashboard/admin">
+                        <ArrowLeft className="h-4 w-4" />
+                    </Link>
+                </Button>
                 <div>
                     <h1 className="text-2xl font-bold">Bed Management</h1>
                     <p className="text-muted-foreground">Manage hospital beds and allocations</p>
                 </div>
+                <div className="ml-auto">
                 <Dialog open={isDialogOpen} onOpenChange={(open) => {
                     setIsDialogOpen(open);
                     if (!open) resetForm();
@@ -174,6 +181,7 @@ export default function BedsPage() {
                         </form>
                     </DialogContent>
                 </Dialog>
+                </div>
             </div>
 
             <Card>

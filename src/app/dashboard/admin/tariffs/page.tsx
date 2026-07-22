@@ -33,7 +33,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
-import { Plus, Search, Pencil, Trash2, FileUp, Download } from 'lucide-react'
+import { Plus, Search, Pencil, Trash2, FileUp, Download, ArrowLeft } from 'lucide-react'
 import ExcelJS from 'exceljs'
 import {
   Dialog,
@@ -46,6 +46,7 @@ import {
 import { Textarea } from '@/components/ui/textarea'
 import toast from 'react-hot-toast'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { formatMoney } from '@/lib/format'
 
 const TARIFF_CATEGORIES = [
@@ -436,12 +437,17 @@ export default function TariffManagementPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex items-center gap-4">
+        <Button variant="ghost" size="icon" asChild className="shrink-0 rounded-full h-8 w-8">
+          <Link href="/dashboard/admin">
+            <ArrowLeft className="h-4 w-4" />
+          </Link>
+        </Button>
         <div>
           <h1 className="text-2xl font-bold">Tariff Management</h1>
           <p className="text-muted-foreground">Manage service tariffs and pricing</p>
         </div>
-        <div className="flex gap-2">
+        <div className="ml-auto flex gap-2">
           <input
             type="file"
             ref={fileInputRef}
