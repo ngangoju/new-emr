@@ -22,6 +22,7 @@ const eslintConfig = defineConfig([
     // bundles are not source and must not be linted.
     "playwright-report/**",
     "test-results/**",
+    "coverage/**",
   ]),
 ]);
 
