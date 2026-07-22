@@ -16,9 +16,18 @@ const DASHBOARD_PUBLIC_ROUTES = ['/dashboard', '/dashboard/profile', '/dashboard
 
 export const DASHBOARD_ROUTE_POLICIES: readonly DashboardRoutePolicy[] = [
     {
+        routePrefix: '/dashboard/flight-deck',
+        allowedRoles: ['ADMIN', 'DOCTOR', 'NURSE', 'CHIEF_NURSE', 'CLINICAL_DIRECTOR', 'MANAGER', 'COO'],
+    },
+    {
+        routePrefix: '/dashboard/nurse/handoff',
+        allowedRoles: ['ADMIN', 'NURSE', 'CHIEF_NURSE', 'DOCTOR', 'CLINICAL_DIRECTOR'],
+    },
+    {
         routePrefix: '/dashboard/reception',
         allowedRoles: ['ADMIN', 'RECEPTIONIST', 'CUSTOMER_CARE'],
     },
+
     {
         routePrefix: '/dashboard/nurse',
         allowedRoles: ['ADMIN', 'NURSE', 'CHIEF_NURSE', 'CLINICAL_DIRECTOR'],
@@ -129,6 +138,8 @@ export const DASHBOARD_NAV_ITEMS: readonly DashboardNavItem[] = [
     { title: 'Maternity', href: '/dashboard/maternity' },
     { title: 'Blood Bank', href: '/dashboard/blood-bank' },
     { title: 'Back Office', href: '/dashboard/back-office' },
+    { title: 'Flight Deck', href: '/dashboard/flight-deck' },
+    { title: 'Shift Handoff', href: '/dashboard/nurse/handoff' },
     { title: 'Reports', href: '/dashboard/reports' },
     { title: 'Approvals', href: '/dashboard/approvals' },
     { title: 'Admin', href: '/dashboard/admin' },

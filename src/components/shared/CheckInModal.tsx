@@ -25,6 +25,8 @@ import toast from 'react-hot-toast'
 import type { Tariff } from '@/types/billing'
 import { formatMoney } from '@/lib/format'
 import Link from 'next/link'
+import QRCode from 'qrcode'
+
 
 interface CheckInModalProps {
   open: boolean
@@ -83,13 +85,14 @@ export function CheckInModal({ open, onOpenChange }: CheckInModalProps) {
         try {
           const ticket = await issueTicketMutation.mutateAsync(result.queueEntry.id)
           const ticketUrl = `${window.location.origin}/j/${ticket.ticketToken}`
-          const qrUrl = `/api/public/journey/qr/${ticket.ticketToken}`
+          const qrUrl = await QRCode.toDataURL(ticketUrl, { margin: 1, width: 220 }).catch(() => '')
           setIssuedTicket({ token: ticket.ticketToken, url: ticketUrl, qrUrl })
         } catch {
           // Ticket issuance failed, but check-in succeeded
           toast.error('Check-in succeeded, but ticket generation failed. You can generate it later.')
         }
       }
+
     } catch {
       // API interceptors and mutation hooks surface the detailed error.
     }

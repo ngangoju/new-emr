@@ -33,4 +33,20 @@ export class JourneyTicketClient {
 
     return res.json();
   }
+
+  async initiatePayment(token: string, phoneNumber: string): Promise<{ transactionId?: string; status?: string }> {
+    const res = await fetch(`${this.baseUrl}/tickets/${encodeURIComponent(token)}/initiate-payment`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ phoneNumber }),
+    });
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => 'Payment initiation failed');
+      throw new Error(text || `Payment failed (${res.status})`);
+    }
+
+    return res.json();
+  }
 }
+

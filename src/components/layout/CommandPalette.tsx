@@ -28,6 +28,10 @@ import {
   Microscope,
   DollarSign,
 } from 'lucide-react'
+import { parseSmartBarInput, type SmartBarResult } from '@/lib/clinical/smart-bar-parser'
+import { SmartBarPreviewCard } from '@/components/clinical/SmartBarPreviewCard'
+import toast from 'react-hot-toast'
+
 
 type PatientHit = {
   id: string
@@ -108,14 +112,33 @@ export function CommandPalette() {
     return FileText
   }
 
+  const smartBarResult = React.useMemo(() => parseSmartBarInput(query), [query])
+
+  const handleSmartBarSubmit = (parsed: SmartBarResult) => {
+    if (!parsed) return
+    toast.success(`Smart Bar: Submitted ${parsed.type.toLowerCase().replace('_', ' ')} command`)
+    setQuery('')
+    setOpen(false)
+  }
+
   return (
     <CommandDialog open={open} onOpenChange={setOpen} title="Command palette" description="Navigate, search patients, quick actions">
       <CommandInput
-        placeholder="Search navigation, patients, actions…"
+        placeholder="Search navigation, patients, smart clinical syntax (e.g. bp 120/80, rx amoxicillin)..."
         value={query}
         onValueChange={setQuery}
       />
+      {smartBarResult && (
+        <div className="px-3">
+          <SmartBarPreviewCard
+            result={smartBarResult}
+            onSubmit={handleSmartBarSubmit}
+            onDismiss={() => setQuery('')}
+          />
+        </div>
+      )}
       <CommandList>
+
         <CommandEmpty>{searching ? 'Searching…' : 'No results.'}</CommandEmpty>
         {navItems.length > 0 && (
           <CommandGroup heading="Navigation">
