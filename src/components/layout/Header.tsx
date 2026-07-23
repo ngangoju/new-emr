@@ -21,6 +21,7 @@ import { useLogout } from '@/hooks/api/useAuth'
 import { useUnreadCount, useNotificationsModule } from '@/hooks/useNotifications'
 import { formatRelativeTime } from '@/lib/utils/date'
 import { getNotificationColor } from '@/types/notification'
+import { TenantSwitcher } from '@/components/layout/TenantSwitcher'
 
 type HeaderUser = SessionUser & {
   name?: string
@@ -166,6 +167,7 @@ export function Header() {
               ⌘K
             </kbd>
           </button>
+          <TenantSwitcher />
           <DropdownMenu open={notificationsOpen} onOpenChange={handleNotificationsOpenChange}>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-9 w-9 rounded-full">

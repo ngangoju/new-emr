@@ -1,6 +1,7 @@
 import axios, { AxiosRequestConfig, Method } from 'axios';
 import toast from 'react-hot-toast';
 import { handleUnauthorized } from '@/lib/utils/auth';
+import { getSelectedTenantId } from '@/lib/tenantSession';
 import { toEmrError, type EmrError } from '@/lib/errors';
 
 export const api = axios.create({
@@ -36,6 +37,16 @@ api.interceptors.request.use((config) => {
             config.headers = config.headers || {};
             config.headers['X-XSRF-TOKEN'] = csrfToken;
         }
+    }
+
+    // Multi-tenant scoping: inject the currently selected tenant id so the
+    // backend TenantFilter scopes this request to the chosen membership.
+    // The backend rejects (403) a tenant the user is not a member of, so this
+    // is a request-scoping hint, not a privilege grant.
+    const selectedTenantId = getSelectedTenantId();
+    if (selectedTenantId) {
+        config.headers = config.headers || {};
+        config.headers['X-Tenant-ID'] = selectedTenantId;
     }
 
     return config;
