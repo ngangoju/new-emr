@@ -1,5 +1,3 @@
-import { getSessionUser } from '@/lib/utils/auth';
-
 /**
  * localStorage-backed holder for the currently selected tenant id.
  *
@@ -9,35 +7,34 @@ import { getSessionUser } from '@/lib/utils/auth';
  *
  * The backend TenantFilter enforces that the header value corresponds to a real
  * tenant_members row for the user (else 403), so there is no self-promotion risk.
+ *
+ * The default selection (the user's home tenant on first load) is seeded by the
+ * UI (TenantSwitcher) via setSelectedTenantId — this holder intentionally does
+ * NOT import the auth/session module, so it stays cheap to call on every request
+ * and does not couple request-time code to session/cookie reads.
  */
 
 const SELECTED_TENANT_KEY = 'emr:selectedTenant';
 
 /**
- * Returns the currently selected tenant id.
- *
- * Resolution order:
- *   1. The explicitly persisted selection (localStorage).
- *   2. Fallback to the session user's own tenantId (first load / never switched).
- *   3. null when neither is available (SSR, logged-out, or platform admin).
+ * Returns the explicitly persisted tenant id, or null when none is set. When
+ * null, no X-Tenant-ID header is sent and the backend falls back to the JWT's
+ * tenant claim (the user's home clinic) — which is the correct default.
  */
 export function getSelectedTenantId(): string | null {
     if (typeof window === 'undefined') return null;
 
     try {
-        const stored = localStorage.getItem(SELECTED_TENANT_KEY);
-        if (stored) return stored;
+        return localStorage.getItem(SELECTED_TENANT_KEY);
     } catch {
-        // localStorage may be unavailable (private mode / disabled) — fall through.
+        // localStorage may be unavailable (private mode / disabled) — no selection.
+        return null;
     }
-
-    const user = getSessionUser();
-    return user?.tenantId ?? null;
 }
 
 /**
  * Persists the selected tenant id. Passing null clears the explicit selection,
- * reverting future reads to the session user's own tenantId fallback.
+ * reverting future reads to null (backend uses the JWT tenant claim).
  */
 export function setSelectedTenantId(id: string | null): void {
     if (typeof window === 'undefined') return;
