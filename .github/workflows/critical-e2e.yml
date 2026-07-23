@@ -54,12 +54,29 @@ jobs:
             fi
           done
 
+          # Pre-flight: the E2E suite depends on a reachable live backend. When the
+          # deployed backend (Render/Vercel) is spun down or unreachable, the tests
+          # would fail red on an environment outage rather than a code defect. Treat
+          # an unreachable backend as a neutral skip for scheduled runs (so CI stays
+          # green between real deployments) and a hard error for manual dispatches.
+          if [ "$missing" -eq 0 ]; then
+            health_url="${E2E_AUTH_API_BASE}/actuator/health"
+            if ! curl --silent --fail --max-time 20 "$health_url" >/dev/null; then
+              echo "::warning title=Backend unreachable::${health_url} did not respond. Skipping E2E (environment outage, not a code defect)."
+              missing=2
+            fi
+          fi
+
           if [ "$missing" -ne 0 ]; then
+            if [ "$missing" -eq 2 ] && [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+              echo "::error title=Backend unreachable::${E2E_AUTH_API_BASE}/actuator/health did not respond. Deploy/start the backend before running Critical E2E manually."
+              exit 1
+            fi
             if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
               echo "::error title=Missing required E2E configuration::Running Critical E2E manually requires PLAYWRIGHT_BASE_URL, E2E_AUTH_API_BASE, and E2E_PASSWORD to be set."
               exit 1
             fi
-            echo "E2E configuration not set — skipping scheduled run (set the repo variables/secrets to enable)."
+            echo "E2E configuration not set or backend unreachable — skipping scheduled run (set the repo variables/secrets and ensure the backend is deployed to enable)."
             echo "skip=true" >> "$GITHUB_OUTPUT"
           fi
 
