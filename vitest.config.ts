@@ -8,6 +8,20 @@ export default defineConfig({
         environment: 'jsdom',
         globals: true,
         setupFiles: ['./src/test/setup.ts'],
+        // CI runners under load intermittently surface a Vitest-worker RPC
+        // timeout ("Timeout calling onTaskUpdate") that fails the coverage gate
+        // even though every test passes and coverage is above threshold. These
+        // values give the worker pool more headroom without changing behavior.
+        testTimeout: 30000,
+        teardownTimeout: 30000,
+        pool: 'forks',
+        poolOptions: {
+            forks: {
+                // Cap concurrency so the CI runner's RPC channel isn't saturated.
+                maxForks: 2,
+                minForks: 1,
+            },
+        },
         exclude: ['**/node_modules/**', '**/e2e/**', '**/dist/**'],
         coverage: {
             provider: 'v8',
