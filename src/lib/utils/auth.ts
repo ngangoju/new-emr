@@ -64,6 +64,7 @@ export interface SessionUser {
     roles?: string[];
     permissions?: string[];
     active?: boolean;
+    tenantId?: string;
 }
 
 export interface ClearSessionOptions {

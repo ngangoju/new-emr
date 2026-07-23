@@ -10,6 +10,7 @@ export interface User {
     role?: string;
     permissions?: string[];
     active?: boolean;
+    tenantId?: string;
 }
 
 export interface LoginPayload {

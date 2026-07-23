@@ -97,6 +97,11 @@ describe('auth session hardening — HttpOnly cookie model', () => {
         setSessionUser({ username: 'doctor1', role: 'DOCTOR', permissions: ['*'] })
         expect(getSessionUser()).toEqual({ username: 'doctor1', role: 'DOCTOR', permissions: ['*'] })
     })
+
+    it('round-trips tenantId through setSessionUser / getSessionUser (Task 8)', () => {
+        setSessionUser({ id: 'u', tenantId: 't-1' })
+        expect(getSessionUser()?.tenantId).toBe('t-1')
+    })
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
