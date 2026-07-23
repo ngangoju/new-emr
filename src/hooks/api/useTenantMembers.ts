@@ -69,7 +69,7 @@ export function useRemoveTenantMember(tenantId: string) {
 export function useSetHomeTenant() {
     return useMutation({
         mutationFn: async ({ userId, tenantId }: { userId: string; tenantId: string }) => {
-            await api.post(`/api/admin/users/${userId}/tenant`, { tenantId })
+            await api.put(`/api/admin/users/${userId}/tenant`, { tenantId })
         },
     })
 }
